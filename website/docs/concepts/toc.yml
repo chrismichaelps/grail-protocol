@@ -1,0 +1,6 @@
+- name: How Grail fits together
+  href: index.md
+- name: Graphs and teams
+  href: graphs.md
+- name: Envelopes and history
+  href: envelopes.md

@@ -55,7 +55,7 @@ pudu run tools/Mutate.pudu --file src/Engine/Admission.pudu
 
 ## Documentation
 
-Keep the README short. Write task-based guides in `website/docs/`, normative protocol rules in `wiki/protocol/`, and wire changes only in the OpenAPI contract. Build with `python3 tools/BuildDocs.py`; warnings must be fixed before publishing. See `website/README.md` for the source layout and preview command. Cloudflare hosts static documentation only. Keep API validation on localhost.
+Keep the README short. Write task-based guides in `website/docs/`, normative protocol rules in `wiki/protocol/`, and wire changes only in the OpenAPI contract. Exercise the runnable examples with `python3 tools/TestGuides.py`. Build with `python3 tools/BuildDocs.py`; warnings must be fixed before publishing. See `website/README.md` for the source layout and preview command. Cloudflare hosts static documentation only. Keep API validation on localhost.
 
 ## Branches
 

@@ -51,6 +51,8 @@ jobs:
           pudu run tools/LayersTest.pudu
           pudu run tools/SpacingTest.pudu
           pudu run tools/ContractTest.pudu
+      - name: Documented local workflows
+        run: python3 tools/TestGuides.py
       - name: Documentation
         run: python3 tools/BuildDocs.py
       - name: Test
