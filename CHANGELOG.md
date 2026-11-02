@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.2 — 2026-11-02
+
+### Fixed
+
+- Graph-bound erasure tokens cannot erase another graph's payload, including tokens with an `owner` audience. Refusal preserves the stored transfer; allowed erasure preserves ledger hashes.
+
+### Validation and compatibility
+
+The suite passes 232 assertions, including 14 new erasure checks. A compiled localhost fabric confirms cross-graph HTTP 403, same-graph HTTP 200, and unchanged ledger hashes. Draft protocol 1.0 wire shapes remain compatible. Callers relying on cross-graph erasure must obtain appropriately scoped authority.
+
+The API remains local and the store remains in memory. Cloudflare continues to host static documentation only.
+
 ## 0.1.1 — 2026-11-02
 
 ### Fixed
