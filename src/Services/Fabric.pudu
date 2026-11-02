@@ -199,6 +199,8 @@ export fn eraseTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> 
   Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
       let authority = authorized(&state, &asked, secret, now) ?
       let _allowed = Authority.require(&authority, Vocabulary.ABILITY_LEDGER_ERASE, None) ?
+      let record = Option.okOr(state.records.get(asked.input), notFound()) ?
+      let _graphAllowed = Authority.require(&authority, Vocabulary.ABILITY_LEDGER_ERASE, Some(record.envelope.graph)) ?
       let erased = Erasure.erase(&state, asked.input) ?
       Ok((Request.Erased{id: erased[0].entry.id, sequence: erased[0].entry.sequence, digest: erased[0].entry.digest}, erased[1]))
     })
