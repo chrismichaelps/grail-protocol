@@ -19,3 +19,4 @@
 - 2026-11-02 · [[architecture/ATTACKS]] · tunnel repeat passes all non-timing checks, with 600 of 1200 requests rate limited; sequential timing probe remains inconclusive · risk MED
 - 2026-11-02 · [[architecture/ATTACKS]] · 64 engine mutants attempted; five survivors killed by targeted regression reruns, including a cycle with an acyclic prefix; full suite holds 200 assertions · risk LOW
 - 2026-11-02 · [[decisions/ADR-0008-composable-causal-gates]] · nested teams enforce every entry gate and retain admission-time producer attribution; expansion is bounded and atomic · risk HIGH
+- 2026-11-02 · practical README and local quick-start/CLI guides replace the paper-style introduction; project funding links added · risk LOW
