@@ -15,6 +15,8 @@ Graphs change atomically, by revision, and never into a cycle.
 
 The resource-bound checks accept exactly the participant, edge, and operation limits and refuse one more.
 
+A cycle witness must exclude an acyclic path leading into the cycle; otherwise incorrect incoming-edge counts can report a nonexistent self-cycle.
+
 ## Interface
 
 ### Signatures

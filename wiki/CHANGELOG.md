@@ -17,3 +17,4 @@
 - 2026-11-02 · [[test/Engine/MutationsTest]] · edge-count boundary coverage for the inclusive contract limit · risk LOW
 - 2026-11-02 · [[tools/Site]] · distinguish source assembly from rendering and document the docgen compatibility patch · risk LOW
 - 2026-11-02 · [[architecture/ATTACKS]] · tunnel repeat passes all non-timing checks, with 600 of 1200 requests rate limited; sequential timing probe remains inconclusive · risk MED
+- 2026-11-02 · [[architecture/ATTACKS]] · 64 engine mutants attempted; five survivors killed by targeted regression reruns, including a cycle with an acyclic prefix; full suite holds 200 assertions · risk LOW

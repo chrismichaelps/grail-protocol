@@ -36,6 +36,22 @@ Forging a token failed in every form tried: claims rewritten under another token
 
 The suites themselves were attacked with [[tools/Mutate]], which changes one operator at a time in the engines and requires some test to fail. Surviving mutants pointed at untested boundaries (a deadline equal to now, a clock exactly at the skew bound, a delegation chain exactly at its depth limit, containment exactly at its depth limit) and at dead code, which was removed rather than tested. [[src/Engine/Authority]] kills every mutant.
 
+### Engine sweep on 2026-11-02
+
+The five unfinished engine sweeps attempted 64 mutants against the full suite in an isolated copy. Initial results were:
+
+| Engine | Mutants | Killed initially | Survived initially |
+| --- | --- | --- | --- |
+| Mutations | 18 | 17 | 1 |
+| Delivery | 30 | 29 | 1 |
+| Kinds | 3 | 3 | 0 |
+| Topology | 12 | 9 | 3 |
+| Erasure | 1 | 1 | 0 |
+
+All five survivors were missing-test cases. The mutation bound lacked an assertion accepting exactly the maximum edge count. Delivery traces lacked assertions distinguishing visible and hidden ancestors. Cycle witnesses lacked a graph with an acyclic path feeding into a cycle, which exposed incorrect incoming counts, incorrect count decrements, and an invalid ready-queue index.
+
+The added regressions pass on the original engines, and targeted reruns kill each of the five surviving source changes. Production engines were unchanged. These targeted reruns supplement the initial sweeps; a second complete sweep was not run. Nonterminating mutants are counted as killed when the harness timeout expires. With the proxy regressions included, the final suite holds 200 assertions; the layer gate still reports 84 modules, 392 internal edges, no refused imports, and no cycles.
+
 ## Tunnel validation on 2026-11-02
 
 A temporary Cloudflare Tunnel targeted a fresh fabric bound to `127.0.0.1`, with `GRAIL_CLIENT_IP_HEADER=CF-Connecting-IP`, 64 workers, and a new random secret. The edge response carried `cf-ray`. Both the tunnel and the fabric were stopped after the campaign. The header setting defaults to empty; when enabled, the trusted proxy must overwrite it and provide the fabric's sole ingress. Missing or blank header values fall back to the connection host ([[src/Web/Peers]]).

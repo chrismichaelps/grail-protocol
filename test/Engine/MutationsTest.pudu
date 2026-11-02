@@ -58,7 +58,9 @@ fn main() -> Int {
 
   let deepest = Mutations.create("deeper", Fixtures.SCOPE, &Mutation.Draft{participants: [Graph.Participant{id: "in", kind: Vocabulary.PARTICIPANT_GRAPH, roles: [], abilities: [], graph: Some("n" + show(Limits.CONTAINMENT_DEPTH - 1))}], edges: []}, &nesting)
   let tooDeep = Mutations.create("deeper", Fixtures.SCOPE, &Mutation.Draft{participants: [Graph.Participant{id: "in", kind: Vocabulary.PARTICIPANT_GRAPH, roles: [], abilities: [], graph: Some("n" + show(Limits.CONTAINMENT_DEPTH))}], edges: []}, &nesting)
+  let prefixedCycle = Mutations.create("prefixed", Fixtures.SCOPE, &Mutation.Draft{participants: ["a", "b", "c", "d"].map(|id: Str| Fixtures.member(id, &[], &[])), edges: [Fixtures.edge("ab", "a", "b", Vocabulary.RELATION_DEPENDENCY), Fixtures.edge("bc", "b", "c", Vocabulary.RELATION_DEPENDENCY), Fixtures.edge("cd", "c", "d", Vocabulary.RELATION_DEPENDENCY), Fixtures.edge("dc", "d", "c", Vocabulary.RELATION_DEPENDENCY)]}, &none)
   let checks = Test.suite("Mutations", &[
+      Test.equals("a cycle witness excludes its acyclic prefix", &Result.mapErr(prefixedCycle, |p: Problem.Problem| Json.encode(&p.extras[0][1])), &Err("[\"d\",\"c\",\"d\"]")),
       Test.succeeded("a mutation of exactly the operation limit applies", &atLimit),
       Test.equals("one operation more is refused", &Fixtures.code(&overLimit), &Codes.LIMIT_EXCEEDED),
       Test.succeeded("a graph of exactly the participant limit is created", &full),
