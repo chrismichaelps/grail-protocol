@@ -1,6 +1,7 @@
 name: ci
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, dev]
   pull_request:
@@ -50,6 +51,8 @@ jobs:
           pudu run tools/LayersTest.pudu
           pudu run tools/SpacingTest.pudu
           pudu run tools/ContractTest.pudu
+      - name: Documentation
+        run: python3 tools/BuildDocs.py
       - name: Test
         run: pudu test test
       - name: Build

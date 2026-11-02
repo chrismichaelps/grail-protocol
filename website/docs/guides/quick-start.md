@@ -5,7 +5,7 @@ description: Clone Grail, start a local fabric, and create a graph with your own
 
 # Run Grail locally
 
-You need Pudu 0.1.3, a terminal, and `curl`. This walkthrough uses an in-memory fabric on your own machine. The public website serves documentation, not an API.
+You need access to the private repository, Pudu 0.1.3, a terminal, and `curl`. This walkthrough uses an in-memory fabric on your own machine. The public website serves documentation, not an API.
 
 ## Start the fabric
 

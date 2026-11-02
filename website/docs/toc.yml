@@ -1,0 +1,10 @@
+- name: Home
+  href: index.yml
+- name: Guides
+  href: guides/
+- name: HTTP API
+  href: rest/grail.openapi.json
+- name: Specification
+  href: protocol/
+- name: Decisions
+  href: decisions/
