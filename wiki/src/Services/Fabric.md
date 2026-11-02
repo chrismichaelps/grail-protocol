@@ -14,6 +14,8 @@ tags: [module, services]
 
 Every operation of the protocol over one scope at a time.
 
+Payload erasure requires `ledger.erase` and checks the stored envelope's graph against the token's graph restriction before changing state. An `owner` audience does not bypass a graph restriction. Refusal preserves the payload, erasure mark, digest, and ledger link.
+
 ## Interface
 
 ### Signatures

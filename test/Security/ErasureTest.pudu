@@ -1,0 +1,69 @@
+/** @Test.Security.Erasure.Suite — graph restrictions constrain erasure before payloads change */
+module Security.ErasureTest
+
+import Std.Http as Http
+import Std.Json as Json
+import Std.Option as Option
+import Std.Test as Test
+import App.Assembly as Assembly
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Support.Fabric as Fabric
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+
+fn body(id: Str, graph: Str) -> Str {
+  let envelope = Json.withField(&Fixtures.body(id, "boss", Fixtures.to("w"), Vocabulary.KIND_MEMORY, &[]), "graph", Json.Text(graph))
+  Json.encode(&Json.withField(&envelope, "payload", Json.Text("private content")))
+}
+
+fn payload(answer: &Fabric.Answer) -> Option[Json.Json] {
+  Option.andThen(Json.field(&answer.body, "envelope"), |envelope: Json.Json| Json.field(&envelope, "payload"))
+}
+
+fn main() -> Int {
+  let router = match Fabric.start() {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Erasure", &[Test.that("the fabric starts: " + reason, false)])) }
+  }
+  let root = Fabric.owner("demo")
+  let base = "/v1/scopes/demo"
+  let first = Fabric.sent(&router, Http.Put, base + "/graphs/g", root, Fixtures.ATTACKED_GRAPH)
+  let second = Fabric.sent(&router, Http.Put, base + "/graphs/other", root, Fixtures.ATTACKED_GRAPH)
+  let sent = Fabric.sent(&router, Http.Post, base + "/transfers", root, body("local", "g"))
+  let foreign = Fabric.sent(&router, Http.Post, base + "/transfers", root, body("foreign", "other"))
+  let expires = Assembly.now() + 600000
+  let eraser = Fabric.delegated(&router, root, "eraser", "w", &[Vocabulary.ABILITY_LEDGER_ERASE], "g", expires)
+  let boundOwner = Fabric.delegated(&router, root, "bound-owner", "owner", &[Vocabulary.ABILITY_LEDGER_ERASE], "g", expires)
+  let reader = Fabric.delegated(&router, root, "reader", "w", &[Vocabulary.ABILITY_TRANSFER_READ], "g", expires)
+  let before = Fabric.sent(&router, Http.Get, base + "/transfers/foreign", root, "")
+  let ledgerBefore = Fabric.sent(&router, Http.Get, base + "/ledger", root, "")
+  let refused = Fabric.sent(&router, Http.Post, base + "/transfers/foreign/erasure", eraser, "")
+  let ownerRefused = Fabric.sent(&router, Http.Post, base + "/transfers/foreign/erasure", boundOwner, "")
+  let after = Fabric.sent(&router, Http.Get, base + "/transfers/foreign", root, "")
+  let noAbility = Fabric.sent(&router, Http.Post, base + "/transfers/local/erasure", reader, "")
+  let localBefore = Fabric.sent(&router, Http.Get, base + "/transfers/local", root, "")
+  let allowed = Fabric.sent(&router, Http.Post, base + "/transfers/local/erasure", eraser, "")
+  let localAfter = Fabric.sent(&router, Http.Get, base + "/transfers/local", root, "")
+  let ledgerAfter = Fabric.sent(&router, Http.Get, base + "/ledger", root, "")
+  let ownerAllowed = Fabric.sent(&router, Http.Post, base + "/transfers/foreign/erasure", root, "")
+  let ownerAfter = Fabric.sent(&router, Http.Get, base + "/transfers/foreign", root, "")
+  let checks = Test.suite("Erasure", &[
+      Test.equals("both graphs exist", &[first.status, second.status], &[201, 201]),
+      Test.equals("both payloads are accepted", &[sent.status, foreign.status], &[202, 202]),
+      Test.that("the restricted tokens are issued", !eraser.isEmpty() && !boundOwner.isEmpty() && !reader.isEmpty()),
+      Test.equals("a graph-bound eraser cannot erase another graph", &Fabric.code(&refused), &Codes.FORBIDDEN),
+      Test.equals("the owner audience does not bypass its graph restriction", &Fabric.code(&ownerRefused), &Codes.FORBIDDEN),
+      Test.equals("a refused erasure leaves the transfer unchanged", &after.body, &before.body),
+      Test.equals("the foreign payload remains stored", &payload(&after), &Some(Json.Text("private content"))),
+      Test.equals("reading does not grant erasure", &Fabric.code(&noAbility), &Codes.FORBIDDEN),
+      Test.equals("a missing erasure ability leaves the payload stored", &payload(&localBefore), &Some(Json.Text("private content"))),
+      Test.equals("an eraser may erase its own graph", &allowed.status, &200),
+      Test.equals("an allowed erasure removes the payload", &payload(&localAfter), &Some(Json.Null)),
+      Test.equals("refused and allowed erasures preserve ledger hashes", &ledgerAfter.body, &ledgerBefore.body),
+      Test.equals("the unbound owner may erase another graph", &ownerAllowed.status, &200),
+      Test.equals("the unbound owner's erasure removes the payload", &payload(&ownerAfter), &Some(Json.Null))
+    ])
+
+  Runner.finish(&checks)
+}

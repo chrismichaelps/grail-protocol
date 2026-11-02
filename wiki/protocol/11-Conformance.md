@@ -33,6 +33,8 @@ A fabric conforms only if each of the following holds. The reference implementat
 
 For Fabric Full, nested-graph conformance additionally requires that entry dependencies cannot be bypassed, a verified nested completion can satisfy an enclosing participant's dependency, unrelated inner results cannot do so, later graph mutations preserve admission-time attribution, and empty or over-limit expansions fail without a ledger append.
 
+Fabric Full erasure checks MUST include a graph-bound token attempting to erase another graph's payload, including an `owner` audience. Both attempts yield `grail.forbidden` without changing the record. Same-graph erasure and erasure by an unbound owner succeed; the digest and link remain unchanged.
+
 ## 11.3 Test vectors
 
 The repository's `test/Fixtures` holds envelopes with their canonical forms and digests, and ledgers with their links. An implementation in any language can check its canonicalization and hashing against them.
