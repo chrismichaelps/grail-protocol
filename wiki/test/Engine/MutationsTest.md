@@ -13,6 +13,8 @@ tags: [test]
 
 Graphs change atomically, by revision, and never into a cycle.
 
+The resource-bound checks accept exactly the participant, edge, and operation limits and refuse one more.
+
 ## Interface
 
 ### Signatures

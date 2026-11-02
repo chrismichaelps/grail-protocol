@@ -2,11 +2,20 @@
 module Web.Peers
 
 import Std.Http.Server.Route as Route
+import Std.Option as Option
 import Constants.Text as Text
 
-/// A step that replaces the request's peer, written host and port, with its host alone; placed before rate limiting, it keeps a client from earning a fresh window by opening a new connection.
-export fn byHost() -> Route.Middleware {
-  |request: Route.Request, next: Route.Handler| next(Route.Request{..request, peer: hostOf(request.peer)})
+/// Names peers before rate limiting so new connections share a window. A configured header must be overwritten by a trusted proxy that is the fabric's only ingress.
+export fn byHost(header: Str) -> Route.Middleware {
+  |request: Route.Request, next: Route.Handler| next(Route.Request{..request, peer: peerOf(&request, header)})
+}
+
+/// Uses the connection host unless the configured proxy header carries a nonempty address.
+export fn peerOf(request: &Route.Request, header: Str) -> Str {
+  let forwarded = if header.isEmpty() { None } else { Route.header(request, header) }
+  let address = Option.unwrapOr(Option.map(forwarded, |value: Str| value.trim()), "")
+
+  if address.isEmpty() { hostOf(request.peer) } else { address }
 }
 
 /// The host of a peer written `host:port` or `[v6]:port`.

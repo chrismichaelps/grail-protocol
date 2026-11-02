@@ -42,6 +42,10 @@ fn main() -> Int {
   let crowd = List.range(0, Limits.PARTICIPANTS).map(|n: Int| Fixtures.member("c" + show(n), &[], &[]))
   let full = Mutations.create("full", Fixtures.SCOPE, &Mutation.Draft{participants: crowd, edges: []}, &none)
   let overfull = Mutations.create("overfull", Fixtures.SCOPE, &Mutation.Draft{participants: crowd.push(Fixtures.member("one-more", &[], &[])), edges: []}, &none)
+  let allEdges = List.range(0, Limits.EDGES).map(|n: Int| Fixtures.edge("f" + show(n), "a", "b", Vocabulary.RELATION_FLOW))
+  let edgeMembers = [Fixtures.member("a", &[], &[]), Fixtures.member("b", &[], &[])]
+  let fullEdges = Mutations.create("full-edges", Fixtures.SCOPE, &Mutation.Draft{participants: edgeMembers, edges: allEdges}, &none)
+  let excessEdges = Mutations.create("excess-edges", Fixtures.SCOPE, &Mutation.Draft{participants: edgeMembers, edges: allEdges.push(Fixtures.edge("extra", "a", "b", Vocabulary.RELATION_FLOW))}, &none)
   let twinEdges = Mutations.create("twins", Fixtures.SCOPE, &Mutation.Draft{participants: [Fixtures.member("a", &[], &[]), Fixtures.member("b", &[], &[])], edges: [Fixtures.edge("same", "a", "b", Vocabulary.RELATION_FLOW), Fixtures.edge("same", "b", "a", Vocabulary.RELATION_FLOW)]}, &none)
   var nesting = Map.insert(&none, "n0", Graph.Graph{id: "n0", scopeId: Fixtures.SCOPE, revision: 1, participants: [], edges: []})
   var level = 1
@@ -59,6 +63,8 @@ fn main() -> Int {
       Test.equals("one operation more is refused", &Fixtures.code(&overLimit), &Codes.LIMIT_EXCEEDED),
       Test.succeeded("a graph of exactly the participant limit is created", &full),
       Test.equals("one participant more is refused", &Fixtures.code(&overfull), &Codes.LIMIT_EXCEEDED),
+      Test.succeeded("a graph of exactly the edge limit is created", &fullEdges),
+      Test.equals("one edge more is refused", &Fixtures.code(&excessEdges), &Codes.LIMIT_EXCEEDED),
       Test.equals("two edges with one id are refused", &Fixtures.code(&twinEdges), &Codes.DUPLICATE),
       Test.succeeded("containment exactly at the depth limit is allowed", &deepest),
       Test.equals("one level deeper is refused", &Fixtures.code(&tooDeep), &Codes.LIMIT_EXCEEDED),

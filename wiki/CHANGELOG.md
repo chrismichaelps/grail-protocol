@@ -11,3 +11,7 @@
 - 2026-11-02 · [[architecture/ATTACKS]] · attack and stress campaign; reserved mutation ids, linear cycle detection, host-keyed rate limits, bounded waiting pulls, bounded scopes · risk HIGH · [[decisions/ADR-0007-long-polling-and-bounds]]
 - 2026-11-02 · [[protocol/08-Bindings]] · token inspection, revocation, erasure, and waiting pulls added to the contract · risk MED
 - 2026-11-02 · [[tools/Spacing]] · statement spacing enforced across the repository · risk LOW
+- 2026-11-02 · [[src/Web/Peers]] · opt-in trusted proxy client addresses, connection-host fallback, and regression coverage; environment example matches the worker default · risk HIGH
+- 2026-11-02 · [[test/Engine/MutationsTest]] · edge-count boundary coverage for the inclusive contract limit · risk LOW
+- 2026-11-02 · [[tools/Site]] · distinguish source assembly from rendering and document the docgen compatibility patch · risk LOW
+- 2026-11-02 · [[architecture/ATTACKS]] · tunnel repeat passes all non-timing checks, with 600 of 1200 requests rate limited; sequential timing probe remains inconclusive · risk MED
