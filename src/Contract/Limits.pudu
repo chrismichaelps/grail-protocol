@@ -42,6 +42,9 @@ export const DELEGATION_DEPTH: Int = 8
 /// The `containmentDepth` limit.
 export const CONTAINMENT_DEPTH: Int = 8
 
+/// The `routingPaths` limit.
+export const ROUTING_PATHS: Int = 1024
+
 /// The `clockSkewMillis` limit.
 export const CLOCK_SKEW_MILLIS: Int = 300000
 
@@ -90,6 +93,7 @@ export const ALL: Array[(Str, Int)] = [
   ("operations", 256),
   ("delegationDepth", 8),
   ("containmentDepth", 8),
+  ("routingPaths", 1024),
   ("clockSkewMillis", 300000),
   ("deduplicationMillis", 86400000),
   ("pageDefault", 100),

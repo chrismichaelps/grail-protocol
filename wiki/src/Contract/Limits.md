@@ -46,6 +46,8 @@ export const OPERATIONS: Int = 256
 export const DELEGATION_DEPTH: Int = 8
 /// The `containmentDepth` limit.
 export const CONTAINMENT_DEPTH: Int = 8
+/// The `routingPaths` limit.
+export const ROUTING_PATHS: Int = 1024
 /// The `clockSkewMillis` limit.
 export const CLOCK_SKEW_MILLIS: Int = 300000
 /// The `deduplicationMillis` limit.

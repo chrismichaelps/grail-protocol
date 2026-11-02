@@ -32,6 +32,7 @@
     "operations": 256,
     "delegationDepth": 8,
     "containmentDepth": 8,
+    "routingPaths": 1024,
     "clockSkewMillis": 300000,
     "deduplicationMillis": 86400000,
     "pageDefault": 100,

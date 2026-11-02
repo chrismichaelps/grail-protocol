@@ -1,12 +1,17 @@
 /** @Engine.Routing.Resolvers — the strategy that turns a selector into recipients, chosen once */
 module Engine.Routing
 
-import Std.List as List
+import Std.Json as Json
 import Std.Option as Option
+import Constants.Details as Details
+import Constants.Extras as Extras
 import Constants.Graphs as Graphs
+import Contract.Limits as Limits
+import Contract.Problems as Codes
 import Contract.Vocabulary as Vocabulary
 import Domain.Envelope as Envelope
 import Domain.Graph as Graph
+import Domain.Problem as Problem
 
 /** @Engine.Routing.Resolve — the participants a sender reaches with a kind */
 export type Resolve = fn(Graph.Graph, Str, Str) -> Array[Str]
@@ -20,15 +25,18 @@ export fn resolverOf(selector: &Envelope.Selector) -> Resolve {
   }
 }
 
-/// Every address an envelope reaches: resolved participants, with graph participants replaced by the entry participants of the graph they stand for.
-export fn addresses(graph: &Graph.Graph, participants: &Array[Str], graphs: &Map[Str, Graph.Graph]) -> Array[Envelope.Address] {
-  var found: Array[Envelope.Address] = []
+/// Resolves every selected branch or refuses the whole expansion; retained paths are witnesses for later nested replies.
+export fn routes(graph: &Graph.Graph, participants: &Array[Str], graphs: &Map[Str, Graph.Graph]) -> Result[Array[Envelope.Route], Problem.Problem] {
+  var found: Array[Envelope.Route] = []
+
+  if participants.isEmpty() { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) }
 
   for id in *participants {
-    found = found.concat(expanded(graph, id, graphs, 0))
+    let branch = expanded(graph, id, graphs, 0, Limits.ROUTING_PATHS - found.length(), &[]) ?
+    found = found.concat(branch)
   }
 
-  List.distinct(&found)
+  Ok(found)
 }
 
 /// The participant a selector names directly, if it names one.
@@ -43,22 +51,31 @@ fn reachable(graph: &Graph.Graph, source: Str, kind: Str, holds: fn(Graph.Partic
   graph.participants.filter(|member: Graph.Participant| member.id != source && holds(member) && Graph.carries(graph, source, member.id, kind)).map(|member: Graph.Participant| member.id)
 }
 
-fn expanded(graph: &Graph.Graph, id: Str, graphs: &Map[Str, Graph.Graph], depth: Int) -> Array[Envelope.Address] {
-  let member = Graph.participant(graph, id)
-  let inner = Option.andThen(Option.andThen(member, |found: Graph.Participant| if found.kind == Vocabulary.PARTICIPANT_GRAPH { found.graph } else { None }), |name: Str| graphs.get(name))
+fn expanded(graph: &Graph.Graph, id: Str, graphs: &Map[Str, Graph.Graph], depth: Int, remaining: Int, prefix: &Array[Envelope.Address]) -> Result[Array[Envelope.Route], Problem.Problem] {
+  if depth > Limits.CONTAINMENT_DEPTH { return Err(exceeded(Limits.CONTAINMENT_DEPTH)) }
+  if remaining < 1 { return Err(exceeded(Limits.ROUTING_PATHS)) }
 
-  match inner {
-    case Some(nested) => {
-      var found: Array[Envelope.Address] = []
+  let member = Option.okOr(Graph.participant(graph, id), Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) ?
+  let address = Envelope.Address{graph: graph.id, participant: id}
+  let path = prefix.push(address)
 
-      if depth >= graphs.size() { return found }
+  if member.kind != Vocabulary.PARTICIPANT_GRAPH { return Ok([Envelope.Route{recipient: address, path: path}]) }
 
-      for entry in nested.participants.filter(|candidate: Graph.Participant| candidate.roles.contains(Graphs.ENTRY_ROLE)) {
-        found = found.concat(expanded(&nested, entry.id, graphs, depth + 1))
-      }
+  let name = Option.okOr(member.graph, Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) ?
+  let nested = Option.okOr(graphs.get(name), Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) ?
+  let entries = nested.participants.filter(|candidate: Graph.Participant| candidate.roles.contains(Graphs.ENTRY_ROLE))
+  var found: Array[Envelope.Route] = []
 
-      found
-    }
-    case None => [Envelope.Address{graph: graph.id, participant: id}]
+  if entries.isEmpty() { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) }
+
+  for entry in entries {
+    let branch = expanded(&nested, entry.id, graphs, depth + 1, remaining - found.length(), &path) ?
+    found = found.concat(branch)
   }
+
+  Ok(found)
+}
+
+fn exceeded(limit: Int) -> Problem.Problem {
+  Problem.withMember(&Problem.of(Codes.LIMIT_EXCEEDED, Details.LIMIT_EXCEEDED), Extras.LIMIT, Json.Number(limit))
 }

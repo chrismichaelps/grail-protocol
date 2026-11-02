@@ -1,0 +1,123 @@
+/** @Test.Engine.Composition.Suite — nested teams preserve dependency gates and causal producer identity */
+module Engine.CompositionTest
+
+import Std.Json as Json
+import Std.List as List
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import Std.Test as Test
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Envelope as Envelope
+import Domain.Graph as Graph
+import Domain.Ledger as Ledger
+import Domain.Lifecycle as Lifecycle
+import Domain.Scope as Scope
+import Engine.Routing as Routing
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+
+fn body(graph: Str, id: Str, source: Str, target: Str, kind: Str, parents: &Array[Str]) -> Json.Json {
+  Json.withField(&Fixtures.body(id, source, Fixtures.to(target), kind, parents), "graph", Json.Text(graph))
+}
+
+fn nested(gated: Bool) -> Scope.State {
+  let inner = Graph.Graph{id: "inner", scopeId: Fixtures.SCOPE, revision: 1, participants: [Fixtures.member("worker", &["entry"], &[]), Fixtures.member("reviewer", &[], &[]), Fixtures.member("dispatcher", &[], &[])], edges: [Fixtures.edge("dw", "dispatcher", "worker", Vocabulary.RELATION_FLOW), Fixtures.edge("dr", "dispatcher", "reviewer", Vocabulary.RELATION_FLOW)].concat(if gated { [Fixtures.edge("rw", "reviewer", "worker", Vocabulary.RELATION_DEPENDENCY)] } else { [] })}
+  let outer = Graph.Graph{id: "outer", scopeId: Fixtures.SCOPE, revision: 1, participants: [Fixtures.member("orchestrator", &[], &[]), Graph.Participant{id: "team", kind: Vocabulary.PARTICIPANT_GRAPH, roles: [], abilities: [], graph: Some("inner")}, Fixtures.member("publisher", &[], &[])], edges: [Fixtures.edge("ot", "orchestrator", "team", Vocabulary.RELATION_FLOW), Fixtures.edge("op", "orchestrator", "publisher", Vocabulary.RELATION_FLOW), Fixtures.edge("tp", "team", "publisher", Vocabulary.RELATION_DEPENDENCY)]}
+  let empty = Scope.empty(Fixtures.SCOPE)
+  Scope.State{..empty, graphs: Map.insert(&Map.insert(&empty.graphs, inner.id, inner), outer.id, outer)}
+}
+
+fn after(state: &Scope.State, message: &Json.Json) -> Scope.State { Result.unwrapOr(Fixtures.admitted(state, message), *state) }
+
+fn graphAt(state: &Scope.State, id: Str) -> Graph.Graph {
+  Map.getOr(&state.graphs, id, Graph.Graph{id: id, scopeId: Fixtures.SCOPE, revision: 0, participants: [], edges: []})
+}
+
+fn withMiddle(state: &Scope.State) -> Scope.State {
+  let outer = graphAt(state, "outer")
+  let middle = Graph.Graph{id: "middle", scopeId: Fixtures.SCOPE, revision: 1, participants: [Graph.Participant{id: "entry-team", kind: Vocabulary.PARTICIPANT_GRAPH, roles: ["entry"], abilities: [], graph: Some("inner")}], edges: []}
+  let rewritten = Graph.Graph{..outer, participants: outer.participants.map(|member: Graph.Participant| if member.id == "team" { Graph.Participant{..member, graph: Some("middle")} } else { member })}
+  Scope.State{..*state, graphs: Map.insert(&Map.insert(&state.graphs, "middle", middle), "outer", rewritten)}
+}
+
+fn main() -> Int {
+  let guarded = nested(true)
+  let unapproved = Fixtures.admitted(&guarded, &body("outer", "early", "orchestrator", "team", Vocabulary.KIND_TASK, &[]))
+  let askedReview = after(&guarded, &body("inner", "review", "dispatcher", "reviewer", Vocabulary.KIND_TASK, &[]))
+  let approved = after(&askedReview, &body("inner", "approval", "reviewer", "dispatcher", Vocabulary.KIND_RESULT, &["review"]))
+  let permitted = Fixtures.admitted(&approved, &body("outer", "permitted", "orchestrator", "team", Vocabulary.KIND_TASK, &["approval"]))
+  let start = nested(false)
+  let asked = after(&start, &body("outer", "work", "orchestrator", "team", Vocabulary.KIND_TASK, &[]))
+  let completed = after(&asked, &body("inner", "result", "worker", "orchestrator", Vocabulary.KIND_RESULT, &["work"]))
+  let downstream = Fixtures.admitted(&completed, &body("outer", "publish", "orchestrator", "publisher", Vocabulary.KIND_TASK, &["result"]))
+  let internalTask = after(&start, &body("inner", "internal-work", "dispatcher", "worker", Vocabulary.KIND_TASK, &[]))
+  let internalResult = after(&internalTask, &body("inner", "internal-result", "worker", "dispatcher", Vocabulary.KIND_RESULT, &["internal-work"]))
+  let unrelated = Fixtures.admitted(&internalResult, &body("outer", "unrelated", "orchestrator", "publisher", Vocabulary.KIND_TASK, &["internal-result"]))
+  let inner = graphAt(&asked, "inner")
+  let changedEntry = Graph.Graph{..inner, revision: 2, participants: inner.participants.map(|member: Graph.Participant| if member.id == "worker" { Graph.Participant{..member, roles: []} } else { member }).push(Fixtures.member("new-worker", &["entry"], &[]))}
+  let changed = Scope.State{..asked, graphs: Map.insert(&asked.graphs, "inner", changedEntry)}
+  let lateResult = after(&changed, &body("inner", "old-route-result", "worker", "orchestrator", Vocabulary.KIND_RESULT, &["work"]))
+  let retained = Fixtures.admitted(&lateResult, &body("outer", "after-change", "orchestrator", "publisher", Vocabulary.KIND_TASK, &["old-route-result"]))
+  let deep = withMiddle(&start)
+  let deepAsked = after(&deep, &body("outer", "deep-work", "orchestrator", "team", Vocabulary.KIND_TASK, &[]))
+  let deepResult = after(&deepAsked, &body("inner", "deep-result", "worker", "orchestrator", Vocabulary.KIND_RESULT, &["deep-work"]))
+  let deepDownstream = Fixtures.admitted(&deepResult, &body("outer", "deep-publish", "orchestrator", "publisher", Vocabulary.KIND_TASK, &["deep-result"]))
+  let deepGuarded = withMiddle(&guarded)
+  let deepBypass = Fixtures.admitted(&deepGuarded, &body("outer", "deep-bypass", "orchestrator", "team", Vocabulary.KIND_TASK, &[]))
+  let emptyInner = Graph.Graph{..inner, participants: inner.participants.map(|member: Graph.Participant| Graph.Participant{..member, roles: []})}
+  let emptyTeam = Scope.State{..start, graphs: Map.insert(&start.graphs, "inner", emptyInner)}
+  let emptyRoute = Fixtures.admitted(&emptyTeam, &body("outer", "empty", "orchestrator", "team", Vocabulary.KIND_TASK, &[]))
+  let failed = after(&asked, &body("inner", "failed", "worker", "orchestrator", Vocabulary.KIND_ERROR, &["work"]))
+  let failedEvidence = Fixtures.admitted(&failed, &body("outer", "failed-evidence", "orchestrator", "publisher", Vocabulary.KIND_TASK, &["failed"]))
+  let outer = graphAt(&start, "outer")
+  let aliases = ["team", "team2", "team3"].map(|id: Str| Graph.Participant{id: id, kind: Vocabulary.PARTICIPANT_GRAPH, roles: ["pool"], abilities: [], graph: Some("inner")})
+  let many = Graph.Graph{..outer, participants: [Fixtures.member("orchestrator", &[], &[])].concat(aliases), edges: aliases.map(|member: Graph.Participant| Fixtures.edge(member.id, "orchestrator", member.id, Vocabulary.RELATION_FLOW))}
+  let wideInner = Graph.Graph{..inner, participants: List.range(0, Limits.ROUTING_PATHS / 2).map(|n: Int| Fixtures.member("w" + show(n), &["entry"], &[]))}
+  let wideGraphs = Map.insert(&start.graphs, "inner", wideInner)
+  let atLimit = Routing.routes(&many, &["team", "team2"], &wideGraphs)
+  let overLimit = Routing.routes(&many, &["team", "team2", "team3"], &wideGraphs)
+  let shared = Scope.State{..start, graphs: Map.insert(&start.graphs, "outer", many)}
+  let sharedTask = Json.withField(&body("outer", "shared", "orchestrator", "team", Vocabulary.KIND_TASK, &[]), "target", Fixtures.toRole("pool"))
+  let sharedSent = after(&shared, &sharedTask)
+  let middle = graphAt(&deep, "middle")
+  let middleGate = Graph.Graph{..middle, participants: middle.participants.push(Fixtures.member("gate", &[], &[])), edges: [Fixtures.edge("gate-entry", "gate", "entry-team", Vocabulary.RELATION_DEPENDENCY)]}
+  let guardedMiddle = Scope.State{..deep, graphs: Map.insert(&deep.graphs, "middle", middleGate)}
+  let middleBypass = Fixtures.admitted(&guardedMiddle, &body("outer", "middle-bypass", "orchestrator", "team", Vocabulary.KIND_TASK, &[]))
+  let revisedOuter = Graph.Graph{..outer, revision: 2, participants: outer.participants.push(aliases[1]), edges: outer.edges.push(Fixtures.edge("second-dependency", "team2", "publisher", Vocabulary.RELATION_DEPENDENCY))}
+  let revised = Scope.State{..completed, graphs: Map.insert(&completed.graphs, "outer", revisedOuter)}
+  let newAlias = Fixtures.admitted(&revised, &body("outer", "new-alias", "orchestrator", "publisher", Vocabulary.KIND_TASK, &["result"]))
+  let emptyGraph = Graph.Graph{id: "empty", scopeId: Fixtures.SCOPE, revision: 1, participants: [], edges: []}
+  let mixedOuter = Graph.Graph{..many, participants: many.participants.map(|member: Graph.Participant| if member.id == "team3" { Graph.Participant{..member, graph: Some("empty")} } else { member })}
+  let mixed = Scope.State{..shared, graphs: Map.insert(&Map.insert(&shared.graphs, "empty", emptyGraph), "outer", mixedOuter)}
+  let mixedRoute = Fixtures.admitted(&mixed, &sharedTask)
+  let homonymOuter = Graph.Graph{..outer, participants: outer.participants.push(Fixtures.member("reviewer", &[], &[])), edges: outer.edges.push(Fixtures.edge("or", "orchestrator", "reviewer", Vocabulary.RELATION_FLOW))}
+  let homonym = Scope.State{..guarded, graphs: Map.insert(&guarded.graphs, "outer", homonymOuter)}
+  let foreignAsked = after(&homonym, &body("outer", "other-review", "orchestrator", "reviewer", Vocabulary.KIND_TASK, &[]))
+  let foreignResult = after(&foreignAsked, &body("outer", "other-approval", "reviewer", "orchestrator", Vocabulary.KIND_RESULT, &["other-review"]))
+  let homonymBypass = Fixtures.admitted(&foreignResult, &body("outer", "homonym-bypass", "orchestrator", "team", Vocabulary.KIND_TASK, &["other-approval"]))
+  let checks = Test.suite("Composition", &[
+      Test.equals("intermediate graph participants retain their own gates", &Fixtures.code(&middleBypass), &Codes.DEPENDENCY_UNMET),
+      Test.equals("a newly added alias cannot claim an older task's result", &Fixtures.code(&newAlias), &Codes.DEPENDENCY_UNMET),
+      Test.equals("one empty selected branch refuses the entire fan-out", &Fixtures.code(&mixedRoute), &Codes.NO_ROUTE),
+      Test.equals("same-named producers in other graphs cannot satisfy entry gates", &Fixtures.code(&homonymBypass), &Codes.DEPENDENCY_UNMET),
+      Test.succeeded("entry changes do not rewrite an accepted task's producer attribution", &retained),
+      Test.succeeded("a result composes through three graph levels", &deepDownstream),
+      Test.equals("a deeper entry gate cannot be bypassed", &Fixtures.code(&deepBypass), &Codes.DEPENDENCY_UNMET),
+      Test.equals("a team without entries cannot accept undeliverable work", &Fixtures.code(&emptyRoute), &Codes.NO_ROUTE),
+      Test.equals("an error does not supply successful team evidence", &Fixtures.code(&failedEvidence), &Codes.DEPENDENCY_UNMET),
+      Test.equals("exactly the routing path limit is allowed", &Result.map(atLimit, |paths: Array[Envelope.Route]| paths.length()), &Ok(Limits.ROUTING_PATHS)),
+      Test.equals("expansion above the path limit fails closed", &Fixtures.code(&overLimit), &Codes.LIMIT_EXCEEDED),
+      Test.equals("shared terminal addresses receive one delivery", &Option.map(sharedSent.records.get("shared"), |record: Ledger.Record| record.recipients.length()), &Some(1)),
+      Test.equals("distinct enclosing paths remain available for attribution", &Option.map(sharedSent.lifecycles.get("shared"), |lifecycle: Lifecycle.Lifecycle| lifecycle.routes.length()), &Some(3)),
+      Test.equals("entering a nested team cannot bypass its entry's dependency", &Fixtures.code(&unapproved), &Codes.DEPENDENCY_UNMET),
+      Test.succeeded("a nested entry accepts evidence from its own graph", &permitted),
+      Test.equals("the nested worker answers the outer task", &Fixtures.stateOf(&completed, "work"), &Vocabulary.STATE_COMPLETED),
+      Test.succeeded("a verified nested result fulfills the enclosing team's dependency", &downstream),
+      Test.equals("an unrelated inner result cannot impersonate an enclosing team's result", &Fixtures.code(&unrelated), &Codes.DEPENDENCY_UNMET)
+    ])
+
+  Runner.finish(&checks)
+}

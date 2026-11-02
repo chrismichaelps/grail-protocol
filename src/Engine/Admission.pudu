@@ -40,7 +40,7 @@ export type Outcome
   | Repeated(Ledger.Record)
 
 /** @Engine.Admission.Plan — who receives an envelope and which lifecycle it touches */
-type Plan = { recipients: Array[Envelope.Address], lifecycle: Option[Lifecycle.Lifecycle], closes: Option[Str] }
+type Plan = { recipients: Array[Envelope.Address], routes: Array[Envelope.Route], lifecycle: Option[Lifecycle.Lifecycle], closes: Option[Str] }
 
 /// Whether `envelope`, whose body is `body`, enters the scope under `authority` at `now`.
 export fn admit(state: &Scope.State, envelope: &Envelope.Envelope, body: &Json.Json, authority: &Capability.Authority, now: Int) -> Result[Outcome, Problem.Problem] {
@@ -74,7 +74,7 @@ export fn admit(state: &Scope.State, envelope: &Envelope.Envelope, body: &Json.J
 
   let sender = Envelope.Address{graph: graph.id, participant: envelope.source}
   let plan = if Kinds.answers(&behavior) || behavior.actor == Kinds.Source { answering(state, envelope, &behavior, &sender, now) ? } else { routed(state, &graph, envelope, &behavior, &sender) ? }
-  let opened = if behavior.effect == Kinds.Opens { Some(Lifecycle.Lifecycle{taskId: envelope.id, state: Machine.initial(), source: sender, recipients: plan.recipients, deadline: envelope.deadline}) } else { plan.lifecycle }
+  let opened = if behavior.effect == Kinds.Opens { Some(Lifecycle.Lifecycle{taskId: envelope.id, state: Machine.initial(), source: sender, recipients: plan.recipients, routes: plan.routes, deadline: envelope.deadline}) } else { plan.lifecycle }
   let sequence = Scope.length(state) + 1
   let stamp = Envelope.Stamp{sequence: sequence, digest: digest, accepted: now}
   let entry = Ledger.Entry{sequence: sequence, id: envelope.id, digest: digest, link: Chain.linkAfter(state.link, digest)}
@@ -122,7 +122,7 @@ fn repeated(state: &Scope.State, envelope: &Envelope.Envelope, digest: Str, now:
 }
 
 fn answering(state: &Scope.State, envelope: &Envelope.Envelope, behavior: &Kinds.Behavior, sender: &Envelope.Address, now: Int) -> Result[Plan, Problem.Problem] {
-  let asked = Option.okOr(Option.fromArray(&Option.present(&envelope.parents.map(|parent: Str| state.lifecycles.get(parent)))), Problem.invalid(&[Problem.violation(Pointer.of(&[Members.ENVELOPE_PARENTS]), Details.PARENT_REQUIRED)])) ?
+  let asked = Option.okOr(Causality.taskOf(state, &envelope.parents), Problem.invalid(&[Problem.violation(Pointer.of(&[Members.ENVELOPE_PARENTS]), Details.PARENT_REQUIRED)])) ?
   let event = match behavior.effect {
     case Kinds.Moves(named) => named
     case _ => ""
@@ -136,7 +136,7 @@ fn answering(state: &Scope.State, envelope: &Envelope.Envelope, behavior: &Kinds
 
   if Kinds.answers(behavior) && Routing.named(&envelope.target) != Some(asked.source.participant) { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) }
 
-  Ok(Plan{recipients: recipients, lifecycle: Some(Lifecycle.Lifecycle{..asked, state: next}), closes: None})
+  Ok(Plan{recipients: recipients, routes: [], lifecycle: Some(Lifecycle.Lifecycle{..asked, state: next}), closes: None})
 }
 
 fn routed(state: &Scope.State, graph: &Graph.Graph, envelope: &Envelope.Envelope, behavior: &Kinds.Behavior, sender: &Envelope.Address) -> Result[Plan, Problem.Problem] {
@@ -146,14 +146,21 @@ fn routed(state: &Scope.State, graph: &Graph.Graph, envelope: &Envelope.Envelope
 
   if participants.isEmpty() { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) }
 
-  if behavior.effect == Kinds.Opens {
-    let producers = Causality.producers(state, &envelope.parents, graph.id)
-    let unmet = List.distinct(&List.flatMap(&participants, |target: Str| Gating.unmet(graph, target, &producers)))
+  let routes = Routing.routes(graph, &participants, &state.graphs) ?
 
-    if !unmet.isEmpty() { return Err(Problem.withMember(&Problem.of(Codes.DEPENDENCY_UNMET, Details.DEPENDENCY_UNMET), Extras.UNMET, JsonRead.textList(&unmet))) }
+  if behavior.effect == Kinds.Opens {
+    let producers = Causality.producers(state, &envelope.parents)
+    let targets = List.distinct(&List.flatMap(&routes, |route: Envelope.Route| route.path))
+
+    for target in targets {
+      let reached = Option.okOr(state.graphs.get(target.graph), Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) ?
+      let unmet = Gating.unmet(&reached, target.participant, &producers)
+
+      if !unmet.isEmpty() { return Err(Problem.withMember(&Problem.of(Codes.DEPENDENCY_UNMET, Details.DEPENDENCY_UNMET), Extras.UNMET, JsonRead.textList(&unmet))) }
+    }
   }
 
-  Ok(Plan{recipients: Routing.addresses(graph, &participants, &state.graphs), lifecycle: None, closes: if behavior.stream == Kinds.ClosesStream { stream } else { None }})
+  Ok(Plan{recipients: List.distinct(&routes.map(|route: Envelope.Route| route.recipient)), routes: routes, lifecycle: None, closes: if behavior.stream == Kinds.ClosesStream { stream } else { None }})
 }
 
 fn streamOf(state: &Scope.State, envelope: &Envelope.Envelope, behavior: &Kinds.Behavior) -> Result[Option[Str], Problem.Problem] {

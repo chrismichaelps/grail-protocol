@@ -21,13 +21,16 @@ The causal ancestors of an envelope.
 ```pudu
 /// Every ancestor of the given parents, each once, in ledger order, up to the contract's bound; a gate that finds no result within the bound refuses, so the bound fails closed.
 export fn ancestors(state: &Scope.State, parents: &Array[Str]) -> Array[Ledger.Record]
-/// The participants of a graph that produced a result among the ancestors of the given parents.
-export fn producers(state: &Scope.State, parents: &Array[Str], graph: Str) -> Set[Str]
+/// The first task parent, shared by reply admission and nested producer attribution.
+export fn taskOf(state: &Scope.State, parents: &Array[Str]) -> Option[Lifecycle.Lifecycle]
+/// Verified results identify their direct producer and the enclosing participants on their task's original routes.
+export fn producers(state: &Scope.State, parents: &Array[Str]) -> Set[Envelope.Address]
 ```
 
 ### Linkage
 
-- **Requires:** [[src/Constants/Events]] · [[src/Contract/Limits]] · [[src/Domain/Ledger]] · [[src/Domain/Scope]] · [[src/Engine/Kinds]]
+- **Requires:** [[src/Constants/Events]] · [[src/Contract/Limits]] · [[src/Domain/Envelope]] · [[src/Domain/Ledger]] · [[src/Domain/Lifecycle]] · [[src/Domain/Scope]] · [[src/Engine/Kinds]]
+- **Standard library:** `Std.Option`
 - **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Delivery]]
 
 ## Referenced by

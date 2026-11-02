@@ -10,9 +10,11 @@ The OpenAPI 3.1 document of the HTTP binding, and through it of every binding. I
 
 ## What it holds
 
-- **Operations:** `discover`, `describeContract`, `checkHealth`, `createGraph`, `readGraph`, `mutateGraph`, `sendEnvelope`, `readTransfer`, `traceTransfer`, `pullDeliveries`, `readLedger`, `delegateToken`, `bridgeRpc`, each with `x-grail-ability`.
+- **Operations:** `discover`, `describeContract`, `checkHealth`, `createGraph`, `readGraph`, `mutateGraph`, `sendEnvelope`, `readTransfer`, `traceTransfer`, `eraseTransfer`, `pullDeliveries`, `readLedger`, `delegateToken`, `inspectToken`, `revokeToken`, `bridgeRpc`, each with `x-grail-ability`.
 - **Schemas:** the envelope and every object it holds, graphs, mutations, tokens, delegations, answers, discovery, and the problem document.
 - **Extensions:** `x-grail-version`, `x-grail-limits`, `x-grail-problems` (the registry of codes, statuses, and titles), `x-grail-final-states`, `x-grail-opening-kinds`, `x-grail-headers`, and media types.
+
+The `routingPaths` limit bounds recursive graph expansion before a task is committed. It is advertised with the other limits and enforced from the generated projection; it is not a separate hosting setting.
 
 ## Changing it
 

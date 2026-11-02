@@ -20,12 +20,12 @@ Whether a task's dependencies produced results among its ancestors.
 
 ```pudu
 /// The dependencies of `target` in `graph` that are not among the participants whose results the task descends from.
-export fn unmet(graph: &Graph.Graph, target: Str, producers: &Set[Str]) -> Array[Str]
+export fn unmet(graph: &Graph.Graph, target: Str, producers: &Set[Envelope.Address]) -> Array[Str]
 ```
 
 ### Linkage
 
-- **Requires:** [[src/Domain/Graph]]
+- **Requires:** [[src/Domain/Envelope]] · [[src/Domain/Graph]]
 - **Consumed by:** [[src/Engine/Admission]]
 
 ## Referenced by

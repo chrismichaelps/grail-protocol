@@ -31,6 +31,8 @@ A fabric conforms only if each of the following holds. The reference implementat
 9. Every ledger link recomputes from the digests, and every digest recomputes from the canonical form.
 10. Deliveries never exceed the requested limit, and a cursor acknowledges everything up to it.
 
+For Fabric Full, nested-graph conformance additionally requires that entry dependencies cannot be bypassed, a verified nested completion can satisfy an enclosing participant's dependency, unrelated inner results cannot do so, later graph mutations preserve admission-time attribution, and empty or over-limit expansions fail without a ledger append.
+
 ## 11.3 Test vectors
 
 The repository's `test/Fixtures` holds envelopes with their canonical forms and digests, and ledgers with their links. An implementation in any language can check its canonicalization and hashing against them.
