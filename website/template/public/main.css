@@ -1,0 +1,23 @@
+:root {
+  --accent: #155e52;
+  --accent-hover: #0d443b;
+  --accent-soft: #edf6f2;
+  --hero-bg: linear-gradient(118deg, #102c2c, #155e52 74%, #237a65);
+}
+:root[data-theme="dark"] { --accent: #8bdbc0; --accent-hover: #b4eddb; --accent-soft: #203b35; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --accent: #8bdbc0; --accent-hover: #b4eddb; --accent-soft: #203b35; }
+}
+.landing-hero { padding-top: 64px; padding-bottom: 56px; }
+.landing-hero::after { background: none; width: 220px; height: 220px; border: 1px solid #a6e5d04d; border-radius: 50%; right: 6%; top: 30px; }
+.landing-hero::before { background: radial-gradient(circle at 82% 42%, #a6e5d021 0 3px, transparent 4px); background-size: 34px 34px; }
+.landing-summary { max-width: 690px; color: #def2eb; }
+.landing-highlight { transition: border-color .15s ease; }
+.landing-highlight:hover { border-top-color: var(--accent); }
+.content h1 { letter-spacing: -.025em; }
+.content pre { border-radius: 8px; }
+.footer-bar { padding-top: 24px; padding-bottom: 24px; }
+@media (max-width: 640px) {
+  .landing-hero { padding-top: 38px; padding-bottom: 34px; }
+  .landing-hero::after { right: -100px; }
+}

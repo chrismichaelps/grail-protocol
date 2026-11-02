@@ -19,3 +19,6 @@ build/
 
 # Cloudflare local state
 .wrangler/
+
+# Build helper bytecode
+__pycache__/

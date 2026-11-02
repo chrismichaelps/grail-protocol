@@ -80,24 +80,6 @@ fn lastSlash(text: Str) -> Int {
   found
 }
 
-/// The paper's links as site links: vault sections become site sections, other repository paths point at the repository.
-export fn paperLinks(text: Str) -> Str {
-  var out = ""
-  var rest = text
-
-  while rest.contains("](") {
-    let open = rest.indexOf("](") + 2
-    let close = rest.drop(open).indexOf(")")
-
-    if close < 0 { return out + rest }
-
-    out = out + rest.take(open) + siteTarget(rest.drop(open).take(close)) + ")"
-    rest = rest.drop(open + close + 1)
-  }
-
-  out + rest
-}
-
 /// The first level-one heading of a page.
 export fn titleOf(text: Str, fallback: Str) -> Str {
   for line in text.split("\n") {
@@ -105,16 +87,4 @@ export fn titleOf(text: Str, fallback: Str) -> Str {
   }
 
   fallback
-}
-
-fn siteTarget(target: Str) -> Str {
-  if target.startsWith("http") || target.startsWith(Site.LINK_HEADING) { return target }
-
-  for section in Site.SECTIONS {
-    let prefix = Site.VAULT + "/" + section[0] + "/"
-
-    if target.startsWith(prefix) { return section[0] + "/" + pageFile(target.drop(prefix.length()).replace(Site.MARKDOWN, "")) }
-  }
-
-  Site.REPOSITORY + target
 }

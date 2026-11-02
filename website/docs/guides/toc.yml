@@ -1,0 +1,4 @@
+- name: Run Grail locally
+  href: quick-start.md
+- name: Command line
+  href: command-line.md
