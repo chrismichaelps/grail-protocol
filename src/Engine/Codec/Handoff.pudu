@@ -1,0 +1,63 @@
+/** @Engine.Codec.Handoff — handoff requests and handoffs read against the contract, and the answers about them */
+module Engine.Codec.Handoff
+
+import Std.Json as Json
+import Std.Option as Option
+import Constants.Details as Details
+import Constants.Extras as Extras
+import Contract.Limits as Limits
+import Contract.Members as Members
+import Contract.Problems as Codes
+import Contract.Schemas as Schemas
+import Domain.Handoff as Handoff
+import Domain.Problem as Problem
+import Engine.Codec.Shapes as Shapes
+import Utils.JsonRead as JsonRead
+import Utils.Pointer as Pointer
+
+/// What an export asks to carry, or every way the body departs from the contract.
+export fn decodeRequest(body: &Json.Json, graph: Str, participant: Str) -> Result[Handoff.Asked, Problem.Problem] {
+  let violations = Shapes.check(Schemas.HANDOFF_REQUEST, body, "")
+  let transfers = Option.unwrapOr(JsonRead.texts(body, Members.HANDOFF_REQUEST_TRANSFERS), [])
+
+  if !violations.isEmpty() { return Err(Problem.invalid(&violations)) }
+  if transfers.isEmpty() { return Err(Problem.invalid(&[Problem.violation(Pointer.of(&[Members.HANDOFF_REQUEST_TRANSFERS]), Details.WRONG_VALUE)])) }
+
+  Ok(Handoff.Asked{graph: graph, participant: participant, id: Option.unwrapOr(JsonRead.text(body, Members.HANDOFF_REQUEST_ID), ""), transfers: transfers, expires: JsonRead.whole(body, Members.HANDOFF_REQUEST_EXPIRES)})
+}
+
+/// A handoff with the contract's shape, named the same in the path and the body; integrity is checked by the engine, not here.
+export fn decodeBundle(body: &Json.Json, id: Str) -> Result[Json.Json, Problem.Problem] {
+  let violations = Shapes.check(Schemas.HANDOFF, body, "")
+  let anchors = Option.unwrapOr(JsonRead.texts(body, Members.HANDOFF_ANCHORS), [])
+
+  if Json.encode(body).length() > Limits.HANDOFF_BYTES { return Err(Problem.withMember(&Problem.of(Codes.TOO_LARGE, Details.TOO_LARGE), Extras.LIMIT, Json.Number(Limits.HANDOFF_BYTES))) }
+  if !violations.isEmpty() { return Err(Problem.invalid(&violations)) }
+  if anchors.isEmpty() { return Err(Problem.invalid(&[Problem.violation(Pointer.of(&[Members.HANDOFF_ANCHORS]), Details.WRONG_VALUE)])) }
+  if JsonRead.text(body, Members.HANDOFF_HANDOFF) != Some(id) { return Err(Problem.of(Codes.INVALID, Details.HANDOFF_MISMATCH)) }
+
+  Ok(*body)
+}
+
+/// The answer to an import.
+export fn receipt(answer: &Handoff.Receipt) -> Json.Json {
+  Json.object(&[
+      (Members.HANDOFF_RECEIPT_HANDOFF, Json.Text(answer.handoff)),
+      (Members.HANDOFF_RECEIPT_ID, Json.Text(answer.id)),
+      (Members.HANDOFF_RECEIPT_SEQUENCE, Json.Number(answer.sequence)),
+      (Members.HANDOFF_RECEIPT_DIGEST, Json.Text(answer.digest)),
+      (Members.HANDOFF_RECEIPT_ENTRIES, Json.Number(answer.entries)),
+      (Members.HANDOFF_RECEIPT_DUPLICATE, Json.Boolean(answer.duplicate))
+    ])
+}
+
+/// What a fabric says about a handoff it was shown.
+export fn check(answer: &Handoff.Check) -> Json.Json {
+  Json.object(&[
+      (Members.HANDOFF_CHECK_HANDOFF, Json.Text(answer.handoff)),
+      (Members.HANDOFF_CHECK_DIGEST, Json.Text(answer.digest)),
+      (Members.HANDOFF_CHECK_INTACT, Json.Boolean(answer.intact)),
+      (Members.HANDOFF_CHECK_ATTESTED, Json.Boolean(answer.attested)),
+      (Members.HANDOFF_CHECK_EXPIRED, Json.Boolean(answer.expired))
+    ])
+}

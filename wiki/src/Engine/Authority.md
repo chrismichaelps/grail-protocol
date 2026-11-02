@@ -43,7 +43,7 @@ export fn narrows(parent: &Capability.Token, child: &Capability.Token) -> Bool
 
 - **Requires:** [[src/Constants/Details]] · [[src/Constants/Extras]] · [[src/Constants/Security]] · [[src/Contract/Limits]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Capability]] · [[src/Domain/Problem]] · [[src/Engine/Codec/Token]] · [[src/Utils/Canonical]]
 - **Standard library:** `Std.Bytes`, `Std.Crypto`, `Std.Json`, `Std.List`, `Std.Option`, `Std.Result`
-- **Consumed by:** [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Services/Fabric]] · [[test/Engine/AuthorityTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Engine/AuthorityTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
 
 <!-- authored -->
 ## Algorithm
@@ -68,4 +68,4 @@ export fn narrows(parent: &Capability.Token, child: &Capability.Token) -> Bool
 
 ## Referenced by
 
-[[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Engine/_MOC]] · [[src/Services/Fabric]] · [[test/Engine/AuthorityTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
+[[src/Engine/_MOC]] · [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Engine/AuthorityTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]

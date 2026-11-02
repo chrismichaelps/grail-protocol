@@ -37,6 +37,7 @@ Every refusal is one problem document in the shape of RFC 9457. Its `type` is `u
 | `grail.invalid-transition` | 422 | The envelope would move a lifecycle illegally. | `state` |
 | `grail.unknown-parent` | 422 | A parent is not in the ledger. | `parents` |
 | `grail.limit-exceeded` | 422 | A count limit was exceeded. | `limit` |
+| `grail.integrity` | 422 | A handoff's digests, links, or ancestry do not hold ([[protocol/13-Portability#13.2 Integrity]]). | |
 | `grail.clock-skew` | 422 | The sender's clock is too far ahead. | |
 | `grail.expired` | 422 | The deadline passed before acceptance. | |
 | `grail.unsupported-version` | 426 | The requested protocol version is not supported. | `supported` |

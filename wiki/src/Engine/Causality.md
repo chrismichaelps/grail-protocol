@@ -31,8 +31,8 @@ export fn producers(state: &Scope.State, parents: &Array[Str]) -> Set[Envelope.A
 
 - **Requires:** [[src/Constants/Events]] · [[src/Contract/Limits]] · [[src/Domain/Envelope]] · [[src/Domain/Ledger]] · [[src/Domain/Lifecycle]] · [[src/Domain/Scope]] · [[src/Engine/Kinds]]
 - **Standard library:** `Std.Option`
-- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Delivery]]
+- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Delivery]] · [[src/Engine/Handoff]]
 
 ## Referenced by
 
-[[src/Engine/Admission]] · [[src/Engine/Delivery]] · [[src/Engine/_MOC]]
+[[src/Engine/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Delivery]] · [[src/Engine/Handoff]]

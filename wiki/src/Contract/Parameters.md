@@ -36,13 +36,15 @@ export const LIMIT: Str = "limit"
 export const WAIT: Str = "wait"
 /// The `token` parameter.
 export const TOKEN: Str = "token"
+/// The `handoff` parameter.
+export const HANDOFF: Str = "handoff"
 ```
 
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Web/Caller]] · [[src/Web/Handlers]]
+- **Consumed by:** [[src/Cli/Commands]] · [[src/Web/Caller]] · [[src/Web/Handlers]]
 
 ## Referenced by
 
-[[src/Contract/_MOC]] · [[src/Web/Caller]] · [[src/Web/Handlers]]
+[[src/Contract/_MOC]] · [[src/Cli/Commands]] · [[src/Web/Caller]] · [[src/Web/Handlers]]

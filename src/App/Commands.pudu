@@ -4,6 +4,7 @@ module App.Commands
 import App.Assembly as Assembly
 import Domain.Capability as Capability
 import Domain.Graph as Graph
+import Domain.Handoff as Handoff
 import Domain.Problem as Problem
 import Domain.Request as Request
 import Domain.Transfer as Transfer
@@ -76,3 +77,25 @@ export fn eraseTransfer(app: &Assembly.App, call: Request.Call[Str]) -> Result[R
   Assembly.announce(app, &app.events.erased, erased)
   Ok(erased)
 }
+
+/// Exports a participant's context as a sealed handoff.
+export fn exportHandoff(app: &Assembly.App, call: Request.Call[Handoff.Asked]) -> Result[Handoff.Stored, Problem.Problem] {
+  let stored = Assembly.send(app, &app.kinds.exportHandoff, call) ?
+  Assembly.announce(app, &app.events.exported, stored)
+  Ok(stored)
+}
+
+/// Imports a handoff from another fabric.
+export fn importHandoff(app: &Assembly.App, call: Request.Call[Handoff.Arriving]) -> Result[Handoff.Receipt, Problem.Problem] {
+  let receipt = Assembly.send(app, &app.kinds.importHandoff, call) ?
+
+  if !receipt.duplicate { Assembly.announce(app, &app.events.imported, receipt) }
+
+  Ok(receipt)
+}
+
+/// Reads a handoff.
+export fn readHandoff(app: &Assembly.App, call: Request.Call[Str]) -> Result[Handoff.Stored, Problem.Problem] { Assembly.send(app, &app.kinds.readHandoff, call) }
+
+/// Verifies a handoff against the fabric that may have sealed it.
+export fn verifyHandoff(app: &Assembly.App, call: Request.Call[Handoff.Presented]) -> Result[Handoff.Check, Problem.Problem] { Assembly.send(app, &app.kinds.verifyHandoff, call) }

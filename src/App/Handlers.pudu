@@ -3,12 +3,14 @@ module App.Handlers
 
 import App.Messages as Messages
 import Domain.Capability as Capability
+import Domain.Handoff as Handoff
 import Domain.Request as Request
 import PuduLangMediator.Context as Context
 import PuduLangMediator as Messaging
 import PuduLangMediator.Registration as Registration
 import Services.Bridge as Bridge
 import Services.Fabric as Fabric
+import Services.Handoffs as Handoffs
 import Services.Runtime as Runtime
 
 /// The handler of every kind.
@@ -27,6 +29,10 @@ export fn registrations(kinds: &Messages.Kinds, runtime: &Runtime.Runtime) -> Ar
     Registration.handler(&kinds.bridgeRpc, |asked: Request.Call[Request.Bridging], _context: Context.Context| Messaging.lift(Bridge.carry(&held, &asked))),
     Registration.handler(&kinds.inspectToken, |asked: Request.Call[()], _context: Context.Context| Messaging.lift(Fabric.inspectToken(&held, &asked))),
     Registration.handler(&kinds.revokeToken, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Fabric.revokeToken(&held, &asked))),
-    Registration.handler(&kinds.eraseTransfer, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Fabric.eraseTransfer(&held, &asked)))
+    Registration.handler(&kinds.eraseTransfer, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Fabric.eraseTransfer(&held, &asked))),
+    Registration.handler(&kinds.exportHandoff, |asked: Request.Call[Handoff.Asked], _context: Context.Context| Messaging.lift(Handoffs.exportHandoff(&held, &asked))),
+    Registration.handler(&kinds.importHandoff, |asked: Request.Call[Handoff.Arriving], _context: Context.Context| Messaging.lift(Handoffs.importHandoff(&held, &asked))),
+    Registration.handler(&kinds.readHandoff, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Handoffs.readHandoff(&held, &asked))),
+    Registration.handler(&kinds.verifyHandoff, |asked: Request.Call[Handoff.Presented], _context: Context.Context| Messaging.lift(Handoffs.verifyHandoff(&held, &asked)))
   ]
 }

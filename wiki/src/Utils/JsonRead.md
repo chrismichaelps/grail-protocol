@@ -39,8 +39,8 @@ export fn objectOf(members: &Array[(Str, Option[Json.Json])]) -> Json.Json
 
 - **Requires:** nothing inside the fabric
 - **Standard library:** `Std.Json`, `Std.Option`
-- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Kinds]] · [[src/Engine/Mutations]] · [[src/Engine/Paths]] · [[src/Services/Bridge]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Kinds]] · [[src/Engine/Mutations]] · [[src/Engine/Paths]] · [[src/Services/Bridge]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]] · [[test/Security/HandoffTest]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
 
 ## Referenced by
 
-[[src/Engine/Admission]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Kinds]] · [[src/Engine/Mutations]] · [[src/Engine/Paths]] · [[src/Services/Bridge]] · [[src/Utils/_MOC]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
+[[src/Utils/_MOC]] · [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Kinds]] · [[src/Engine/Mutations]] · [[src/Engine/Paths]] · [[src/Services/Bridge]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]] · [[test/Security/HandoffTest]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]

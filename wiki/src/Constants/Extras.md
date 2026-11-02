@@ -48,8 +48,8 @@ export const RETRY_AFTER: Str = "retryAfter"
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/App/Pipeline]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Web/Caller]]
+- **Consumed by:** [[src/App/Pipeline]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Web/Caller]]
 
 ## Referenced by
 
-[[src/App/Pipeline]] · [[src/Constants/_MOC]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Web/Caller]]
+[[src/Constants/_MOC]] · [[src/App/Pipeline]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Web/Caller]]

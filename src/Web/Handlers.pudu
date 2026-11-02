@@ -16,12 +16,14 @@ import Contract.Parameters as Parameters
 import Domain.Capability as Capability
 import Domain.Envelope as Envelope
 import Domain.Graph as Graph
+import Domain.Handoff as Handoff
 import Domain.Mutation as Mutation
 import Domain.Problem as Problem
 import Domain.Request as Request
 import Domain.Transfer as Transfer
 import Engine.Codec.Envelope as EnvelopeCodec
 import Engine.Codec.Graph as GraphCodec
+import Engine.Codec.Handoff as HandoffCodec
 import Engine.Codec.Token as TokenCodec
 import Engine.Codec.Views as Views
 import Web.Caller as Caller
@@ -47,7 +49,11 @@ const HANDLERS: Map[Str, Handler] = mapOf([
     (Operations.BRIDGE_RPC, bridgeRpc),
     (Operations.INSPECT_TOKEN, inspectToken),
     (Operations.REVOKE_TOKEN, revokeToken),
-    (Operations.ERASE_TRANSFER, eraseTransfer)
+    (Operations.ERASE_TRANSFER, eraseTransfer),
+    (Operations.EXPORT_HANDOFF, exportHandoff),
+    (Operations.IMPORT_HANDOFF, importHandoff),
+    (Operations.READ_HANDOFF, readHandoff),
+    (Operations.VERIFY_HANDOFF, verifyHandoff)
   ])
 
 /// The ids of every operation with a handler.
@@ -122,6 +128,29 @@ fn revokeToken(app: Assembly.App, request: Route.Request, status: Int) -> Http.R
 
 fn eraseTransfer(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
   Respond.answer(status, Commands.eraseTransfer(&app, Caller.call(&request, Caller.parameter(&request, Parameters.TRANSFER))), |erased: Request.Erased| Views.erasure(&erased))
+}
+
+fn exportHandoff(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let graph = Caller.parameter(&request, Parameters.GRAPH)
+  let participant = Caller.parameter(&request, Parameters.PARTICIPANT)
+  let outcome = Result.andThen(Result.andThen(Caller.body(&request), |body: Json.Json| HandoffCodec.decodeRequest(&body, graph, participant)), |asked: Handoff.Asked| Commands.exportHandoff(&app, Caller.call(&request, asked)))
+  Respond.answer(status, outcome, |stored: Handoff.Stored| stored.bundle)
+}
+
+fn importHandoff(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let id = Caller.parameter(&request, Parameters.HANDOFF)
+  let outcome = Result.andThen(Result.andThen(Caller.body(&request), |body: Json.Json| HandoffCodec.decodeBundle(&body, id)), |bundle: Json.Json| Commands.importHandoff(&app, Caller.call(&request, Handoff.Arriving{graph: Caller.parameter(&request, Parameters.GRAPH), participant: Caller.parameter(&request, Parameters.PARTICIPANT), id: id, bundle: bundle})))
+  Respond.answer(status, outcome, |receipt: Handoff.Receipt| HandoffCodec.receipt(&receipt))
+}
+
+fn readHandoff(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  Respond.answer(status, Commands.readHandoff(&app, Caller.call(&request, Caller.parameter(&request, Parameters.HANDOFF))), |stored: Handoff.Stored| stored.bundle)
+}
+
+fn verifyHandoff(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let id = Caller.parameter(&request, Parameters.HANDOFF)
+  let outcome = Result.andThen(Result.andThen(Caller.body(&request), |body: Json.Json| HandoffCodec.decodeBundle(&body, id)), |bundle: Json.Json| Commands.verifyHandoff(&app, Caller.call(&request, Handoff.Presented{id: id, bundle: bundle})))
+  Respond.answer(status, outcome, |checked: Handoff.Check| HandoffCodec.check(&checked))
 }
 
 fn cursor(request: &Route.Request) -> Result[(Int, Option[Int]), Problem.Problem] {

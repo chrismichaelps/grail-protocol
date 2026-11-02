@@ -47,6 +47,8 @@ export const CYCLE: Str = "grail.cycle"
 export const INVALID_TRANSITION: Str = "grail.invalid-transition"
 /// Unknown parent (422).
 export const UNKNOWN_PARENT: Str = "grail.unknown-parent"
+/// Integrity failure (422).
+export const INTEGRITY: Str = "grail.integrity"
 /// Limit exceeded (422).
 export const LIMIT_EXCEEDED: Str = "grail.limit-exceeded"
 /// Clock skew (422).
@@ -66,8 +68,8 @@ export const ALL: Array[Entry]
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Api/Bridge]] · [[src/App/Pipeline]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Erasure]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[src/Web/Router]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/MutationsTest]] · [[test/Security/AttackTest]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/Api/Bridge]] · [[src/App/Pipeline]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[src/Web/Router]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/MutationsTest]] · [[test/Security/AttackTest]] · [[test/Security/HandoffTest]] · [[test/Web/RouterTest]]
 
 ## Referenced by
 
-[[src/Api/Bridge]] · [[src/App/Pipeline]] · [[src/Contract/_MOC]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Erasure]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[src/Web/Router]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/MutationsTest]] · [[test/Security/AttackTest]] · [[test/Web/RouterTest]]
+[[src/Contract/_MOC]] · [[src/Api/Bridge]] · [[src/App/Pipeline]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[src/Web/Router]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/MutationsTest]] · [[test/Security/AttackTest]] · [[test/Security/HandoffTest]] · [[test/Web/RouterTest]]

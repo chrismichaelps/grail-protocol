@@ -82,13 +82,25 @@ export const TOKEN_VIEW: Str = "TokenView"
 export const REVOCATION: Str = "Revocation"
 /// The `Erasure` schema.
 export const ERASURE: Str = "Erasure"
+/// The `Origin` schema.
+export const ORIGIN: Str = "Origin"
+/// The `HandoffRequest` schema.
+export const HANDOFF_REQUEST: Str = "HandoffRequest"
+/// The `HandoffEntry` schema.
+export const HANDOFF_ENTRY: Str = "HandoffEntry"
+/// The `Handoff` schema.
+export const HANDOFF: Str = "Handoff"
+/// The `HandoffReceipt` schema.
+export const HANDOFF_RECEIPT: Str = "HandoffReceipt"
+/// The `HandoffCheck` schema.
+export const HANDOFF_CHECK: Str = "HandoffCheck"
 ```
 
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[test/Engine/ShapesTest]]
+- **Consumed by:** [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[test/Engine/ShapesTest]]
 
 ## Referenced by
 
-[[src/Contract/_MOC]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[test/Engine/ShapesTest]]
+[[src/Contract/_MOC]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[test/Engine/ShapesTest]]

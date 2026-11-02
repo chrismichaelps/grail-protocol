@@ -21,6 +21,7 @@ The vocabulary of the protocol. Every name in code and pages is one of these ter
 - [[domain/Problem]] — A refusal: a registered code, its status and title from the contract, a detail for people, and extra members.
 - [[domain/Address]] — One participant of one graph, the unit deliveries are addressed to.
 - [[domain/Clock]] — A hybrid logical clock reading used to order a trace for people.
+- [[domain/Handoff]] — A sealed document carrying one participant's context from one fabric to another.
 
 ## Referenced by
 

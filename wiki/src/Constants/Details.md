@@ -109,13 +109,37 @@ export const NOT_RPC: Str = "the body is not a JSON-RPC 2.0 message"
 export const RESERVED_ID: Str = "ids beginning with mutation: are written by the fabric"
 /// Only the issuer of a token, or the owner, may revoke it.
 export const NOT_ISSUER: Str = "only the issuer of a token, or the scope owner, may revoke it"
+/// The handoff id was used before for a different handoff.
+export const DUPLICATE_HANDOFF: Str = "a different handoff with this id is already recorded"
+/// The path and the body name different handoffs.
+export const HANDOFF_MISMATCH: Str = "the handoff in the path is not the handoff in the body"
+/// The handoff digest does not recompute.
+export const HANDOFF_DIGEST: Str = "the handoff digest does not match its canonical form"
+/// An envelope inside a handoff does not hash to its digest.
+export const HANDOFF_ALTERED: Str = "an envelope in the handoff does not match its digest"
+/// An entry's link does not follow from its previous link and digest.
+export const HANDOFF_LINK: Str = "an entry's link does not follow from its previous link and digest"
+/// Entries are not in strictly increasing ledger order.
+export const HANDOFF_ORDER: Str = "handoff entries are not in increasing ledger order"
+/// A carried envelope names a parent the handoff does not carry.
+export const HANDOFF_OPEN: Str = "a carried envelope names a parent the handoff does not carry"
+/// An anchor is not among the carried entries.
+export const HANDOFF_ANCHOR: Str = "an anchor is not among the carried entries"
+/// An entry claims an envelope it withholds, or withholds one it carries.
+export const HANDOFF_WITHHELD: Str = "a withheld entry carries an envelope, or a carried entry has none"
+/// The handoff's lifetime is longer than the contract allows.
+export const HANDOFF_LIFETIME: Str = "a handoff may live at most the contract's handoff lifetime"
+/// The ancestry is larger than one handoff may carry.
+export const HANDOFF_TOO_MANY: Str = "the anchors' ancestry is larger than one handoff may carry"
+/// The handoff expired before it was imported.
+export const HANDOFF_EXPIRED: Str = "the handoff expired before it was imported"
 ```
 
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Api/Bridge]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Erasure]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[src/Web/Caller]] · [[src/Web/Router]]
+- **Consumed by:** [[src/Api/Bridge]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[src/Web/Caller]] · [[src/Web/Router]]
 
 ## Referenced by
 
-[[src/Api/Bridge]] · [[src/Constants/_MOC]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Erasure]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[src/Web/Caller]] · [[src/Web/Router]]
+[[src/Constants/_MOC]] · [[src/Api/Bridge]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[src/Web/Caller]] · [[src/Web/Router]]

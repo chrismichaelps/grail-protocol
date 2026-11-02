@@ -1,0 +1,111 @@
+/** @Services.Handoffs.UseCases — exporting, importing, reading, and verifying portable handoffs */
+module Services.Handoffs
+
+import Std.Json as Json
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import Constants.Details as Details
+import Constants.Handoff as Portable
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Envelope as Envelope
+import Domain.Graph as Graph
+import Domain.Handoff as Handoff
+import Domain.Ledger as Ledger
+import Domain.Problem as Problem
+import Domain.Request as Request
+import Domain.Scope as Scope
+import Engine.Authority as Authority
+import Engine.Delivery as Delivery
+import Engine.Handoff as Portability
+import Engine.Journal as Journal
+import Services.Fabric as Fabric
+import Services.Runtime as Runtime
+import Services.Store as Store
+
+/// Seals a participant's anchors and their ancestry into a handoff, and records that it left.
+export fn exportHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Handoff.Asked]) -> Result[Handoff.Stored, Problem.Problem] {
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let fabric = runtime.settings.fabricName
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = Fabric.authorized(&state, &asked, secret, now) ?
+      let _allowed = Authority.require(&authority, Vocabulary.ABILITY_HANDOFF_EXPORT, Some(asked.input.graph)) ?
+      let graph = Option.okOr(state.graphs.get(asked.input.graph), notFound()) ?
+      let member = Option.okOr(Graph.participant(&graph, asked.input.participant), notFound()) ?
+
+      if Map.containsKey(&state.records, asked.input.id) || Map.containsKey(&state.handoffs, asked.input.id) { return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_HANDOFF)) }
+
+      let origin = Handoff.Origin{fabric: fabric, scopeId: state.id, graph: graph.id, participant: member.id}
+      let bundle = Portability.assemble(&state, &origin, &member, &asked.input, &authority, now, secret) ?
+      let entries = Portability.intact(&bundle) ?
+      let entry = Journal.Entry{id: asked.input.id, graph: graph.id, actor: member.id, kind: Vocabulary.KIND_HANDOFF_EXPORT, parents: asked.input.transfers, payload: Portability.summary(&bundle, Portable.EXPORTED, entries), recipients: []}
+      let written = Journal.written(&state, &entry, now)
+      let stored = storedOf(&written[0], Portable.EXPORTED, entries, bundle)
+      Ok((stored, Scope.State{..written[1], handoffs: written[1].handoffs.insert(stored.id, stored)}))
+    })
+}
+
+/// Admits a handoff from another fabric once its integrity holds, and delivers its arrival to the participant it is for. The same handoff imported again answers the original receipt.
+export fn importHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Handoff.Arriving]) -> Result[Handoff.Receipt, Problem.Problem] {
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = Fabric.authorized(&state, &asked, secret, now) ?
+      let _allowed = Authority.require(&authority, Vocabulary.ABILITY_HANDOFF_IMPORT, Some(asked.input.graph)) ?
+      let graph = Option.okOr(state.graphs.get(asked.input.graph), notFound()) ?
+
+      if !Graph.hasParticipant(&graph, asked.input.participant) { return Err(notFound()) }
+
+      let entries = Portability.intact(&asked.input.bundle) ?
+      let digest = Portability.digestOf(&asked.input.bundle)
+
+      if let Some(known) = state.handoffs.get(asked.input.id) {
+        if known.direction == Portable.IMPORTED && known.digest == digest && known.graph == graph.id { return Ok((receiptOf(&known, true), state)) }
+
+        return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_HANDOFF))
+      }
+
+      if Map.containsKey(&state.records, asked.input.id) { return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_HANDOFF)) }
+      if Portability.expired(&asked.input.bundle, now) { return Err(Problem.of(Codes.EXPIRED, Details.HANDOFF_EXPIRED)) }
+
+      let arrival = Envelope.Address{graph: graph.id, participant: asked.input.participant}
+      let entry = Journal.Entry{id: asked.input.id, graph: graph.id, actor: asked.input.participant, kind: Vocabulary.KIND_HANDOFF_IMPORT, parents: [], payload: Portability.summary(&asked.input.bundle, Portable.IMPORTED, entries), recipients: [arrival]}
+      let written = Journal.written(&state, &entry, now)
+      let stored = storedOf(&written[0], Portable.IMPORTED, entries, asked.input.bundle)
+      Ok((receiptOf(&stored, false), Scope.State{..written[1], handoffs: written[1].handoffs.insert(stored.id, stored)}))
+    })
+}
+
+/// Reads a handoff this scope exported or imported, when the token may read the entry that records it.
+export fn readHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Handoff.Stored, Problem.Problem] {
+  let state = Store.read(&runtime.store, call.scopeId) ?
+  let authority = Fabric.authorized(&state, call, runtime.secret, Runtime.now()) ?
+  let _allowed = Authority.require(&authority, Vocabulary.ABILITY_LEDGER_READ, None) ?
+  let stored = Option.okOr(state.handoffs.get(call.input), notFound()) ?
+  let record = Option.okOr(state.records.get(stored.recorded), notFound()) ?
+
+  if !Delivery.visible(&record, &authority) { return Err(notFound()) }
+
+  Ok(stored)
+}
+
+/// Says whether a handoff is intact, whether this fabric sealed it for the scope in the path, and whether it expired. It reads no scope, so it tells nothing about what the scope holds.
+export fn verifyHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Handoff.Presented]) -> Result[Handoff.Check, Problem.Problem] {
+  let bundle = call.input.bundle
+  let intact = Option.isSome(&Result.ok(Portability.intact(&bundle)))
+  Ok(Handoff.Check{handoff: call.input.id, digest: Portability.digestOf(&bundle), intact: intact, attested: intact && Portability.attested(&bundle, runtime.secret, call.scopeId), expired: Portability.expired(&bundle, Runtime.now())})
+}
+
+fn storedOf(record: &Ledger.Record, direction: Str, entries: Int, bundle: Json.Json) -> Handoff.Stored {
+  Handoff.Stored{id: record.entry.id, graph: record.envelope.graph, direction: direction, digest: Portability.digestOf(&bundle), entries: entries, recorded: record.entry.id, sequence: record.entry.sequence, bundle: bundle}
+}
+
+fn receiptOf(stored: &Handoff.Stored, duplicate: Bool) -> Handoff.Receipt {
+  Handoff.Receipt{handoff: stored.id, id: stored.recorded, sequence: stored.sequence, digest: stored.digest, entries: stored.entries, duplicate: duplicate}
+}
+
+fn notFound() -> Problem.Problem { Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND) }

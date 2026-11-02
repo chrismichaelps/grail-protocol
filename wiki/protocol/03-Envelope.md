@@ -59,6 +59,8 @@ A kind is a dotted lowercase name. The kinds below are reserved and drive fabric
 | `stream.close` | Ends a stream. | MUST name the `stream.open` among its parents. Later chunks are refused. |
 | `ability.advert` | A participant advertises abilities. | Recorded; fabrics MAY index it for discovery. |
 | `graph.mutation` | A change to a graph, recorded for provenance. | Emitted by the fabric, never accepted from senders. |
+| `handoff.export` | A participant's context sealed and sent to another fabric ([[protocol/13-Portability]]). | Emitted by the fabric, never accepted from senders. |
+| `handoff.import` | A participant's context received from another fabric, delivered to that participant. | Emitted by the fabric, never accepted from senders. |
 | `bridge.rpc` | A JSON-RPC message of a tool protocol. | See [[protocol/10-Bridge]]. |
 
 ## 3.3 Canonical form and digest
@@ -83,6 +85,10 @@ The digest is computed over the UTF-8 bytes of the canonical form. Two envelopes
 | Identifier | 128 characters |
 | Name (role, ability) | 64 characters |
 | Schema reference | 512 characters |
+| Handoff anchors | 64 |
+| Handoff entries | 10 000 |
+| Encoded handoff | 4 194 304 bytes |
+| Handoff lifetime | 86 400 000 milliseconds |
 
 A fabric MAY lower these limits and MUST advertise its own in the discovery document ([[protocol/08-Bindings#8.4 Discovery]]).
 

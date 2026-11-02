@@ -1,0 +1,182 @@
+/** @Test.Security.Handoff.Suite — an agent's context moves between two fabrics run by different software, and nothing forged gets through */
+module Security.HandoffTest
+
+import Std.Concurrent as Concurrent
+import Std.Http as Http
+import Std.Http.Server.Route as Route
+import Std.Json as Json
+import Std.List as List
+import Std.Option as Option
+import Std.Result as Result
+import Std.Test as Test
+import App.Assembly as Assembly
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Engine.Handoff as Portability
+import Engine.Ledger as Chain
+import Support.Fabric as Fabric
+import Support.Runner as Runner
+import Utils.JsonRead as JsonRead
+
+/// The secret of the fabric the agent leaves.
+const STUDIO_SECRET: Str = "studio-secret-0123456789abcdef-0123"
+
+/// The secret of the fabric the agent arrives at.
+const DESK_SECRET: Str = "desk-secret-0123456789abcdef-012345"
+
+/// Where the agent works first: a planner who hands work to a writer and keeps a private note for a reviewer.
+const STUDIO_GRAPH: Str = "\{\"participants\":[\{\"id\":\"planner\",\"kind\":\"agent\"\},\{\"id\":\"writer\",\"kind\":\"agent\",\"roles\":[\"author\"]\},\{\"id\":\"reviewer\",\"kind\":\"human\"\}],\"edges\":[\{\"id\":\"e1\",\"from\":\"planner\",\"to\":\"writer\",\"relation\":\"flow\"\},\{\"id\":\"e2\",\"from\":\"planner\",\"to\":\"reviewer\",\"relation\":\"flow\"\}]\}"
+
+/// Where the agent continues: an assistant who reports to a lead.
+const DESK_GRAPH: Str = "\{\"participants\":[\{\"id\":\"assistant\",\"kind\":\"agent\"\},\{\"id\":\"lead\",\"kind\":\"human\"\}],\"edges\":[\{\"id\":\"e1\",\"from\":\"assistant\",\"to\":\"lead\",\"relation\":\"flow\"\}]\}"
+
+fn envelope(scopeId: Str, graph: Str, id: Str, source: Str, target: Str, kind: Str, parents: &Array[Str], visibility: Str) -> Str {
+  Json.encode(&Json.object(&[
+        ("grail", Json.Text("1.1")),
+        ("id", Json.Text(id)),
+        ("scope", Json.Text(scopeId)),
+        ("graph", Json.Text(graph)),
+        ("source", Json.Text(source)),
+        ("target", Json.object(&[("participant", Json.Text(target))])),
+        ("kind", Json.Text(kind)),
+        ("parents", JsonRead.textList(parents)),
+        ("visibility", Json.Text(visibility)),
+        ("payload", Json.Text(id + " content"))
+      ]))
+}
+
+fn delegate(router: &Route.Router, scopeId: Str, root: Str, id: Str, audience: Str, abilities: &Array[Str], graph: Str) -> Str {
+  let body = Json.encode(&Json.object(&[("id", Json.Text(id)), ("audience", Json.Text(audience)), ("graph", Json.Text(graph)), ("abilities", JsonRead.textList(abilities)), ("expires", Json.Number(Assembly.now() + 600000))]))
+  Option.unwrapOr(JsonRead.text(&Fabric.sent(router, Http.Post, "/v1/scopes/" + scopeId + "/tokens", root, body).body, "token"), "")
+}
+
+fn entries(bundle: &Json.Json) -> Array[Json.Json] { Option.unwrapOr(JsonRead.list(bundle, "entries"), []) }
+
+fn entry(bundle: &Json.Json, id: Str) -> Json.Json { Option.unwrapOr(List.find(&entries(bundle), |found: Json.Json| JsonRead.text(&found, "id") == Some(id)), Json.Null) }
+
+fn flag(value: &Json.Json, name: Str) -> Bool { Option.unwrapOr(Option.andThen(Json.field(value, name), |held: Json.Json| Json.asBool(&held)), false) }
+
+fn replaced(bundle: &Json.Json, id: Str, changed: fn(Json.Json) -> Json.Json) -> Json.Json {
+  Json.withField(bundle, "entries", Json.List(entries(bundle).map(|found: Json.Json| if JsonRead.text(&found, "id") == Some(id) { changed(found) } else { found })))
+}
+
+fn redigested(bundle: &Json.Json) -> Json.Json { Json.withField(bundle, "digest", Json.Text(Portability.digestOf(bundle))) }
+
+fn forged(found: Json.Json) -> Json.Json {
+  let body = Json.withField(&Option.unwrapOr(Json.field(&found, "envelope"), Json.Null), "payload", Json.Text("forged content"))
+  let digest = Chain.digestOf(&body)
+  let previous = Option.unwrapOr(JsonRead.text(&found, "previous"), "")
+  Json.withField(&Json.withField(&Json.withField(&found, "envelope", body), "digest", Json.Text(digest)), "link", Json.Text(Chain.linkAfter(previous, digest)))
+}
+
+fn main() -> Int {
+  let studio = match Fabric.startAs(STUDIO_SECRET, "studio") {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Handoff", &[Test.that("the studio starts: " + reason, false)])) }
+  }
+  let desk = match Fabric.startAs(DESK_SECRET, "desk") {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Handoff", &[Test.that("the desk starts: " + reason, false)])) }
+  }
+  let studioRoot = Fabric.ownerOn(STUDIO_SECRET, "demo")
+  let deskRoot = Fabric.ownerOn(DESK_SECRET, "support")
+  let studioBase = "/v1/scopes/demo"
+  let deskBase = "/v1/scopes/support"
+  let created = [Fabric.sent(&studio, Http.Put, studioBase + "/graphs/g", studioRoot, STUDIO_GRAPH).status, Fabric.sent(&desk, Http.Put, deskBase + "/graphs/desk", deskRoot, DESK_GRAPH).status]
+  let sent = [
+    Fabric.sent(&studio, Http.Post, studioBase + "/transfers", studioRoot, envelope("demo", "g", "t1", "planner", "writer", Vocabulary.KIND_TASK, &[], Vocabulary.VISIBILITY_GRAPH)).status,
+    Fabric.sent(&studio, Http.Post, studioBase + "/transfers", studioRoot, envelope("demo", "g", "h1", "planner", "reviewer", Vocabulary.KIND_MEMORY, &[], Vocabulary.VISIBILITY_RECIPIENTS)).status,
+    Fabric.sent(&studio, Http.Post, studioBase + "/transfers", studioRoot, envelope("demo", "g", "r1", "writer", "planner", Vocabulary.KIND_RESULT, &["t1", "h1"], Vocabulary.VISIBILITY_GRAPH)).status
+  ]
+  let mover = delegate(&studio, "demo", studioRoot, "mover", "writer", &[Vocabulary.ABILITY_HANDOFF_EXPORT], "g")
+  let reader = delegate(&studio, "demo", studioRoot, "reader", "writer", &[Vocabulary.ABILITY_LEDGER_READ], "g")
+  let exportPath = studioBase + "/graphs/g/participants/writer/handoffs"
+  let exported = Fabric.sent(&studio, Http.Post, exportPath, mover, "\{\"id\":\"move-1\",\"transfers\":[\"r1\"]\}")
+  let bundle = exported.body
+  let again = Fabric.sent(&studio, Http.Post, exportPath, mover, "\{\"id\":\"move-1\",\"transfers\":[\"r1\"]\}")
+  let unseen = Fabric.sent(&studio, Http.Post, exportPath, mover, "\{\"id\":\"move-2\",\"transfers\":[\"h1\"]\}")
+  let unable = Fabric.sent(&studio, Http.Post, exportPath, reader, "\{\"id\":\"move-3\",\"transfers\":[\"r1\"]\}")
+  let tooLong = Fabric.sent(&studio, Http.Post, exportPath, mover, "\{\"id\":\"move-4\",\"transfers\":[\"r1\"],\"expires\":" + show(Assembly.now() + 3 * 86400000) + "\}")
+  let recorded = Fabric.sent(&studio, Http.Get, studioBase + "/transfers/move-1", studioRoot, "")
+  let importPath = deskBase + "/graphs/desk/participants/assistant/handoffs/move-1"
+  let clashing = Fabric.sent(&studio, Http.Post, exportPath, mover, "\{\"id\":\"t1\",\"transfers\":[\"r1\"]\}")
+  let imported = Fabric.sent(&desk, Http.Put, importPath, deskRoot, Json.encode(&bundle))
+  let secondGraph = Fabric.sent(&desk, Http.Put, deskBase + "/graphs/desk2", deskRoot, DESK_GRAPH)
+  let otherGraph = Fabric.sent(&desk, Http.Put, deskBase + "/graphs/desk2/participants/assistant/handoffs/move-1", deskRoot, Json.encode(&bundle))
+  let reissued = Fabric.sent(&desk, Http.Put, importPath, deskRoot, Json.encode(&redigested(&Json.withField(&bundle, "issued", Json.Number(1)))))
+  let backHome = Fabric.sent(&studio, Http.Put, studioBase + "/graphs/g/participants/writer/handoffs/move-1", studioRoot, Json.encode(&bundle))
+  let repeated = Fabric.sent(&desk, Http.Put, importPath, deskRoot, Json.encode(&bundle))
+  let arrived = Fabric.sent(&desk, Http.Get, deskBase + "/graphs/desk/participants/assistant/deliveries", deskRoot, "")
+  let stored = Fabric.sent(&desk, Http.Get, deskBase + "/handoffs/move-1", deskRoot, "")
+  let atOrigin = Fabric.sent(&studio, Http.Post, studioBase + "/handoffs/move-1/verification", "", Json.encode(&bundle))
+  let atDesk = Fabric.sent(&desk, Http.Post, deskBase + "/handoffs/move-1/verification", "", Json.encode(&bundle))
+  let elsewhere = Fabric.sent(&studio, Http.Post, "/v1/scopes/other/handoffs/move-1/verification", "", Json.encode(&bundle))
+  let altered = replaced(&bundle, "r1", |found: Json.Json| Json.withField(&found, "envelope", Json.withField(&Option.unwrapOr(Json.field(&found, "envelope"), Json.Null), "payload", Json.Text("forged content"))))
+  let tampered = Fabric.sent(&desk, Http.Put, deskBase + "/graphs/desk/participants/assistant/handoffs/move-1", deskRoot, Json.encode(&redigested(&altered)))
+  let rehashed = redigested(&replaced(&bundle, "r1", forged))
+  let rehashedCheck = Fabric.sent(&studio, Http.Post, studioBase + "/handoffs/move-1/verification", "", Json.encode(&rehashed))
+  let unanchored = redigested(&Json.withField(&bundle, "anchors", JsonRead.textList(&["elsewhere"])))
+  let openAncestry = redigested(&Json.withField(&bundle, "entries", Json.List(entries(&bundle).filter(|found: Json.Json| JsonRead.text(&found, "id") != Some("t1")))))
+  let deskTwo = "/v1/scopes/support/graphs/desk/participants/assistant/handoffs/move-1"
+  let refusedAnchor = Fabric.sent(&desk, Http.Put, deskTwo, deskRoot, Json.encode(&unanchored))
+  let refusedOpen = Fabric.sent(&desk, Http.Put, deskTwo, deskRoot, Json.encode(&openAncestry))
+  let mismatched = Fabric.sent(&desk, Http.Put, deskBase + "/graphs/desk/participants/assistant/handoffs/other-id", deskRoot, Json.encode(&bundle))
+  let missing = Fabric.sent(&desk, Http.Put, deskBase + "/graphs/desk/participants/nobody/handoffs/move-1", deskRoot, Json.encode(&bundle))
+  let narrow = delegate(&desk, "support", deskRoot, "narrow", "assistant", &[Vocabulary.ABILITY_TRANSFER_SEND], "desk")
+  let noImport = Fabric.sent(&desk, Http.Put, importPath, narrow, Json.encode(&bundle))
+  let forgedKind = Fabric.sent(&desk, Http.Post, deskBase + "/transfers", deskRoot, envelope("support", "desk", "fake", "assistant", "lead", Vocabulary.KIND_HANDOFF_IMPORT, &[], Vocabulary.VISIBILITY_GRAPH))
+  let reserved = Fabric.sent(&studio, Http.Post, studioBase + "/transfers", studioRoot, envelope("demo", "g", "move-1", "planner", "writer", Vocabulary.KIND_TASK, &[], Vocabulary.VISIBILITY_GRAPH))
+  let continued = Fabric.sent(&desk, Http.Post, deskBase + "/transfers", deskRoot, envelope("support", "desk", "draft-2", "assistant", "lead", Vocabulary.KIND_OBSERVATION, &["move-1"], Vocabulary.VISIBILITY_GRAPH))
+  let traced = Fabric.sent(&desk, Http.Get, deskBase + "/transfers/draft-2/trace", deskRoot, "")
+  let onward = Fabric.sent(&desk, Http.Post, deskBase + "/graphs/desk/participants/assistant/handoffs", deskRoot, "\{\"id\":\"move-onward\",\"transfers\":[\"draft-2\"]\}")
+  let brief = Fabric.sent(&studio, Http.Post, exportPath, mover, "\{\"id\":\"move-brief\",\"transfers\":[\"r1\"],\"expires\":" + show(Assembly.now() + 30) + "\}")
+  let _waited = Concurrent.sleep(60)
+  let late = Fabric.sent(&desk, Http.Put, deskBase + "/graphs/desk/participants/assistant/handoffs/move-brief", deskRoot, Json.encode(&brief.body))
+  let deliveries = Option.unwrapOr(JsonRead.list(&arrived.body, "deliveries"), [])
+  let arrival = Option.unwrapOr(Option.andThen(Option.fromArray(&deliveries), |first: Json.Json| Json.field(&first, "envelope")), Json.Null)
+  let checks = Test.suite("Handoff", &[
+      Test.equals("both fabrics hold their graphs", &created, &[201, 201]),
+      Test.equals("the studio accepts the work", &sent, &[202, 202, 202]),
+      Test.that("the export tokens are issued", !mover.isEmpty() && !reader.isEmpty()),
+      Test.equals("a participant exports its own context", &exported.status, &201),
+      Test.equals("the handoff names its origin fabric", &Option.andThen(Json.field(&bundle, "origin"), |origin: Json.Json| JsonRead.text(&origin, "fabric")), &Some("studio")),
+      Test.equals("the anchor carries its whole ancestry", &entries(&bundle).length(), &3),
+      Test.that("an entry the exporter may not read travels withheld", flag(&entry(&bundle, "h1"), "withheld") && Option.isNone(&Json.field(&entry(&bundle, "h1"), "envelope"))),
+      Test.that("a readable entry travels with its envelope", Option.isSome(&Json.field(&entry(&bundle, "t1"), "envelope"))),
+      Test.equals("the export is checked before it leaves", &Result.isOk(&Portability.intact(&bundle)), &true),
+      Test.equals("an export id is used once", &Fabric.code(&again), &Codes.DUPLICATE),
+      Test.equals("an anchor the exporter cannot read does not exist for it", &Fabric.code(&unseen), &Codes.NOT_FOUND),
+      Test.equals("reading the ledger does not grant export", &Fabric.code(&unable), &Codes.FORBIDDEN),
+      Test.equals("a handoff lives at most the contract's lifetime", &Fabric.code(&tooLong), &Codes.INVALID),
+      Test.equals("the origin ledger records the departure", &Option.andThen(Json.field(&recorded.body, "envelope"), |found: Json.Json| JsonRead.text(&found, "kind")), &Some(Vocabulary.KIND_HANDOFF_EXPORT)),
+      Test.equals("an export id may not reuse a transfer id", &Fabric.code(&clashing), &Codes.DUPLICATE),
+      Test.equals("another fabric imports the handoff", &imported.status, &201),
+      Test.equals("a first import is not a duplicate", &flag(&imported.body, "duplicate"), &false),
+      Test.equals("a second graph is created", &secondGraph.status, &201),
+      Test.equals("the same handoff imported into another graph is refused", &Fabric.code(&otherGraph), &Codes.DUPLICATE),
+      Test.equals("a different handoff under a used id is refused", &Fabric.code(&reissued), &Codes.DUPLICATE),
+      Test.equals("a handoff cannot be imported over the export that made it", &Fabric.code(&backHome), &Codes.DUPLICATE),
+      Test.equals("the import counts what arrived", &JsonRead.whole(&imported.body, "entries"), &Some(3)),
+      Test.that("importing the same handoff again answers the original receipt", flag(&repeated.body, "duplicate") && JsonRead.whole(&repeated.body, "sequence") == JsonRead.whole(&imported.body, "sequence")),
+      Test.equals("the arriving agent is told through its deliveries", &JsonRead.text(&arrival, "kind"), &Some(Vocabulary.KIND_HANDOFF_IMPORT)),
+      Test.equals("the arriving agent reads the context it carried", &stored.body, &bundle),
+      Test.that("the origin attests its own seal", flag(&atOrigin.body, "intact") && flag(&atOrigin.body, "attested") && !flag(&atOrigin.body, "expired")),
+      Test.that("another fabric finds the handoff intact but cannot attest it", flag(&atDesk.body, "intact") && !flag(&atDesk.body, "attested")),
+      Test.equals("a seal binds the scope it was made for", &flag(&elsewhere.body, "attested"), &false),
+      Test.equals("an altered envelope is refused", &Fabric.code(&tampered), &Codes.INTEGRITY),
+      Test.that("a fully rehashed forgery is intact but the origin does not attest it", flag(&rehashedCheck.body, "intact") && !flag(&rehashedCheck.body, "attested")),
+      Test.equals("an anchor the handoff does not carry is refused", &Fabric.code(&refusedAnchor), &Codes.INTEGRITY),
+      Test.equals("an ancestry with a missing parent is refused", &Fabric.code(&refusedOpen), &Codes.INTEGRITY),
+      Test.equals("the path and the body must name one handoff", &Fabric.code(&mismatched), &Codes.INVALID),
+      Test.equals("a handoff is imported only for a participant of the graph", &Fabric.code(&missing), &Codes.NOT_FOUND),
+      Test.equals("sending does not grant import", &Fabric.code(&noImport), &Codes.FORBIDDEN),
+      Test.equals("participants cannot forge an import entry", &Fabric.code(&forgedKind), &Codes.FORBIDDEN),
+      Test.equals("a handoff id is taken in the transfer id space", &Fabric.code(&reserved), &Codes.DUPLICATE),
+      Test.equals("work continues from the imported context", &continued.status, &202),
+      Test.that("the new fabric's trace reaches the handoff", Option.unwrapOr(JsonRead.list(&traced.body, "entries"), []).length() == 1),
+      Test.equals("the agent moves on again with its whole history", &entries(&onward.body).length(), &2),
+      Test.equals("an expired handoff is refused", &Fabric.code(&late), &Codes.EXPIRED)
+    ])
+
+  Runner.finish(&checks)
+}

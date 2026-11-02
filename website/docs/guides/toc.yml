@@ -6,6 +6,8 @@
   href: capabilities.md
 - name: Receive work
   href: deliveries.md
+- name: Move an agent
+  href: handoffs.md
 - name: Configure the fabric
   href: configuration.md
 - name: Troubleshooting

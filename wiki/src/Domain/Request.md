@@ -35,8 +35,8 @@ export type Traced = { of: Str, entries: Array[Transfer.TraceEntry] }
 
 - **Requires:** [[src/Domain/Envelope]] · [[src/Domain/Mutation]] · [[src/Domain/Transfer]]
 - **Standard library:** `Std.Json`
-- **Consumed by:** [[src/App/Commands]] · [[src/App/Events]] · [[src/App/Handlers]] · [[src/App/Messages]] · [[src/App/Pipeline]] · [[src/Engine/Codec/Views]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Web/Caller]] · [[src/Web/Handlers]]
+- **Consumed by:** [[src/App/Commands]] · [[src/App/Events]] · [[src/App/Handlers]] · [[src/App/Messages]] · [[src/App/Pipeline]] · [[src/Engine/Codec/Views]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Web/Caller]] · [[src/Web/Handlers]]
 
 ## Referenced by
 
-[[src/App/Commands]] · [[src/App/Events]] · [[src/App/Handlers]] · [[src/App/Messages]] · [[src/App/Pipeline]] · [[src/Domain/_MOC]] · [[src/Engine/Codec/Views]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Web/Caller]] · [[src/Web/Handlers]]
+[[src/Domain/_MOC]] · [[src/App/Commands]] · [[src/App/Events]] · [[src/App/Handlers]] · [[src/App/Messages]] · [[src/App/Pipeline]] · [[src/Engine/Codec/Views]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Web/Caller]] · [[src/Web/Handlers]]

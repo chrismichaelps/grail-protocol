@@ -25,7 +25,7 @@ export fn registrations(kinds: &Messages.Kinds, runtime: &Runtime.Runtime) -> Ar
 
 ### Linkage
 
-- **Requires:** [[src/App/Messages]] · [[src/Domain/Capability]] · [[src/Domain/Request]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Services/Runtime]]
+- **Requires:** [[src/App/Messages]] · [[src/Domain/Capability]] · [[src/Domain/Handoff]] · [[src/Domain/Request]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]]
 - **Packages:** `PuduLangMediator`
 - **Consumed by:** [[src/App/Assembly]]
 

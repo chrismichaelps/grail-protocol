@@ -14,7 +14,8 @@ One page per file, each with its interface and the modules it depends on.
 - [[src/Engine/Delivery]] — deliveries, ledger ranges, and traces read after a cursor
 - [[src/Engine/Erasure]] — removes a payload while the chain still proves it existed
 - [[src/Engine/Gating]] — whether a task's dependencies produced results among its ancestors
-- [[src/Engine/Journal]] — records graph changes in the ledger as fabric-written envelopes
+- [[src/Engine/Handoff]] — assembles, seals, and checks handoffs that carry an agent's context between fabrics
+- [[src/Engine/Journal]] — records the fabric's own changes, graph mutations and handoffs, in the ledger as fabric-written envelopes
 - [[src/Engine/Kinds]] — the behavior of every kind, chosen once by name
 - [[src/Engine/Ledger]] — digests of envelopes and links of the scope ledger
 - [[src/Engine/Lifecycle]] — the legal moves of a task lifecycle

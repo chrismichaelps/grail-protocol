@@ -45,6 +45,9 @@ export const INVALID_TRANSITION: Str = "grail.invalid-transition"
 /// Unknown parent (422).
 export const UNKNOWN_PARENT: Str = "grail.unknown-parent"
 
+/// Integrity failure (422).
+export const INTEGRITY: Str = "grail.integrity"
+
 /// Limit exceeded (422).
 export const LIMIT_EXCEEDED: Str = "grail.limit-exceeded"
 
@@ -78,6 +81,7 @@ export const ALL: Array[Entry] = [
   Entry{code: "grail.cycle", status: 422, title: "Cycle"},
   Entry{code: "grail.invalid-transition", status: 422, title: "Invalid transition"},
   Entry{code: "grail.unknown-parent", status: 422, title: "Unknown parent"},
+  Entry{code: "grail.integrity", status: 422, title: "Integrity failure"},
   Entry{code: "grail.limit-exceeded", status: 422, title: "Limit exceeded"},
   Entry{code: "grail.clock-skew", status: 422, title: "Clock skew"},
   Entry{code: "grail.expired", status: 422, title: "Expired"},

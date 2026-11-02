@@ -16,7 +16,8 @@ Grail is designed so that:
 - the order in which work may happen is declared in the graph, not hidden in prompts;
 - every result can answer the question "what information produced this?";
 - one user's graphs can never observe or reach another user's graphs;
-- authority is always explicit, carried in tokens that can only be narrowed when delegated.
+- authority is always explicit, carried in tokens that can only be narrowed when delegated;
+- an agent's working context can move between fabrics run by different software and different organizations, and still prove where it came from.
 
 ## 1.2 Non-goals
 
@@ -38,10 +39,13 @@ Grail is designed so that:
 | [[domain/Fabric\|Fabric]] | The service that hosts scopes and graphs, routes transfers, keeps the ledger, and enforces isolation. |
 | [[domain/Ledger\|Ledger]] | The append-only, hash-linked record of accepted envelopes in a scope. |
 | [[domain/Capability\|Capability token]] | A signed, expiring grant of abilities over a scope or a graph, which may be delegated with narrower abilities. |
+| [[domain/Handoff\|Handoff]] | A sealed, self-verifying document holding a participant's context, carried from one fabric to another. |
 
 ## 1.4 Relationship to tool protocols
 
 Existing tool protocols built on JSON-RPC remain useful at the edge of a graph. Grail carries their messages unchanged inside envelopes of kind `bridge.rpc` ([[protocol/10-Bridge]]). A tool server reached through the bridge becomes an ordinary participant: it can be targeted by role, gated by dependencies, and traced through provenance. The bridge preserves the tool protocol's own request and response semantics; it does not claim that every feature of every tool protocol gains new meaning inside a graph.
+
+Tool protocols describe a session between one client and one server, and their state ends with that session. Grail's unit is the graph and its ledger, which outlive any connection, and chapter 13 lets that state cross from one fabric to another. These are different layers: a tool protocol is how one participant reaches a tool; Grail is how participants, including tools reached that way, share work, order it, prove it, and take it elsewhere.
 
 ## 1.5 Design principles
 
@@ -50,10 +54,13 @@ Existing tool protocols built on JSON-RPC remain useful at the edge of a graph. 
 3. **Provenance by construction.** Envelopes name their causal parents and the fabric links each accepted envelope into a hash chain. Content can be erased; the record that it existed cannot be rewritten.
 4. **Isolation by construction.** Scope is part of every identifier the fabric resolves. A reference into a scope the caller does not hold behaves exactly like a reference to nothing.
 5. **No ambient authority.** Every operation presents a token. A token names its scope, its audience, its abilities, and its lifetime.
+6. **Portable by construction.** Because history is content-addressed, it can be moved as a document and checked by whoever receives it. No fabric has to trust another's database, and none has to call another to accept work.
 
 ## 1.6 How systems use Grail
 
 An owner holds the root token of a scope and rarely uses it directly. It creates a graph, gives an orchestrating agent a token bound to that graph with the abilities to change it and delegate, and steps back. The orchestrator adds participants as it needs them (a researcher, a writer, a reviewer, a tool server reached through the bridge, a person who approves) and gives each a narrower token that can do only its part. Every participant, wherever it runs, pulls its deliveries with a long wait, answers the tasks it receives, and names what it used as parents. When the orchestrator needs the writer to wait for the researcher, it adds a dependency edge instead of writing a scheduler. When it needs a person, it sends `input.request` and the task waits. When anyone asks how a result was produced, the trace answers from the ledger. When a subagent misbehaves, the orchestrator revokes its token and every token it handed on.
+
+When the work has to continue somewhere else (a coding assistant handing a task to a support desk, or a research tool handing findings to a writing app), the orchestrator exports the agent's context as a handoff, the origin attests it, and the other fabric imports it for a participant its owner already placed. The agent picks up from the import entry, and the trace there leads back to the origin.
 
 The same shape serves one developer with three local agents over the line binding, a company running thousands of agents across regions over HTTP, and a platform hosting many customers in separate scopes on one fabric.
 

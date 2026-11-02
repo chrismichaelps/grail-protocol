@@ -35,8 +35,8 @@ export fn visible(record: &Ledger.Record, authority: &Capability.Authority) -> B
 
 - **Requires:** [[src/Constants/Security]] · [[src/Constants/Text]] · [[src/Contract/Limits]] · [[src/Contract/Vocabulary]] · [[src/Domain/Capability]] · [[src/Domain/Envelope]] · [[src/Domain/Ledger]] · [[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Engine/Causality]]
 - **Standard library:** `Std.Map`, `Std.Math`, `Std.Option`
-- **Consumed by:** [[src/Services/Fabric]] · [[test/Engine/DeliveryTest]]
+- **Consumed by:** [[src/Engine/Handoff]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Engine/DeliveryTest]]
 
 ## Referenced by
 
-[[src/Engine/_MOC]] · [[src/Services/Fabric]] · [[test/Engine/DeliveryTest]]
+[[src/Engine/_MOC]] · [[src/Engine/Handoff]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Engine/DeliveryTest]]

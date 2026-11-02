@@ -22,6 +22,8 @@ export type Rule
   | IsKind
   | IsVersion
   | IsText(Int)
+  | IsTextUpTo(Int)
+  | IsFlag
   | IsWhole(Int, Int)
   | IsAtLeast(Int)
   | IsOneOf(Array[Str])
@@ -186,6 +188,67 @@ const SHAPES: Map[Str, Shape] = mapOf([
           (Members.DELEGATION_NOT_BEFORE, IsAtLeast(0)),
           (Members.DELEGATION_EXPIRES, IsAtLeast(0))
         ]
+      }),
+    (Schemas.ORIGIN, Shape {
+        allowed: Members.ORIGIN_ALLOWED,
+        required: Members.ORIGIN_REQUIRED,
+        closed: Members.ORIGIN_CLOSED,
+        extensible: Members.ORIGIN_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.ORIGIN_FABRIC, IsName),
+          (Members.ORIGIN_SCOPE, IsIdentifier),
+          (Members.ORIGIN_GRAPH, IsIdentifier),
+          (Members.ORIGIN_PARTICIPANT, IsIdentifier)
+        ]
+      }),
+    (Schemas.HANDOFF_REQUEST, Shape {
+        allowed: Members.HANDOFF_REQUEST_ALLOWED,
+        required: Members.HANDOFF_REQUEST_REQUIRED,
+        closed: Members.HANDOFF_REQUEST_CLOSED,
+        extensible: Members.HANDOFF_REQUEST_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.HANDOFF_REQUEST_ID, IsIdentifier),
+          (Members.HANDOFF_REQUEST_TRANSFERS, IsIdentifiers(Limits.HANDOFF_ANCHORS)),
+          (Members.HANDOFF_REQUEST_EXPIRES, IsAtLeast(0))
+        ]
+      }),
+    (Schemas.HANDOFF_ENTRY, Shape {
+        allowed: Members.HANDOFF_ENTRY_ALLOWED,
+        required: Members.HANDOFF_ENTRY_REQUIRED,
+        closed: Members.HANDOFF_ENTRY_CLOSED,
+        extensible: Members.HANDOFF_ENTRY_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.HANDOFF_ENTRY_SEQUENCE, IsAtLeast(1)),
+          (Members.HANDOFF_ENTRY_ID, IsIdentifier),
+          (Members.HANDOFF_ENTRY_PREVIOUS, IsTextUpTo(Limits.IDENTIFIER_LENGTH)),
+          (Members.HANDOFF_ENTRY_DIGEST, IsText(Limits.IDENTIFIER_LENGTH)),
+          (Members.HANDOFF_ENTRY_LINK, IsText(Limits.IDENTIFIER_LENGTH)),
+          (Members.HANDOFF_ENTRY_ERASED, IsFlag),
+          (Members.HANDOFF_ENTRY_WITHHELD, IsFlag),
+          (Members.HANDOFF_ENTRY_ENVELOPE, IsShape(Schemas.ENVELOPE))
+        ]
+      }),
+    (Schemas.HANDOFF, Shape {
+        allowed: Members.HANDOFF_ALLOWED,
+        required: Members.HANDOFF_REQUIRED,
+        closed: Members.HANDOFF_CLOSED,
+        extensible: Members.HANDOFF_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.HANDOFF_GRAIL, IsVersion),
+          (Members.HANDOFF_HANDOFF, IsIdentifier),
+          (Members.HANDOFF_ORIGIN, IsShape(Schemas.ORIGIN)),
+          (Members.HANDOFF_PARTICIPANT, IsShape(Schemas.PARTICIPANT)),
+          (Members.HANDOFF_ANCHORS, IsIdentifiers(Limits.HANDOFF_ANCHORS)),
+          (Members.HANDOFF_ENTRIES, IsShapes(Schemas.HANDOFF_ENTRY, Limits.HANDOFF_ENTRIES)),
+          (Members.HANDOFF_ISSUED, IsAtLeast(0)),
+          (Members.HANDOFF_EXPIRES, IsAtLeast(0)),
+          (Members.HANDOFF_DIGEST, IsText(Limits.IDENTIFIER_LENGTH)),
+          (Members.HANDOFF_SEAL, IsText(Limits.IDENTIFIER_LENGTH))
+        ]
       })
   ])
 
@@ -225,6 +288,8 @@ fn checkRule(rule: &Rule, value: &Json.Json, path: Str) -> Array[Problem.Violati
     case IsKind => textHolds(value, |text: Str| Identifier.isKind(text))
     case IsVersion => textHolds(value, |text: Str| isVersion(text))
     case IsText(longest) => textHolds(value, |text: Str| !text.isEmpty() && text.length() <= longest)
+    case IsTextUpTo(longest) => textHolds(value, |text: Str| text.length() <= longest)
+    case IsFlag => Option.isSome(&Json.asBool(value))
     case IsWhole(lowest, highest) => Option.holds(&Json.asInt(value), |number: Int| number >= lowest && number <= highest)
     case IsAtLeast(lowest) => Option.holds(&Json.asInt(value), |number: Int| number >= lowest)
     case IsOneOf(values) => textHolds(value, |text: Str| values.contains(text))

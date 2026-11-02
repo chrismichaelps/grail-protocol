@@ -34,8 +34,8 @@ export fn announce[N](app: &App, kind: &Notification.Kind[N, Problem.Problem], n
 
 - **Requires:** [[src/App/Events]] · [[src/App/Handlers]] · [[src/App/Logging]] · [[src/App/Messages]] · [[src/App/Pipeline]] · [[src/App/Resilience]] · [[src/Constants/Logging]] · [[src/Domain/Problem]] · [[src/Services/Runtime]]
 - **Packages:** `PuduLangLog`, `PuduLangMediator`
-- **Consumed by:** [[src/App/Commands]] · [[src/Cli/Commands]] · [[src/Main]] · [[src/Web/Handlers]] · [[src/Web/Router]] · [[test/Security/AttackTest]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/App/Commands]] · [[src/Cli/Commands]] · [[src/Main]] · [[src/Web/Handlers]] · [[src/Web/Router]] · [[test/Security/AttackTest]] · [[test/Security/HandoffTest]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
 
 ## Referenced by
 
-[[src/App/Commands]] · [[src/App/_MOC]] · [[src/Cli/Commands]] · [[src/Main]] · [[src/Web/Handlers]] · [[src/Web/Router]] · [[test/Security/AttackTest]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
+[[src/App/_MOC]] · [[src/App/Commands]] · [[src/Cli/Commands]] · [[src/Main]] · [[src/Web/Handlers]] · [[src/Web/Router]] · [[test/Security/AttackTest]] · [[test/Security/HandoffTest]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]

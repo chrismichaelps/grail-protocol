@@ -45,11 +45,19 @@ export fn inspectToken(app: &Assembly.App, call: Request.Call[()]) -> Result[(Ca
 export fn revokeToken(app: &Assembly.App, call: Request.Call[Str]) -> Result[Str, Problem.Problem]
 /// Erases an envelope's payload.
 export fn eraseTransfer(app: &Assembly.App, call: Request.Call[Str]) -> Result[Request.Erased, Problem.Problem]
+/// Exports a participant's context as a sealed handoff.
+export fn exportHandoff(app: &Assembly.App, call: Request.Call[Handoff.Asked]) -> Result[Handoff.Stored, Problem.Problem]
+/// Imports a handoff from another fabric.
+export fn importHandoff(app: &Assembly.App, call: Request.Call[Handoff.Arriving]) -> Result[Handoff.Receipt, Problem.Problem]
+/// Reads a handoff.
+export fn readHandoff(app: &Assembly.App, call: Request.Call[Str]) -> Result[Handoff.Stored, Problem.Problem] { Assembly.send(app, &app.kinds.readHandoff, call) }
+/// Verifies a handoff against the fabric that may have sealed it.
+export fn verifyHandoff(app: &Assembly.App, call: Request.Call[Handoff.Presented]) -> Result[Handoff.Check, Problem.Problem] { Assembly.send(app, &app.kinds.verifyHandoff, call) }
 ```
 
 ### Linkage
 
-- **Requires:** [[src/App/Assembly]] · [[src/Domain/Capability]] · [[src/Domain/Graph]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Transfer]]
+- **Requires:** [[src/App/Assembly]] · [[src/Domain/Capability]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Transfer]]
 - **Consumed by:** [[src/Web/Handlers]]
 
 <!-- authored -->

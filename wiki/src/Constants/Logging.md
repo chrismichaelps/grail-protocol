@@ -49,10 +49,18 @@ export const EVENT_DELEGATED: Str = "token.delegated"
 export const REVOKED: Str = "revoked token \{Token\} and every token delegated from it"
 /// A payload was erased.
 export const ERASED: Str = "erased the payload of \{Transfer\} at \{Sequence\}"
+/// A handoff was sealed and left the scope.
+export const EXPORTED: Str = "exported handoff \{Handoff\} with digest \{Digest\} carrying \{Entries\} entries"
+/// A handoff arrived from another fabric.
+export const IMPORTED: Str = "imported handoff \{Handoff\} with digest \{Digest\} carrying \{Entries\} entries"
 /// The notification of a revoked token.
 export const EVENT_REVOKED: Str = "token.revoked"
 /// The notification of an erased payload.
 export const EVENT_ERASED: Str = "transfer.erased"
+/// The notification of an exported handoff.
+export const EVENT_EXPORTED: Str = "handoff.exported"
+/// The notification of an imported handoff.
+export const EVENT_IMPORTED: Str = "handoff.imported"
 ```
 
 ### Linkage

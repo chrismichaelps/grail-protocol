@@ -54,6 +54,12 @@ export const KIND_GRAPH_MUTATION: Str = "graph.mutation"
 /// `bridge.rpc`.
 export const KIND_BRIDGE_RPC: Str = "bridge.rpc"
 
+/// `handoff.export`.
+export const KIND_HANDOFF_EXPORT: Str = "handoff.export"
+
+/// `handoff.import`.
+export const KIND_HANDOFF_IMPORT: Str = "handoff.import"
+
 /// Every value of the set.
 export const KINDS: Array[Str] = [
   "task",
@@ -72,7 +78,9 @@ export const KINDS: Array[Str] = [
   "stream.close",
   "ability.advert",
   "graph.mutation",
-  "bridge.rpc"
+  "bridge.rpc",
+  "handoff.export",
+  "handoff.import"
 ]
 
 /// `*`.
@@ -102,6 +110,12 @@ export const ABILITY_LEDGER_ERASE: Str = "ledger.erase"
 /// `token.delegate`.
 export const ABILITY_TOKEN_DELEGATE: Str = "token.delegate"
 
+/// `handoff.export`.
+export const ABILITY_HANDOFF_EXPORT: Str = "handoff.export"
+
+/// `handoff.import`.
+export const ABILITY_HANDOFF_IMPORT: Str = "handoff.import"
+
 /// Every value of the set.
 export const ABILITIES: Array[Str] = [
   "*",
@@ -112,7 +126,9 @@ export const ABILITIES: Array[Str] = [
   "transfer.read",
   "ledger.read",
   "ledger.erase",
-  "token.delegate"
+  "token.delegate",
+  "handoff.export",
+  "handoff.import"
 ]
 
 /// `agent`.

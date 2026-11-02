@@ -4,6 +4,7 @@ module App.Messages
 import Contract.Operations as Operations
 import Domain.Capability as Capability
 import Domain.Graph as Graph
+import Domain.Handoff as Handoff
 import Domain.Problem as Problem
 import Domain.Request as Request
 import Domain.Transfer as Transfer
@@ -23,7 +24,11 @@ export type Kinds = {
   bridgeRpc: Kind.Kind[Request.Call[Request.Bridging], Transfer.Receipt, Problem.Problem],
   inspectToken: Kind.Kind[Request.Call[()], (Capability.Token, Int), Problem.Problem],
   revokeToken: Kind.Kind[Request.Call[Str], Str, Problem.Problem],
-  eraseTransfer: Kind.Kind[Request.Call[Str], Request.Erased, Problem.Problem]
+  eraseTransfer: Kind.Kind[Request.Call[Str], Request.Erased, Problem.Problem],
+  exportHandoff: Kind.Kind[Request.Call[Handoff.Asked], Handoff.Stored, Problem.Problem],
+  importHandoff: Kind.Kind[Request.Call[Handoff.Arriving], Handoff.Receipt, Problem.Problem],
+  readHandoff: Kind.Kind[Request.Call[Str], Handoff.Stored, Problem.Problem],
+  verifyHandoff: Kind.Kind[Request.Call[Handoff.Presented], Handoff.Check, Problem.Problem]
 }
 
 /// Every kind, named after the contract operation it serves.
@@ -41,6 +46,10 @@ export fn kinds() -> Kinds {
     bridgeRpc: Kind.kind(Operations.BRIDGE_RPC),
     inspectToken: Kind.kind(Operations.INSPECT_TOKEN),
     revokeToken: Kind.kind(Operations.REVOKE_TOKEN),
-    eraseTransfer: Kind.kind(Operations.ERASE_TRANSFER)
+    eraseTransfer: Kind.kind(Operations.ERASE_TRANSFER),
+    exportHandoff: Kind.kind(Operations.EXPORT_HANDOFF),
+    importHandoff: Kind.kind(Operations.IMPORT_HANDOFF),
+    readHandoff: Kind.kind(Operations.READ_HANDOFF),
+    verifyHandoff: Kind.kind(Operations.VERIFY_HANDOFF)
   }
 }

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0 — 2026-11-02
+
+### Added
+
+- Protocol 1.1: portable handoffs. `exportHandoff` seals a participant's anchors and their causal ancestry; `importHandoff` checks digests, links, closed ancestry, and anchors before admitting it in another fabric; `verifyHandoff` lets the origin attest its seal; `readHandoff` returns the stored document.
+- Reserved kinds `handoff.export` and `handoff.import`, abilities `handoff.export` and `handoff.import`, problem code `grail.integrity`, and the limits `handoffAnchors`, `handoffEntries`, `handoffLifetimeMillis`, and `handoffBytes`.
+- `GRAIL_FABRIC_NAME`, the origin name a fabric seals under, and the `grail handoff` command, which exports, asks the origin to attest, and imports.
+- The Portable conformance profile and specification chapter 13.
+- Two demonstrations with agent processes: `examples/team` (dependency gates, narrowed tokens, private notes, cascading revocation) and `examples/handoff` (two fabrics passing an agent). Both are recorded in a real Terminal window as MP4 and GIF with macOS's own tools (`tools/Recording`).
+- The landing banner uses slow layered waves in place of dots and a ring; the footer's Support link goes to PayPal.
+
+### Validation and compatibility
+
+The suite passes 290 assertions, 41 of them between two in-process fabrics that share no secret. Mutation testing kills every mutant of the handoff engine, codec, and use cases. Protocol 1.0 requests and envelopes are still accepted. The request body bound is now the contract's `handoffBytes` (4 MiB).
+
 ## 0.1.2 — 2026-11-02
 
 ### Fixed
