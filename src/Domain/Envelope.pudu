@@ -12,6 +12,9 @@ export type Selector
 /** @Domain.Envelope.Address — one participant of one graph */
 export type Address = { graph: Str, participant: Str }
 
+/** @Domain.Envelope.Route — one terminal recipient and the participants traversed to reach it */
+export type Route = { recipient: Address, path: Array[Address] }
+
 /** @Domain.Envelope.Delivery — the guarantee requested and its deduplication key */
 export type Delivery = { mode: Str, key: Option[Str] }
 

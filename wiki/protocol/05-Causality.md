@@ -20,6 +20,8 @@ Clocks order concurrent events for people reading a trace. Causality itself is c
 
 For a `task` or `tool.call` envelope sent to participant `t` in graph `g`, let `D` be the set of participants `d` such that `g` has a `dependency` edge from `d` to `t`. The envelope is accepted only if, for every `d` in `D`, some envelope of kind `result` or `tool.result` whose `source` is `d` is among the envelope's causal ancestors (its parents, their parents, and so on). Otherwise it is refused with `grail.dependency-unmet`, and the problem lists the unmet participants.
 
+A producer is identified by its graph and participant together; a same-named participant in another graph cannot satisfy the dependency. A verified answer to a task entering a nested graph also represents the enclosing participants on its retained admission-time route ([[protocol/06-Graphs#6.5 Graphs inside graphs]]). An unrelated result produced inside that graph is insufficient. The first authorized completion retains the existing task lifecycle semantics; nested graphs do not introduce an implicit all-results aggregation policy.
+
 This is how a graph says "B may only run after A has produced a result" without any scheduler: the sender of B's task proves it by naming A's result as a parent.
 
 ## 5.4 The ledger

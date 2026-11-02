@@ -1,9 +1,10 @@
 /** @Engine.Gating.Dependencies — whether a task's dependencies produced results among its ancestors */
 module Engine.Gating
 
+import Domain.Envelope as Envelope
 import Domain.Graph as Graph
 
 /// The dependencies of `target` in `graph` that are not among the participants whose results the task descends from.
-export fn unmet(graph: &Graph.Graph, target: Str, producers: &Set[Str]) -> Array[Str] {
-  Graph.dependenciesOf(graph, target).filter(|dependency: Str| !producers.contains(dependency))
+export fn unmet(graph: &Graph.Graph, target: Str, producers: &Set[Envelope.Address]) -> Array[Str] {
+  Graph.dependenciesOf(graph, target).filter(|dependency: Str| !producers.contains(Envelope.Address{graph: graph.id, participant: dependency}))
 }

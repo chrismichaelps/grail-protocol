@@ -12,7 +12,7 @@ tags: [module, domain]
 
 ## Purpose
 
-Where a task stands.
+Where a task stands. Each task retains the resolved routing paths from admission, independently of later graph changes. Replies preserve those paths when the lifecycle moves.
 
 ## Interface
 

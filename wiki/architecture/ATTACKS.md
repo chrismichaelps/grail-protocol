@@ -73,6 +73,10 @@ The timing probe collected the two groups sequentially and applied a fixed 20 ms
 
 An independent local HTTP check exercised the rate-limit boundary without internet timing: the first 600 requests succeeded and the next returned 429. With forwarding disabled, changing the supplied header still returned 429. With the trusted header configured, another address had a separate window and received 200. In-process regressions cover disabled forwarding, case-insensitive lookup, IPv6, whitespace trimming, and missing or blank header fallback.
 
+## Nested composition regressions
+
+The composition audit reproduced an entry dependency bypass through a graph participant and a valid inner result that could not satisfy the enclosing team's dependency. Both are fixed by retained admission-time paths and graph-qualified producers ([[decisions/ADR-0008-composable-causal-gates]]). The 18-case composition suite passes. Five selected source mutations are killed: checking only outer gates, dropping enclosing producer credit, crediting the wrong recipient path, rejecting the exact path limit, and accepting a partial expansion with an empty branch. These selected mutations cover the changed contracts; they are not a full new engine sweep.
+
 ## Limits of this campaign
 
 The siege runs from one host, so it measures per-host limiting and worker exhaustion, not a distributed flood; a fabric facing the open internet still belongs behind a network-level shield. The store is in memory, so durability under crash is out of scope until [[seams/ScopeStore]] gains a durable adapter.
