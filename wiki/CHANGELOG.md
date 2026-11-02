@@ -22,3 +22,4 @@
 - 2026-11-02 · practical README and local quick-start/CLI guides replace the paper-style introduction; project funding links added · risk LOW
 - 2026-11-02 · [[tools/Site]] · structured docgen landing page, searchable guides and generated API reference; pinned isolated renderer and strict build; documentation-only hosting · risk LOW
 - 2026-11-02 · practical collaboration, capability, delivery, configuration, troubleshooting, contribution, graph, and envelope guides expand the local proposal documentation · risk LOW
+- 2026-11-02 · reference fabric 0.1.1 promotes the reviewed graph, proxy, documentation, and local-testing changes; protocol remains draft 1.0 · risk MED
