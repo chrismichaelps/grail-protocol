@@ -1,0 +1,61 @@
+### YamlMime:Landing
+title: Collaboration starts with a graph.
+summary: Connect agents, tools, services, and people with explicit routes, dependency gates, and delegated authority. Run the reference fabric locally and test the protocol with your own participants.
+metadata:
+  uid: home
+  description: Practical guides and API reference for the Grail protocol proposal.
+highlightedContent:
+  items:
+  - title: Run your first fabric
+    itemType: quickstart
+    url: guides/quick-start.md
+  - title: Run a collaboration
+    itemType: tutorial
+    url: guides/collaboration.md
+  - title: Explore the HTTP API
+    itemType: reference
+    url: rest/grail.openapi.json
+  - title: Understand the model
+    itemType: concept
+    url: concepts/index.md
+conceptualContent:
+  title: Find your next step
+  items:
+  - title: Start locally
+    links:
+    - text: Install and start Grail
+      url: guides/quick-start.md
+    - text: Send work and enforce a review gate
+      url: guides/collaboration.md
+    - text: Command-line reference
+      url: guides/command-line.md
+  - title: Understand the protocol
+    links:
+    - text: Graphs and teams
+      url: concepts/graphs.md
+    - text: Envelopes and provenance
+      url: concepts/envelopes.md
+    - text: Delegate authority
+      url: guides/capabilities.md
+  - title: Implement and extend
+    links:
+    - text: HTTP operations and schemas
+      url: rest/grail.openapi.json
+    - text: Configure your fabric
+      url: guides/configuration.md
+    - text: Conformance requirements
+      url: protocol/11-Conformance.md
+    - text: Troubleshooting
+      url: guides/troubleshooting.md
+    - text: Contribute
+      url: guides/contributing.md
+additionalContent:
+  sections:
+  - title: A local protocol proposal
+    items:
+    - title: Bring your own participants
+      summary: The API listens on localhost. Your agents and services can use HTTP or the line binding; no model provider or hosted account is required by the protocol.
+      url: guides/quick-start.md
+    - title: Know the current limits
+      summary: The reference fabric keeps state in memory. This website hosts documentation only; it is not a public fabric API.
+      url: protocol/11-Conformance.md

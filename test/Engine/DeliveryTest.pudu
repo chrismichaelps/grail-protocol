@@ -49,7 +49,12 @@ fn main() -> Int {
   let graphRecord = Option.map(state.records.get("m1"), |found: Ledger.Record| Ledger.Record{..found, envelope: Envelope.Envelope{..found.envelope, visibility: Vocabulary.VISIBILITY_GRAPH}})
   let sameGraph = Capability.Authority{..reviewer, graph: Some(Fixtures.GRAPH)}
   let otherGraph = Capability.Authority{..reviewer, graph: Some("elsewhere")}
+  let traced = Result.unwrapOr(Fixtures.admitted(&state, &Fixtures.body("m5", "planner", Fixtures.to("writer"), Vocabulary.KIND_MEMORY, &["m4", "m1"])), state)
+  let reviewerTrace = Option.map(traced.records.get("m5"), |record: Ledger.Record| Delivery.trace(&traced, &record, &reviewer).map(|entry: Transfer.TraceEntry| (entry.record.entry.id, entry.hidden)))
+  let writerTrace = Option.map(traced.records.get("m5"), |record: Ledger.Record| Delivery.trace(&traced, &record, &writerAuthority).map(|entry: Transfer.TraceEntry| (entry.record.entry.id, entry.hidden)))
   let checks = Test.suite("Delivery", &[
+      Test.equals("a trace orders ancestors and hides content from an unrelated reader", &reviewerTrace, &Some([("m1", false), ("m4", true)])),
+      Test.equals("the recipient sees both trace ancestors", &writerTrace, &Some([("m1", false), ("m4", false)])),
       Test.equals("an envelope is not delivered at its deadline", &ids(&atDeadline[0]), &[]),
       Test.equals("and is delivered just before it", &ids(&beforeDeadline[0]), &["dl"]),
       Test.equals("the ledger reads through its last entry", &whole.records.length(), &Scope.length(&state)),

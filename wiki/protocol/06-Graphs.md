@@ -39,6 +39,12 @@ A mutation carries at most 256 operations. The graph limits of [[protocol/02-Mod
 
 A participant of kind `graph` stands for another graph of the same scope. Envelopes sent to it are delivered to the participants of the inner graph that hold the role `entry`. Those participants answer a task as any recipient does ([[protocol/04-Transfer#4.1 Routing]]): the answer is sent in the inner graph and reaches the task's source in the outer graph. Containment forms its own graph: graph `G` contains graph `H` when `G` has a participant of kind `graph` naming `H`.
 
+A task entering a graph participant MUST satisfy dependencies at every participant on every resolved entry path, including intermediate graph participants and terminal entries. An entry without the required causal evidence cannot be reached by wrapping it in another graph. A selected graph with no reachable entry is refused with `grail.no-route`; the fabric MUST NOT accept a task with no recipients or silently omit an unresolvable selected branch.
+
+The fabric MUST retain the resolved paths of an accepted task as admission-time evidence. A result from an authorized terminal recipient represents each graph participant on that recipient's path for dependency gating. A result from an unrelated inner task does not represent those enclosing participants. Later entry-role or containment changes MUST NOT rewrite this attribution. This is a routing witness retained by the trusted fabric, not a separately signed public attestation.
+
+Expansion is bounded by the advertised `routingPaths` limit, initially 1024 terminal paths, and the containment-depth limit. A request whose full expansion exceeds either is refused with `grail.limit-exceeded` before any envelope is committed. Shared terminal addresses are delivered once, while their distinct paths are retained for causal attribution.
+
 - Containment MUST be acyclic. A graph may not contain itself, directly or through other graphs (`grail.cycle`).
 - Containment depth MUST NOT exceed 8 (`grail.limit-exceeded`).
 - A graph participant MUST name a graph of the same scope. Naming a graph of another scope is indistinguishable from naming a graph that does not exist (`grail.not-found`).

@@ -1,9 +1,12 @@
 /** @Engine.Causality.Ancestry — the causal ancestors of an envelope */
 module Engine.Causality
 
+import Std.Option as Option
 import Constants.Events as Events
 import Contract.Limits as Limits
+import Domain.Envelope as Envelope
 import Domain.Ledger as Ledger
+import Domain.Lifecycle as Lifecycle
 import Domain.Scope as Scope
 import Engine.Kinds as Kinds
 
@@ -33,14 +36,30 @@ export fn ancestors(state: &Scope.State, parents: &Array[Str]) -> Array[Ledger.R
   found.sortBy(|left: Ledger.Record, right: Ledger.Record| left.entry.sequence < right.entry.sequence)
 }
 
-/// The participants of a graph that produced a result among the ancestors of the given parents.
-export fn producers(state: &Scope.State, parents: &Array[Str], graph: Str) -> Set[Str] {
-  var found: Set[Str] = setOf([])
+/// The first task parent, shared by reply admission and nested producer attribution.
+export fn taskOf(state: &Scope.State, parents: &Array[Str]) -> Option[Lifecycle.Lifecycle] {
+  Option.fromArray(&Option.present(&parents.map(|parent: Str| state.lifecycles.get(parent))))
+}
+
+/// Verified results identify their direct producer and the enclosing participants on their task's original routes.
+export fn producers(state: &Scope.State, parents: &Array[Str]) -> Set[Envelope.Address] {
+  var found: Set[Envelope.Address] = setOf([])
 
   for record in ancestors(state, parents) {
     let behavior = Kinds.behaviorOf(record.envelope.kind, &record.envelope.payload)
 
-    if record.envelope.graph == graph && behavior.effect == Kinds.Moves(Events.COMPLETE) { found = found.insert(record.envelope.source) }
+    if behavior.effect == Kinds.Moves(Events.COMPLETE) {
+      let sender = Envelope.Address{graph: record.envelope.graph, participant: record.envelope.source}
+      found = found.insert(sender)
+
+      if let Some(asked) = taskOf(state, &record.envelope.parents) {
+        for route in asked.routes {
+          if route.recipient == sender {
+            for participant in route.path { found = found.insert(participant) }
+          }
+        }
+      }
+    }
   }
 
   found

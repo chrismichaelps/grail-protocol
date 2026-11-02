@@ -32,6 +32,7 @@
     "operations": 256,
     "delegationDepth": 8,
     "containmentDepth": 8,
+    "routingPaths": 1024,
     "clockSkewMillis": 300000,
     "deduplicationMillis": 86400000,
     "pageDefault": 100,
@@ -167,6 +168,7 @@
     "/.well-known/grail": {
       "get": {
         "operationId": "discover",
+        "tags": ["Discovery"],
         "summary": "The discovery document.",
         "security": [],
         "x-grail-ability": "none",
@@ -187,6 +189,7 @@
     "/openapi.json": {
       "get": {
         "operationId": "describeContract",
+        "tags": ["Discovery"],
         "summary": "This contract.",
         "security": [],
         "x-grail-ability": "none",
@@ -207,6 +210,7 @@
     "/v1/health": {
       "get": {
         "operationId": "checkHealth",
+        "tags": ["Discovery"],
         "summary": "Liveness of the fabric.",
         "security": [],
         "x-grail-ability": "none",
@@ -235,6 +239,7 @@
       ],
       "put": {
         "operationId": "createGraph",
+        "tags": ["Graphs"],
         "summary": "Creates a graph.",
         "x-grail-ability": "graph.write",
         "requestBody": {
@@ -265,6 +270,7 @@
       },
       "get": {
         "operationId": "readGraph",
+        "tags": ["Graphs"],
         "summary": "Reads a graph at its current revision.",
         "x-grail-ability": "graph.read",
         "responses": {
@@ -295,6 +301,7 @@
       ],
       "post": {
         "operationId": "mutateGraph",
+        "tags": ["Graphs"],
         "summary": "Applies a mutation.",
         "x-grail-ability": "graph.write",
         "requestBody": {
@@ -332,6 +339,7 @@
       ],
       "post": {
         "operationId": "sendEnvelope",
+        "tags": ["Transfers"],
         "summary": "Submits an envelope.",
         "x-grail-ability": "transfer.send",
         "requestBody": {
@@ -372,6 +380,7 @@
       ],
       "get": {
         "operationId": "readTransfer",
+        "tags": ["Transfers"],
         "summary": "Reads an envelope and its lifecycle.",
         "x-grail-ability": "transfer.read",
         "responses": {
@@ -402,6 +411,7 @@
       ],
       "get": {
         "operationId": "traceTransfer",
+        "tags": ["Ledger"],
         "summary": "Reads the causal ancestry of an envelope.",
         "x-grail-ability": "ledger.read",
         "responses": {
@@ -432,6 +442,7 @@
       ],
       "post": {
         "operationId": "eraseTransfer",
+        "tags": ["Ledger"],
         "summary": "Erases an envelope's payload, keeping its digest and link.",
         "x-grail-ability": "ledger.erase",
         "responses": {
@@ -474,6 +485,7 @@
       ],
       "get": {
         "operationId": "pullDeliveries",
+        "tags": ["Deliveries"],
         "summary": "Reads deliveries for a participant after a cursor, acknowledging everything up to it, waiting up to `wait` milliseconds for one to arrive.",
         "x-grail-ability": "transfer.receive",
         "responses": {
@@ -507,6 +519,7 @@
       ],
       "get": {
         "operationId": "readLedger",
+        "tags": ["Ledger"],
         "summary": "Reads a range of ledger entries with their links.",
         "x-grail-ability": "ledger.read",
         "responses": {
@@ -534,6 +547,7 @@
       ],
       "post": {
         "operationId": "delegateToken",
+        "tags": ["Capabilities"],
         "summary": "Issues a narrower token to another participant.",
         "x-grail-ability": "token.delegate",
         "requestBody": {
@@ -571,6 +585,7 @@
       ],
       "get": {
         "operationId": "inspectToken",
+        "tags": ["Capabilities"],
         "summary": "Describes the presented token.",
         "x-grail-ability": "none",
         "responses": {
@@ -601,6 +616,7 @@
       ],
       "post": {
         "operationId": "revokeToken",
+        "tags": ["Capabilities"],
         "summary": "Revokes a token and every token delegated from it.",
         "x-grail-ability": "token.delegate",
         "responses": {
@@ -634,6 +650,7 @@
       ],
       "post": {
         "operationId": "bridgeRpc",
+        "tags": ["Bridge"],
         "summary": "Carries one JSON-RPC message from the token's participant to a tool participant.",
         "x-grail-ability": "transfer.send",
         "requestBody": {

@@ -9,5 +9,6 @@ export type Lifecycle = {
   state: Str,
   source: Envelope.Address,
   recipients: Array[Envelope.Address],
+  routes: Array[Envelope.Route],
   deadline: Option[Int]
 }

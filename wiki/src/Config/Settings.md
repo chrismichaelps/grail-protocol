@@ -12,7 +12,7 @@ tags: [module, config]
 
 ## Purpose
 
-What the fabric reads at start.
+What the fabric reads at start. `GRAIL_CLIENT_IP_HEADER` defaults to empty, which ignores forwarded client addresses. Set it to `CF-Connecting-IP` only when a trusted proxy overwrites that header and is the sole ingress. A local tunnel should target the fabric bound to `127.0.0.1`; a public origin must not accept direct requests with this setting enabled.
 
 ## Interface
 

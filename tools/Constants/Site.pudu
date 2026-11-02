@@ -16,29 +16,17 @@ export const MAP_PAGE: Str = "_MOC.md"
 /// The name a section's index takes on the site.
 export const INDEX_PAGE: Str = "index.md"
 
-/// The paper that becomes the site's landing page.
-export const README: Str = "README.md"
+/// The authored documentation project copied before vault sections are assembled.
+export const SOURCE_DIRECTORY: Str = "website"
+
+/// The content folder read by docgen.
+export const CONTENT_DIRECTORY: Str = "docs"
 
 /// The contract rendered as the HTTP API reference.
 export const CONTRACT: Str = "schema/grail.openapi.json"
 
-/// Where the contract is placed in the site.
+/// Where the contract is placed among the documentation sources.
 export const CONTRACT_PAGE: Str = "rest/grail.openapi.json"
-
-/// The repository links outside the site point to.
-export const REPOSITORY: Str = "https://github.com/chrismichaelps/grail-protocol/blob/main/"
-
-/// The address the published site answers at.
-export const SITE_URL: Str = "https://grail-protocol.chrisperezsantiago1.workers.dev"
-
-/// The site's title.
-export const TITLE: Str = "Grail Protocol"
-
-/// What the site's footer says.
-export const FOOTER: Str = "Grail · Apache License 2.0"
-
-/// The configuration file docgen reads.
-export const CONFIGURATION: Str = "docgen.json"
 
 /// The table of contents docgen reads in each folder.
 export const TOC: Str = "toc.yml"

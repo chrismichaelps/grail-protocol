@@ -3,7 +3,9 @@ module Security.AttackTest
 
 import Std.Bytes as ByteSeq
 import Std.Http as Http
+import Std.Http.Server.Route as Route
 import Std.Json as Json
+import Std.Map as Map
 import Std.Option as Option
 import Std.Test as Test
 import App.Assembly as Assembly
@@ -37,6 +39,11 @@ fn largeGraph(size: Int, closing: Bool) -> Str {
   if closing { edges = edges.push(Json.object(&[("id", Json.Text("back")), ("from", Json.Text("p" + show(size - 1))), ("to", Json.Text("p0")), ("relation", Json.Text("dependency"))])) }
 
   Json.encode(&Json.object(&[("participants", Json.List(participants)), ("edges", Json.List(edges))]))
+}
+
+fn proxied(address: Str) -> Route.Request {
+  let message = Http.Request{method: Http.Get, target: "/v1/health", headers: [("CF-Connecting-IP", address)], body: "", binaryBody: None}
+  Route.Request{message: message, path: "/v1/health", params: Map.empty(), query: Map.empty(), peer: "127.0.0.1:51544"}
 }
 
 fn main() -> Int {
@@ -124,7 +131,14 @@ fn main() -> Int {
       Test.that("and quickly", closing.millis < 5000),
       Test.equals("a peer is its host, not its connection", &Peers.hostOf("10.0.0.7:51544"), &"10.0.0.7"),
       Test.equals("an IPv6 peer is its host", &Peers.hostOf("[::1]:51544"), &"::1"),
-      Test.equals("a peer without a port is itself", &Peers.hostOf("10.0.0.7"), &"10.0.0.7")
+      Test.equals("a peer without a port is itself", &Peers.hostOf("10.0.0.7"), &"10.0.0.7"),
+      Test.equals("a forwarded address is ignored unless configured", &Peers.peerOf(&proxied("203.0.113.7"), ""), &"127.0.0.1"),
+      Test.equals("the proxy header name is case insensitive", &Peers.peerOf(&proxied("203.0.113.7"), "cf-connecting-ip"), &"203.0.113.7"),
+      Test.equals("proxy address whitespace is trimmed", &Peers.peerOf(&proxied(" 203.0.113.7 "), "CF-Connecting-IP"), &"203.0.113.7"),
+      Test.equals("a missing proxy header falls back to the connection host", &Peers.peerOf(&proxied("203.0.113.7"), "X-Real-IP"), &"127.0.0.1"),
+      Test.equals("an empty proxy header falls back to the connection host", &Peers.peerOf(&proxied(""), "CF-Connecting-IP"), &"127.0.0.1"),
+      Test.equals("a blank proxy header falls back to the connection host", &Peers.peerOf(&proxied("  "), "CF-Connecting-IP"), &"127.0.0.1"),
+      Test.equals("a proxy may carry an IPv6 address", &Peers.peerOf(&proxied("2001:db8::7"), "CF-Connecting-IP"), &"2001:db8::7")
     ])
 
   Runner.finish(&checks)

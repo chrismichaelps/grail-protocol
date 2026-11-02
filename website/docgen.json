@@ -1,0 +1,24 @@
+{
+  "build": {
+    "content": [{"files": ["**/*.md", "**/*.yml", "rest/*.json"], "src": "docs"}],
+    "output": "_site",
+    "template": ["default", "rest.tagpage", "rest.operationpage", "template"],
+    "globalMetadata": {
+      "_appTitle": "Grail Protocol",
+      "_appName": "Grail",
+      "_baseUrl": "https://grail-protocol.chrisperezsantiago1.workers.dev",
+      "_enableSearch": true,
+      "_disableContribution": true,
+      "_lang": "en",
+      "_themeColor": "#155e52",
+      "_copyright": "chrismichaelps",
+      "_footerLinks": [
+        {"name": "Source", "href": "https://github.com/chrismichaelps/grail-protocol"},
+        {"name": "Issues", "href": "https://github.com/chrismichaelps/grail-protocol/issues"},
+        {"name": "License", "href": "https://github.com/chrismichaelps/grail-protocol/blob/main/LICENSE"},
+        {"name": "Support", "href": "https://ko-fi.com/chrismichaelps"}
+      ]
+    },
+    "sitemap": {"baseUrl": "https://grail-protocol.chrisperezsantiago1.workers.dev", "changefreq": "weekly"}
+  }
+}

@@ -72,7 +72,7 @@ fn main() -> Int {
   let edge = Json.object(&[("wall", Json.Number(Fixtures.NOW + Limits.CLOCK_SKEW_MILLIS)), ("counter", Json.Number(0)), ("node", Json.Text("planner"))])
   let atSkew = Fixtures.admitted(&start, &withMember(&Fixtures.body("b2", "planner", Fixtures.to("writer"), Vocabulary.KIND_TASK, &[]), "clock", edge))
   let closedAfterChunk = Fixtures.admitted(&chunked, &Fixtures.body("s6", "planner", Fixtures.to("writer"), Vocabulary.KIND_STREAM_CLOSE, &["s1"]))
-  let finished = Lifecycle.Lifecycle{taskId: "t", state: Vocabulary.STATE_COMPLETED, source: Envelope.Address{graph: "g", participant: "a"}, recipients: [], deadline: Some(Fixtures.NOW)}
+  let finished = Lifecycle.Lifecycle{taskId: "t", state: Vocabulary.STATE_COMPLETED, source: Envelope.Address{graph: "g", participant: "a"}, recipients: [], routes: [], deadline: Some(Fixtures.NOW)}
   let due = Lifecycle.Lifecycle{..finished, state: Vocabulary.STATE_WORKING}
   let afterWindow = keysAfter(&once, &Json.withField(&first, "id", Json.Text("k3")), Fixtures.NOW + Limits.DEDUPLICATION_MILLIS)
   let checks = Test.suite("Admission", &[

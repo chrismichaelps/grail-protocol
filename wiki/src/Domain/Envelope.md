@@ -21,6 +21,7 @@ The single message shape of the protocol.
 ```pudu
 export type Selector
 export type Address = { graph: Str, participant: Str }
+export type Route = { recipient: Address, path: Array[Address] }
 export type Delivery = { mode: Str, key: Option[Str] }
 export type Clock = { wall: Int, counter: Int, node: Str }
 export type Encryption = { scheme: Str, recipients: Array[Str] }
