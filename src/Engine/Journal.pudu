@@ -1,0 +1,65 @@
+/** @Engine.Journal.Mutations — records graph changes in the ledger as fabric-written envelopes */
+module Engine.Journal
+
+import Std.Json as Json
+import Constants.Fabric as Fabric
+import Constants.Ledger as Hashing
+import Contract.Members as Members
+import Contract.Vocabulary as Vocabulary
+import Domain.Envelope as Envelope
+import Domain.Graph as Graph
+import Domain.Ledger as Ledger
+import Domain.Mutation as Mutation
+import Domain.Scope as Scope
+import Engine.Admission as Admission
+import Engine.Codec.Envelope as EnvelopeCodec
+import Engine.Codec.Graph as GraphCodec
+import Engine.Ledger as Chain
+
+/// The scope with a graph stored and the change that produced it appended to the ledger.
+export fn recorded(state: &Scope.State, graph: &Graph.Graph, mutation: &Mutation.Mutation, actor: Str, now: Int) -> Scope.State {
+  let id = Hashing.MUTATION_PREFIX + graph.id + Hashing.REVISION_SEPARATOR + show(graph.revision)
+  let target = Envelope.ToParticipant(actor)
+  let payload = GraphCodec.mutationJson(mutation)
+  let body = Json.object(&[
+      (Members.ENVELOPE_GRAIL, Json.Text(Fabric.PROTOCOLS[0])),
+      (Members.ENVELOPE_ID, Json.Text(id)),
+      (Members.ENVELOPE_SCOPE, Json.Text(state.id)),
+      (Members.ENVELOPE_GRAPH, Json.Text(graph.id)),
+      (Members.ENVELOPE_SOURCE, Json.Text(actor)),
+      (Members.ENVELOPE_TARGET, EnvelopeCodec.selectorJson(&target)),
+      (Members.ENVELOPE_KIND, Json.Text(Vocabulary.KIND_GRAPH_MUTATION)),
+      (Members.ENVELOPE_PAYLOAD, payload)
+    ])
+  let digest = Chain.digestOf(&body)
+  let sequence = Scope.length(state) + 1
+  let envelope = Envelope.Envelope {
+    grail: Fabric.PROTOCOLS[0],
+    id: id,
+    scopeId: state.id,
+    graph: graph.id,
+    source: actor,
+    target: target,
+    kind: Vocabulary.KIND_GRAPH_MUTATION,
+    parents: [],
+    schema: None,
+    payload: Some(payload),
+    delivery: Envelope.Delivery{mode: Vocabulary.DELIVERY_AT_MOST_ONCE, key: None},
+    priority: 0,
+    deadline: None,
+    clock: None,
+    visibility: Vocabulary.VISIBILITY_GRAPH,
+    encryption: None,
+    extensions: []
+  }
+  let record = Ledger.Record {
+    entry: Ledger.Entry{sequence: sequence, id: id, digest: digest, link: Chain.linkAfter(state.link, digest)},
+    envelope: envelope,
+    body: body,
+    stamp: Envelope.Stamp{sequence: sequence, digest: digest, accepted: now},
+    recipients: [],
+    erased: false
+  }
+  let stored = Scope.State{..*state, graphs: state.graphs.insert(graph.id, *graph)}
+  Admission.commit(&stored, &Admission.Admitted{record: record, lifecycle: None, closes: None})
+}

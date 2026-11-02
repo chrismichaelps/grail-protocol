@@ -1,0 +1,41 @@
+/** @Utils.JsonRead.Access — typed reads of optional JSON members */
+module Utils.JsonRead
+
+import Std.Json as Json
+import Std.Option as Option
+
+/// A member's text, when present and textual.
+export fn text(value: &Json.Json, name: Str) -> Option[Str] {
+  Option.andThen(Json.field(value, name), |found: Json.Json| Json.asText(&found))
+}
+
+/// A member's whole number, when present and whole.
+export fn whole(value: &Json.Json, name: Str) -> Option[Int] {
+  Option.andThen(Json.field(value, name), |found: Json.Json| Json.asInt(&found))
+}
+
+/// A member's list, when present and a list.
+export fn list(value: &Json.Json, name: Str) -> Option[Array[Json.Json]] {
+  Option.andThen(Json.field(value, name), |found: Json.Json| Json.asList(&found))
+}
+
+/// A member's texts, when present and every item is text.
+export fn texts(value: &Json.Json, name: Str) -> Option[Array[Str]] {
+  Option.andThen(list(value, name), |items: Array[Json.Json]| Option.allPresent(&items.map(|item: Json.Json| Json.asText(&item))))
+}
+
+/// The names of an object's members, or none for anything else.
+export fn names(value: &Json.Json) -> Array[Str] {
+  match value {
+    case Json.Object(members) => members.map(|pair: (Str, Json.Json)| pair[0])
+    case _ => []
+  }
+}
+
+/// A list of texts as JSON.
+export fn textList(values: &Array[Str]) -> Json.Json { Json.List(values.map(|value: Str| Json.Text(value))) }
+
+/// An object from pairs, skipping absent members.
+export fn objectOf(members: &Array[(Str, Option[Json.Json])]) -> Json.Json {
+  Json.Object(Option.mapPresent(members, |pair: (Str, Option[Json.Json])| Option.map(pair[1], |held: Json.Json| (pair[0], held))))
+}

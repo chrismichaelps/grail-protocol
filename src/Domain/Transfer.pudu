@@ -1,0 +1,17 @@
+/** @Domain.Transfer.Views — what the fabric answers about transfers */
+module Domain.Transfer
+
+import Domain.Envelope as Envelope
+import Domain.Ledger as Ledger
+
+/** @Domain.Transfer.Receipt — the answer to an accepted envelope */
+export type Receipt = { id: Str, sequence: Int, digest: Str, recipients: Array[Envelope.Address], state: Option[Str], duplicate: Bool }
+
+/** @Domain.Transfer.View — one envelope and where its lifecycle stands */
+export type View = { record: Ledger.Record, state: Option[Str] }
+
+/** @Domain.Transfer.TraceEntry — one ancestor, possibly hidden or erased */
+export type TraceEntry = { record: Ledger.Record, hidden: Bool }
+
+/** @Domain.Transfer.Page — deliveries or ledger entries after a cursor */
+export type Page = { records: Array[Ledger.Record], cursor: Int }

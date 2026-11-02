@@ -1,0 +1,37 @@
+/** @Domain.Request.Inputs — what each operation asks for, with the token presented for it */
+module Domain.Request
+
+import Std.Json as Json
+import Domain.Envelope as Envelope
+import Domain.Mutation as Mutation
+import Domain.Transfer as Transfer
+
+/** @Domain.Request.Call — an input, the scope it names, and the token presented */
+export type Call[T] = { token: Str, scopeId: Str, input: T }
+
+/** @Domain.Request.Creation — a graph to create */
+export type Creation = { graph: Str, draft: Mutation.Draft }
+
+/** @Domain.Request.Change — a mutation of a graph */
+export type Change = { graph: Str, mutation: Mutation.Mutation }
+
+/** @Domain.Request.Sending — an envelope and the body it was read from */
+export type Sending = { envelope: Envelope.Envelope, body: Json.Json }
+
+/** @Domain.Request.Pulling — deliveries asked for by one participant */
+export type Pulling = { graph: Str, participant: Str, after: Int, limit: Option[Int], wait: Int }
+
+/** @Domain.Request.Paging — a ledger range */
+export type Paging = { after: Int, limit: Option[Int] }
+
+/** @Domain.Request.Bridging — one JSON-RPC message for a tool participant */
+export type Bridging = { graph: Str, participant: Str, message: Json.Json }
+
+/** @Domain.Request.Granted — a delegated token and when it expires */
+export type Granted = { token: Str, expires: Int }
+
+/** @Domain.Request.Erased — the entry whose payload is gone */
+export type Erased = { id: Str, sequence: Int, digest: Str }
+
+/** @Domain.Request.Traced — an envelope's id and its ancestry */
+export type Traced = { of: Str, entries: Array[Transfer.TraceEntry] }

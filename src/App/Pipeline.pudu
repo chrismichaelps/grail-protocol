@@ -1,0 +1,76 @@
+/** @App.Pipeline.Behaviors — what every message passes through */
+module App.Pipeline
+
+import Std.Json as Json
+import App.Messages as Messages
+import Constants.Extras as Extras
+import Constants.Logging as Names
+import Constants.Server as Capacity
+import Constants.Text as Text
+import Contract.Problems as Codes
+import Domain.Capability as Capability
+import Domain.Problem as Problem
+import Domain.Request as Request
+import PuduLangLog.Logger as Logger
+import PuduLangLog.Value as Value
+import PuduLangMediator.Behaviors.Logging as Recording
+import PuduLangMediator.Behaviors.Validation as Validation
+import PuduLangMediator.Context as Context
+import PuduLangMediator.Message as Message
+import PuduLangMediator as Messaging
+import PuduLangMediator.Open as Open
+import PuduLangMediator.Registration as Registration
+import PuduLangValidator.Rules.Child as Child
+import PuduLangValidator.Validator as Validator
+import Utils.Pointer as Pointer
+import Validation.Delegation as DelegationRules
+import Validation.Envelope as EnvelopeRules
+import Validation.Graph as GraphRules
+
+/** @App.Pipeline.Alarm — reports faults of the fabric as errors */
+type Alarm = { logger: Logger.Logger }
+
+impl Open.ExceptionAction for Alarm {
+  /// Writes an error for a fault; answers to callers are not faults.
+  fn onFailure[Q, E](self: &Self, request: &Q, failure: &Messaging.Failure[E], info: &Message.Info, context: Context.Context) -> () {
+    if faulty(failure) { self.logger.error(Names.FAULT, [Value.text(info.name), Value.text(Messaging.describe(failure))]) }
+  }
+}
+
+/// The registrations every mediator starts with: the recorder outermost, the alarm, and validation of every input with rules beyond its shape.
+export fn registrations(kinds: &Messages.Kinds, messages: &Logger.Logger) -> Array[Registration.Registration] {
+  [
+    Registration.openBehavior(Recording.of(*messages)),
+    Registration.openExceptionAction(Alarm{logger: *messages}),
+    Validation.register(&kinds.sendEnvelope, wrapped(|asked: Request.Call[Request.Sending]| asked.input.envelope, EnvelopeRules.rules())),
+    Validation.register(&kinds.createGraph, wrapped(|asked: Request.Call[Request.Creation]| asked.input.draft, GraphRules.draft())),
+    Validation.register(&kinds.mutateGraph, wrapped(|asked: Request.Call[Request.Change]| asked.input.mutation, GraphRules.mutation())),
+    Validation.register(&kinds.delegateToken, wrapped(|asked: Request.Call[Capability.Request]| asked.input, DelegationRules.rules()))
+  ]
+}
+
+/// The problem a mediator failure stands for.
+export fn problemOf(failure: &Messaging.Failure[Problem.Problem]) -> Problem.Problem {
+  match failure {
+    case Messaging.Raised(problem) => problem
+    case Messaging.Invalid(violations) => Problem.invalid(&violations.map(|v: Messaging.Violation| Problem.violation(pathOf(v.property), v.message)))
+    case Messaging.Refused(reason) => Problem.withMember(&Problem.of(Codes.BACKPRESSURE, reason), Extras.RETRY_AFTER, Json.Number(Capacity.RETRY_AFTER_SECONDS))
+    case other => Problem.of(Codes.UNAVAILABLE, Messaging.describe(&other))
+  }
+}
+
+fn faulty[E](failure: &Messaging.Failure[E]) -> Bool {
+  match failure {
+    case Messaging.Crashed(_) => true
+    case Messaging.Unhandled(_) => true
+    case Messaging.Mismatched(_) => true
+    case Messaging.Aggregate(parts) => parts.filter(|part: Messaging.Failure[E]| faulty(&part)).length() > 0
+    case _ => false
+  }
+}
+
+fn wrapped[T, V](select: fn(T) -> V, inner: Validator.Validator[V]) -> Validator.Validator[T] {
+  Validator.add(Validator.create(), Child.setValidator(Text.INPUT_PROPERTY, select, inner))
+}
+
+fn pathOf(property: Str) -> Str { Pointer.dotted(if property.startsWith(Text.INPUT_PROPERTY + Text.DOT) { property.drop(Text.INPUT_PROPERTY.length() + Text.DOT.length()) } else { property }) }

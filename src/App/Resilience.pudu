@@ -1,0 +1,41 @@
+/** @App.Resilience.Guards — every message runs under a concurrency limit and a deadline; a waiting pull's deadline covers its wait */
+module App.Resilience
+
+import Std.Result as Result
+import App.Messages as Messages
+import Constants.Server as Capacity
+import Contract.Limits as Limits
+import Domain.Problem as Problem
+import PuduLangMediator.Behaviors.Resilient as Resilient
+import PuduLangMediator as Messaging
+import PuduLangMediator.Registration as Registration
+import PuduLangResilience.Pipeline as Pipeline
+import PuduLangResilience.RateLimiter as RateLimiter
+import PuduLangResilience.Timeout as Timeout
+
+/// The guard of one kind's answers: a bounded number at once, a bounded queue, and a deadline.
+export fn guard[R]() -> Result[Pipeline.Pipeline[R, Messaging.Failure[Problem.Problem]], Str] { guardFor(Capacity.MESSAGE_TIMEOUT_MILLIS) }
+
+/// The guard of a kind whose answers may take up to `millis`.
+export fn guardFor[R](millis: Int) -> Result[Pipeline.Pipeline[R, Messaging.Failure[Problem.Problem]], Str] {
+  Result.mapErr(Pipeline.build([RateLimiter.strategy(RateLimiter.concurrency(Capacity.MESSAGE_PERMITS, Capacity.MESSAGE_QUEUE)), Timeout.strategy(Timeout.after(millis))]), |invalid: Pipeline.Invalid| Pipeline.explain(&invalid))
+}
+
+/// A guard for every message kind.
+export fn registrations(kinds: &Messages.Kinds) -> Result[Array[Registration.Registration], Str] {
+  Ok([
+      Resilient.register(&kinds.createGraph, guard() ?),
+      Resilient.register(&kinds.readGraph, guard() ?),
+      Resilient.register(&kinds.mutateGraph, guard() ?),
+      Resilient.register(&kinds.sendEnvelope, guard() ?),
+      Resilient.register(&kinds.readTransfer, guard() ?),
+      Resilient.register(&kinds.traceTransfer, guard() ?),
+      Resilient.register(&kinds.pullDeliveries, guardFor(Limits.WAIT_MAX + Capacity.WAIT_GRACE_MILLIS) ?),
+      Resilient.register(&kinds.readLedger, guard() ?),
+      Resilient.register(&kinds.delegateToken, guard() ?),
+      Resilient.register(&kinds.bridgeRpc, guard() ?),
+      Resilient.register(&kinds.inspectToken, guard() ?),
+      Resilient.register(&kinds.revokeToken, guard() ?),
+      Resilient.register(&kinds.eraseTransfer, guard() ?)
+    ])
+}

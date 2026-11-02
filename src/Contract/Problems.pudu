@@ -1,0 +1,87 @@
+/** @Contract.Problems.Generated — the registry of problem codes */
+module Contract.Problems
+
+// projected from schema/grail.openapi.json by tools/Contract.pudu; edit the schema, not this file
+
+/** @Contract.Problems.Entry — one registered problem */
+export type Entry = { code: Str, status: Int, title: Str }
+
+/// Invalid request (400).
+export const INVALID: Str = "grail.invalid"
+
+/// Unauthorized (401).
+export const UNAUTHORIZED: Str = "grail.unauthorized"
+
+/// Forbidden (403).
+export const FORBIDDEN: Str = "grail.forbidden"
+
+/// Not found (404).
+export const NOT_FOUND: Str = "grail.not-found"
+
+/// Duplicate (409).
+export const DUPLICATE: Str = "grail.duplicate"
+
+/// Revision conflict (409).
+export const REVISION_CONFLICT: Str = "grail.revision-conflict"
+
+/// Delivery key reused (409).
+export const KEY_REUSED: Str = "grail.key-reused"
+
+/// Too large (413).
+export const TOO_LARGE: Str = "grail.too-large"
+
+/// No route (422).
+export const NO_ROUTE: Str = "grail.no-route"
+
+/// Dependency unmet (422).
+export const DEPENDENCY_UNMET: Str = "grail.dependency-unmet"
+
+/// Cycle (422).
+export const CYCLE: Str = "grail.cycle"
+
+/// Invalid transition (422).
+export const INVALID_TRANSITION: Str = "grail.invalid-transition"
+
+/// Unknown parent (422).
+export const UNKNOWN_PARENT: Str = "grail.unknown-parent"
+
+/// Limit exceeded (422).
+export const LIMIT_EXCEEDED: Str = "grail.limit-exceeded"
+
+/// Clock skew (422).
+export const CLOCK_SKEW: Str = "grail.clock-skew"
+
+/// Expired (422).
+export const EXPIRED: Str = "grail.expired"
+
+/// Unsupported version (426).
+export const UNSUPPORTED_VERSION: Str = "grail.unsupported-version"
+
+/// Backpressure (429).
+export const BACKPRESSURE: Str = "grail.backpressure"
+
+/// Unavailable (503).
+export const UNAVAILABLE: Str = "grail.unavailable"
+
+/// Every registered problem, in contract order.
+export const ALL: Array[Entry] = [
+  Entry{code: "grail.invalid", status: 400, title: "Invalid request"},
+  Entry{code: "grail.unauthorized", status: 401, title: "Unauthorized"},
+  Entry{code: "grail.forbidden", status: 403, title: "Forbidden"},
+  Entry{code: "grail.not-found", status: 404, title: "Not found"},
+  Entry{code: "grail.duplicate", status: 409, title: "Duplicate"},
+  Entry{code: "grail.revision-conflict", status: 409, title: "Revision conflict"},
+  Entry{code: "grail.key-reused", status: 409, title: "Delivery key reused"},
+  Entry{code: "grail.too-large", status: 413, title: "Too large"},
+  Entry{code: "grail.no-route", status: 422, title: "No route"},
+  Entry{code: "grail.dependency-unmet", status: 422, title: "Dependency unmet"},
+  Entry{code: "grail.cycle", status: 422, title: "Cycle"},
+  Entry{code: "grail.invalid-transition", status: 422, title: "Invalid transition"},
+  Entry{code: "grail.unknown-parent", status: 422, title: "Unknown parent"},
+  Entry{code: "grail.limit-exceeded", status: 422, title: "Limit exceeded"},
+  Entry{code: "grail.clock-skew", status: 422, title: "Clock skew"},
+  Entry{code: "grail.expired", status: 422, title: "Expired"},
+  Entry{code: "grail.unsupported-version", status: 426, title: "Unsupported version"},
+  Entry{code: "grail.backpressure", status: 429, title: "Backpressure"},
+  Entry{code: "grail.unavailable", status: 503, title: "Unavailable"}
+]

@@ -1,0 +1,120 @@
+/** @Tools.Site.Pages — turns vault pages into site pages */
+module Site.Pages
+
+import Constants.Site as Site
+
+/// A vault page as a site page in folder `from`: no front matter, no backlinks, and wikilinks rewritten.
+export fn published(text: Str, from: Str) -> Str { linked(withoutBacklinks(withoutFrontMatter(text)), from) }
+
+/// The text with front matter removed.
+export fn withoutFrontMatter(text: Str) -> Str {
+  if !text.startsWith(Site.FRONT_MATTER + "\n") { return text }
+
+  let rest = text.drop(Site.FRONT_MATTER.length() + 1)
+  let end = rest.indexOf("\n" + Site.FRONT_MATTER + "\n")
+
+  if end < 0 { text } else { rest.drop(end + Site.FRONT_MATTER.length() + 2).trim() + "\n" }
+}
+
+/// The text without its backlinks section.
+export fn withoutBacklinks(text: Str) -> Str {
+  let at = text.indexOf(Site.BACKLINKS)
+
+  if at < 0 { text } else { text.take(at).trim() + "\n" }
+}
+
+/// Every wikilink of the text as a site link when its page is published, or as its text when it is not.
+export fn linked(text: Str, from: Str) -> Str {
+  var out = ""
+  var rest = text
+
+  while rest.contains(Site.LINK_OPEN) {
+    let open = rest.indexOf(Site.LINK_OPEN)
+    let tail = rest.drop(open + Site.LINK_OPEN.length())
+    let close = tail.indexOf(Site.LINK_CLOSE)
+
+    if close < 0 { return out + rest }
+
+    out = out + rest.take(open) + rendered(tail.take(close).replace("\\" + Site.LINK_ALIAS, Site.LINK_ALIAS), from)
+    rest = tail.drop(close + Site.LINK_CLOSE.length())
+  }
+
+  out + rest
+}
+
+/// One wikilink's body as Markdown.
+export fn rendered(body: Str, from: Str) -> Str {
+  let bar = body.indexOf(Site.LINK_ALIAS)
+  let target = if bar < 0 { body } else { body.take(bar) }
+  let page = if target.contains(Site.LINK_HEADING) { target.take(target.indexOf(Site.LINK_HEADING)) } else { target }
+  let fallback = if page.contains("/") { page.drop(lastSlash(page) + 1) } else { page }
+  let label = if bar < 0 { fallback } else { body.drop(bar + 1) }
+  let folder = if page.contains("/") { page.take(lastSlash(page)) } else { "" }
+
+  if !isSection(folder) { return label }
+
+  "[" + label + "](" + relative(from, folder) + pageFile(page.drop(folder.length() + 1)) + ")"
+}
+
+fn isSection(folder: Str) -> Bool { Site.SECTIONS.map(|section: (Str, Str)| section[0]).contains(folder) }
+
+fn pageFile(name: Str) -> Str { if name == Site.MAP_PAGE.take(Site.MAP_PAGE.length() - Site.MARKDOWN.length()) { Site.INDEX_PAGE } else { name + Site.MARKDOWN } }
+
+fn relative(from: Str, folder: Str) -> Str {
+  if from == folder { return "" }
+  if from.isEmpty() { return folder + "/" }
+
+  "../" + folder + "/"
+}
+
+fn lastSlash(text: Str) -> Int {
+  var found = -1
+  var index = 0
+
+  for character in text.chars() {
+    if character == '/' { found = index }
+
+    index = index + 1
+  }
+
+  found
+}
+
+/// The paper's links as site links: vault sections become site sections, other repository paths point at the repository.
+export fn paperLinks(text: Str) -> Str {
+  var out = ""
+  var rest = text
+
+  while rest.contains("](") {
+    let open = rest.indexOf("](") + 2
+    let close = rest.drop(open).indexOf(")")
+
+    if close < 0 { return out + rest }
+
+    out = out + rest.take(open) + siteTarget(rest.drop(open).take(close)) + ")"
+    rest = rest.drop(open + close + 1)
+  }
+
+  out + rest
+}
+
+/// The first level-one heading of a page.
+export fn titleOf(text: Str, fallback: Str) -> Str {
+  for line in text.split("\n") {
+    if line.startsWith("# ") { return line.drop(2).trim() }
+  }
+
+  fallback
+}
+
+fn siteTarget(target: Str) -> Str {
+  if target.startsWith("http") || target.startsWith(Site.LINK_HEADING) { return target }
+
+  for section in Site.SECTIONS {
+    let prefix = Site.VAULT + "/" + section[0] + "/"
+
+    if target.startsWith(prefix) { return section[0] + "/" + pageFile(target.drop(prefix.length()).replace(Site.MARKDOWN, "")) }
+  }
+
+  Site.REPOSITORY + target
+}

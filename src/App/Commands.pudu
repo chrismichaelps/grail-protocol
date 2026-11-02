@@ -1,0 +1,78 @@
+/** @App.Commands.Surface — every operation as one typed call, announced when it changes something */
+module App.Commands
+
+import App.Assembly as Assembly
+import Domain.Capability as Capability
+import Domain.Graph as Graph
+import Domain.Problem as Problem
+import Domain.Request as Request
+import Domain.Transfer as Transfer
+
+/// Creates a graph.
+export fn createGraph(app: &Assembly.App, call: Request.Call[Request.Creation]) -> Result[Graph.Graph, Problem.Problem] {
+  let graph = Assembly.send(app, &app.kinds.createGraph, call) ?
+  Assembly.announce(app, &app.events.changed, graph)
+  Ok(graph)
+}
+
+/// Reads a graph.
+export fn readGraph(app: &Assembly.App, call: Request.Call[Str]) -> Result[Graph.Graph, Problem.Problem] { Assembly.send(app, &app.kinds.readGraph, call) }
+
+/// Mutates a graph.
+export fn mutateGraph(app: &Assembly.App, call: Request.Call[Request.Change]) -> Result[Graph.Graph, Problem.Problem] {
+  let graph = Assembly.send(app, &app.kinds.mutateGraph, call) ?
+  Assembly.announce(app, &app.events.changed, graph)
+  Ok(graph)
+}
+
+/// Sends an envelope.
+export fn sendEnvelope(app: &Assembly.App, call: Request.Call[Request.Sending]) -> Result[Transfer.Receipt, Problem.Problem] {
+  let receipt = Assembly.send(app, &app.kinds.sendEnvelope, call) ?
+
+  if !receipt.duplicate { Assembly.announce(app, &app.events.accepted, receipt) }
+
+  Ok(receipt)
+}
+
+/// Reads a transfer.
+export fn readTransfer(app: &Assembly.App, call: Request.Call[Str]) -> Result[Transfer.View, Problem.Problem] { Assembly.send(app, &app.kinds.readTransfer, call) }
+
+/// Traces a transfer.
+export fn traceTransfer(app: &Assembly.App, call: Request.Call[Str]) -> Result[Request.Traced, Problem.Problem] { Assembly.send(app, &app.kinds.traceTransfer, call) }
+
+/// Pulls deliveries.
+export fn pullDeliveries(app: &Assembly.App, call: Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem] { Assembly.send(app, &app.kinds.pullDeliveries, call) }
+
+/// Reads the ledger.
+export fn readLedger(app: &Assembly.App, call: Request.Call[Request.Paging]) -> Result[Transfer.Page, Problem.Problem] { Assembly.send(app, &app.kinds.readLedger, call) }
+
+/// Delegates a token.
+export fn delegateToken(app: &Assembly.App, call: Request.Call[Capability.Request]) -> Result[Request.Granted, Problem.Problem] {
+  let granted = Assembly.send(app, &app.kinds.delegateToken, call) ?
+  Assembly.announce(app, &app.events.delegated, granted)
+  Ok(granted)
+}
+
+/// Bridges a JSON-RPC message.
+export fn bridgeRpc(app: &Assembly.App, call: Request.Call[Request.Bridging]) -> Result[Transfer.Receipt, Problem.Problem] {
+  let receipt = Assembly.send(app, &app.kinds.bridgeRpc, call) ?
+  Assembly.announce(app, &app.events.accepted, receipt)
+  Ok(receipt)
+}
+
+/// Describes the presented token and its depth in its delegation chain.
+export fn inspectToken(app: &Assembly.App, call: Request.Call[()]) -> Result[(Capability.Token, Int), Problem.Problem] { Assembly.send(app, &app.kinds.inspectToken, call) }
+
+/// Revokes a token and everything delegated from it.
+export fn revokeToken(app: &Assembly.App, call: Request.Call[Str]) -> Result[Str, Problem.Problem] {
+  let revoked = Assembly.send(app, &app.kinds.revokeToken, call) ?
+  Assembly.announce(app, &app.events.revoked, revoked)
+  Ok(revoked)
+}
+
+/// Erases an envelope's payload.
+export fn eraseTransfer(app: &Assembly.App, call: Request.Call[Str]) -> Result[Request.Erased, Problem.Problem] {
+  let erased = Assembly.send(app, &app.kinds.eraseTransfer, call) ?
+  Assembly.announce(app, &app.events.erased, erased)
+  Ok(erased)
+}

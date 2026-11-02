@@ -1,0 +1,16 @@
+/** @Validation.Delegation.Rules — what a delegation request must hold beyond its shape */
+module Validation.Delegation
+
+import Constants.Details as Details
+import Contract.Members as Members
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import PuduLangValidator.Rule as Rule
+import PuduLangValidator.Validator as Validator
+
+/// Rules for a delegation request.
+export fn rules() -> Validator.Validator[Capability.Request] {
+  let window = Rule.build(Rule.withMessage(Rule.mustWith(Rule.ruleFor(Members.DELEGATION_EXPIRES, |r: Capability.Request| r.expires), |r: Capability.Request, expires: Int| r.notBefore < expires), Details.EMPTY_WINDOW))
+  let narrow = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.DELEGATION_ABILITIES, |r: Capability.Request| r.abilities), |held: Array[Str]| !held.isEmpty() && !held.contains(Vocabulary.ABILITY_ALL)), Details.DELEGATED_ALL))
+  Validator.add(Validator.add(Validator.create(), window), narrow)
+}

@@ -1,0 +1,86 @@
+/** @Contract.Operations.Generated — every operation of the bindings */
+module Contract.Operations
+
+// projected from schema/grail.openapi.json by tools/Contract.pudu; edit the schema, not this file
+
+/** @Contract.Operations.Operation — one operation as the bindings serve it */
+export type Operation = {
+  id: Str,
+  method: Str,
+  path: Str,
+  pattern: Str,
+  ability: Str,
+  status: Int,
+  secured: Bool,
+  bodied: Bool,
+  pathParameters: Array[Str],
+  queryParameters: Array[Str]
+}
+
+/// `GET /.well-known/grail`.
+export const DISCOVER: Str = "discover"
+
+/// `GET /openapi.json`.
+export const DESCRIBE_CONTRACT: Str = "describeContract"
+
+/// `GET /v1/health`.
+export const CHECK_HEALTH: Str = "checkHealth"
+
+/// `GET /v1/scopes/{scope}/graphs/{graph}`.
+export const READ_GRAPH: Str = "readGraph"
+
+/// `PUT /v1/scopes/{scope}/graphs/{graph}`.
+export const CREATE_GRAPH: Str = "createGraph"
+
+/// `POST /v1/scopes/{scope}/graphs/{graph}/mutations`.
+export const MUTATE_GRAPH: Str = "mutateGraph"
+
+/// `POST /v1/scopes/{scope}/transfers`.
+export const SEND_ENVELOPE: Str = "sendEnvelope"
+
+/// `GET /v1/scopes/{scope}/transfers/{transfer}`.
+export const READ_TRANSFER: Str = "readTransfer"
+
+/// `GET /v1/scopes/{scope}/transfers/{transfer}/trace`.
+export const TRACE_TRANSFER: Str = "traceTransfer"
+
+/// `POST /v1/scopes/{scope}/transfers/{transfer}/erasure`.
+export const ERASE_TRANSFER: Str = "eraseTransfer"
+
+/// `GET /v1/scopes/{scope}/graphs/{graph}/participants/{participant}/deliveries`.
+export const PULL_DELIVERIES: Str = "pullDeliveries"
+
+/// `GET /v1/scopes/{scope}/ledger`.
+export const READ_LEDGER: Str = "readLedger"
+
+/// `POST /v1/scopes/{scope}/tokens`.
+export const DELEGATE_TOKEN: Str = "delegateToken"
+
+/// `GET /v1/scopes/{scope}/tokens/self`.
+export const INSPECT_TOKEN: Str = "inspectToken"
+
+/// `POST /v1/scopes/{scope}/tokens/{token}/revocation`.
+export const REVOKE_TOKEN: Str = "revokeToken"
+
+/// `POST /v1/scopes/{scope}/graphs/{graph}/bridge/{participant}`.
+export const BRIDGE_RPC: Str = "bridgeRpc"
+
+/// Every operation, in contract order.
+export const ALL: Array[Operation] = [
+  Operation{id: "discover", method: "GET", path: "/.well-known/grail", pattern: "/.well-known/grail", ability: "none", status: 200, secured: false, bodied: false, pathParameters: [], queryParameters: []},
+  Operation{id: "describeContract", method: "GET", path: "/openapi.json", pattern: "/openapi.json", ability: "none", status: 200, secured: false, bodied: false, pathParameters: [], queryParameters: []},
+  Operation{id: "checkHealth", method: "GET", path: "/v1/health", pattern: "/v1/health", ability: "none", status: 200, secured: false, bodied: false, pathParameters: [], queryParameters: []},
+  Operation{id: "readGraph", method: "GET", path: "/v1/scopes/\{scope\}/graphs/\{graph\}", pattern: "/v1/scopes/:scope/graphs/:graph", ability: "graph.read", status: 200, secured: true, bodied: false, pathParameters: ["scope", "graph"], queryParameters: []},
+  Operation{id: "createGraph", method: "PUT", path: "/v1/scopes/\{scope\}/graphs/\{graph\}", pattern: "/v1/scopes/:scope/graphs/:graph", ability: "graph.write", status: 201, secured: true, bodied: true, pathParameters: ["scope", "graph"], queryParameters: []},
+  Operation{id: "mutateGraph", method: "POST", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/mutations", pattern: "/v1/scopes/:scope/graphs/:graph/mutations", ability: "graph.write", status: 200, secured: true, bodied: true, pathParameters: ["scope", "graph"], queryParameters: []},
+  Operation{id: "sendEnvelope", method: "POST", path: "/v1/scopes/\{scope\}/transfers", pattern: "/v1/scopes/:scope/transfers", ability: "transfer.send", status: 202, secured: true, bodied: true, pathParameters: ["scope"], queryParameters: []},
+  Operation{id: "readTransfer", method: "GET", path: "/v1/scopes/\{scope\}/transfers/\{transfer\}", pattern: "/v1/scopes/:scope/transfers/:transfer", ability: "transfer.read", status: 200, secured: true, bodied: false, pathParameters: ["scope", "transfer"], queryParameters: []},
+  Operation{id: "traceTransfer", method: "GET", path: "/v1/scopes/\{scope\}/transfers/\{transfer\}/trace", pattern: "/v1/scopes/:scope/transfers/:transfer/trace", ability: "ledger.read", status: 200, secured: true, bodied: false, pathParameters: ["scope", "transfer"], queryParameters: []},
+  Operation{id: "eraseTransfer", method: "POST", path: "/v1/scopes/\{scope\}/transfers/\{transfer\}/erasure", pattern: "/v1/scopes/:scope/transfers/:transfer/erasure", ability: "ledger.erase", status: 200, secured: true, bodied: false, pathParameters: ["scope", "transfer"], queryParameters: []},
+  Operation{id: "pullDeliveries", method: "GET", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/participants/\{participant\}/deliveries", pattern: "/v1/scopes/:scope/graphs/:graph/participants/:participant/deliveries", ability: "transfer.receive", status: 200, secured: true, bodied: false, pathParameters: ["scope", "graph", "participant"], queryParameters: ["after", "limit", "wait"]},
+  Operation{id: "readLedger", method: "GET", path: "/v1/scopes/\{scope\}/ledger", pattern: "/v1/scopes/:scope/ledger", ability: "ledger.read", status: 200, secured: true, bodied: false, pathParameters: ["scope"], queryParameters: ["after", "limit"]},
+  Operation{id: "delegateToken", method: "POST", path: "/v1/scopes/\{scope\}/tokens", pattern: "/v1/scopes/:scope/tokens", ability: "token.delegate", status: 201, secured: true, bodied: true, pathParameters: ["scope"], queryParameters: []},
+  Operation{id: "inspectToken", method: "GET", path: "/v1/scopes/\{scope\}/tokens/self", pattern: "/v1/scopes/:scope/tokens/self", ability: "none", status: 200, secured: true, bodied: false, pathParameters: ["scope"], queryParameters: []},
+  Operation{id: "revokeToken", method: "POST", path: "/v1/scopes/\{scope\}/tokens/\{token\}/revocation", pattern: "/v1/scopes/:scope/tokens/:token/revocation", ability: "token.delegate", status: 200, secured: true, bodied: false, pathParameters: ["scope", "token"], queryParameters: []},
+  Operation{id: "bridgeRpc", method: "POST", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/bridge/\{participant\}", pattern: "/v1/scopes/:scope/graphs/:graph/bridge/:participant", ability: "transfer.send", status: 202, secured: true, bodied: true, pathParameters: ["scope", "graph", "participant"], queryParameters: []}
+]

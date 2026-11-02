@@ -1,0 +1,30 @@
+/** @Domain.Identifier.Grammar — what identifiers, names, and kinds may look like */
+module Domain.Identifier
+
+import Std.Char as Char
+import Std.Text as Text
+import Constants.Graphs as Graphs
+import Constants.Text as Joins
+import Contract.Limits as Limits
+import Contract.Vocabulary as Vocabulary
+
+/// Whether text is an identifier: 1 to the identifier limit of letters, digits, and `. _ : -`.
+export fn isIdentifier(text: Str) -> Bool {
+  !text.isEmpty() && text.length() <= Limits.IDENTIFIER_LENGTH && Text.allChars(text, |c: Char| Char.isAlphanumeric(c) && Char.isAscii(c) || Joins.IDENTIFIER_MARKS.contains(c))
+}
+
+/// Whether text is a name: 1 to the name limit of lowercase letters, digits, and `. _ -`.
+export fn isName(text: Str) -> Bool {
+  !text.isEmpty() && text.length() <= Limits.NAME_LENGTH && Text.allChars(text, |c: Char| Char.isLower(c) || Char.isDigit(c) || Joins.NAME_MARKS.contains(c))
+}
+
+/// Whether text is a reserved kind or an extension kind.
+export fn isKind(text: Str) -> Bool { Vocabulary.KINDS.contains(text) || isExtension(text) }
+
+/// Whether text names an extension: `x-owner.name`.
+export fn isExtension(text: Str) -> Bool {
+  let rest = text.drop(Graphs.EXTENSION_PREFIX.length())
+  let dot = rest.indexOf(Joins.DOT)
+
+  text.startsWith(Graphs.EXTENSION_PREFIX) && dot > 0 && dot < rest.length() - 1 && isName(rest)
+}

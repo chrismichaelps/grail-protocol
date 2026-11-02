@@ -1,0 +1,232 @@
+/** @Tools.Layers.Graph — imports, cycles, depth, and violations of a module graph */
+module Layers.Graph
+
+import Std.Map as Map
+
+/** @Tools.Layers.Unit — one module and the modules it imports */
+export type Unit = { name: Str, imports: Array[Str] }
+
+/** @Tools.Layers.Violation — one refused import and why */
+export type Violation = { from: Str, target: Str, reason: Str }
+
+/** @Tools.Layers.Report — what the gate found */
+export type Report = {
+  units: Int,
+  edges: Int,
+  violations: Array[Violation],
+  cycles: Array[Array[Str]],
+  depths: Array[(Str, Int)]
+}
+
+/// A module's name and imports, read from its source; `None` without exactly one module line.
+export fn parse(source: Str) -> Option[Unit] {
+  var name: Option[Str] = None
+  var count = 0
+  var imports: Array[Str] = []
+
+  for line in uncommented(source).split("\n") {
+    let trimmed = line.trim()
+
+    if trimmed.startsWith("module ") {
+      name = Some(trimmed.drop(7).trim())
+      count = count + 1
+    } else if trimmed.startsWith("import ") {
+      let target = pathOf(trimmed.drop(7).trim())
+
+      if !imports.contains(target) { imports = imports.push(target) }
+    }
+  }
+
+  if count != 1 { return None }
+
+  let found = name ?
+  Some(Unit{name: found, imports: imports})
+}
+
+/// The report of a graph judged by a catalog.
+export fn analyze(units: &Array[Unit], judge: fn(Str, Str, &Set[Str]) -> Option[Str]) -> Report {
+  let known: Set[Str] = setOf(units.map(|unit: Unit| unit.name))
+  var violations: Array[Violation] = []
+  var edges = 0
+  var graph: Map[Str, Array[Str]] = Map.empty()
+
+  for unit in *units {
+    var internal: Array[Str] = []
+
+    for target in unit.imports {
+      if let Some(reason) = judge(unit.name, target, &known) {
+        violations = violations.push(Violation{from: unit.name, target: target, reason: reason})
+      }
+      if target in known {
+        internal = internal.push(target)
+        edges = edges + 1
+      }
+    }
+
+    graph = Map.insert(&graph, unit.name, internal)
+  }
+
+  let reach = reachability(&graph)
+  Report {
+    units: units.length(),
+    edges: edges,
+    violations: violations.sortBy(|left: Violation, right: Violation| left.from + " " + left.target < right.from + " " + right.target),
+    cycles: cyclesOf(&graph, &reach),
+    depths: depthsOf(&graph, &reach)
+  }
+}
+
+/// The report as lines of text.
+export fn render(report: &Report) -> Array[Str] {
+  var lines: Array[Str] = []
+
+  for pair in report.depths {
+    lines = lines.push("  depth " + show(pair[1]) + "  " + pair[0])
+  }
+
+  for cycle in report.cycles {
+    lines = lines.push("cycle: " + cycle.join(" -> "))
+  }
+
+  for violation in report.violations {
+    lines = lines.push("refused: " + violation.from + " imports " + violation.target + " (" + violation.reason + ")")
+  }
+
+  let verdict = if passed(report) { "passed" } else { "failed" }
+  lines.push("layers " + verdict + ": " + show(report.units) + " modules, " + show(report.edges) + " internal edges, " + show(report.violations.length()) + " refused imports, " + show(report.cycles.length()) + " cycles")
+}
+
+/// Whether the graph has no violations and no cycles.
+export fn passed(report: &Report) -> Bool {
+  report.violations.isEmpty() && report.cycles.isEmpty()
+}
+
+fn pathOf(spec: Str) -> Str {
+  let spaced = spec.indexOf(" ")
+  let braced = spec.indexOf("\{")
+  var end = spec.length()
+
+  if spaced >= 0 && spaced < end { end = spaced }
+  if braced >= 0 && braced < end { end = braced }
+
+  spec.take(end).trim()
+}
+
+fn uncommented(source: Str) -> Str {
+  var out = ""
+  var depth = 0
+  var rest = source
+
+  while !rest.isEmpty() {
+    if rest.startsWith("/*") {
+      depth = depth + 1
+      rest = rest.drop(2)
+    } else if depth > 0 && rest.startsWith("*/") {
+      depth = depth - 1
+      rest = rest.drop(2)
+    } else if depth > 0 {
+      if rest.startsWith("\n") { out = out + "\n" }
+
+      rest = rest.drop(1)
+    } else if rest.startsWith("//") {
+      let next = rest.indexOf("\n")
+      rest = if next < 0 { "" } else { rest.drop(next) }
+    } else {
+      let next = nextMark(rest)
+      out = out + rest.take(next)
+      rest = rest.drop(next)
+    }
+  }
+
+  out
+}
+
+fn nextMark(text: Str) -> Int {
+  var best = text.length()
+
+  for mark in ["/*", "*/", "//"] {
+    let at = text.indexOf(mark)
+
+    if at > 0 && at < best { best = at }
+  }
+
+  if best == 0 { 1 } else { best }
+}
+
+fn reachability(graph: &Map[Str, Array[Str]]) -> Map[Str, Set[Str]] {
+  var reach: Map[Str, Set[Str]] = Map.empty()
+
+  for name in Map.keys(graph) {
+    var seen: Set[Str] = setOf([])
+    var stack: Array[Str] = Map.getOr(graph, name, [])
+
+    while !stack.isEmpty() {
+      let top = stack[stack.length() - 1]
+      stack = stack.pop()
+
+      if !(top in seen) {
+        seen = seen.insert(top)
+
+        for next in Map.getOr(graph, top, []) {
+          if !(next in seen) { stack = stack.push(next) }
+        }
+      }
+    }
+
+    reach = Map.insert(&reach, name, seen)
+  }
+
+  reach
+}
+
+fn together(reach: &Map[Str, Set[Str]], left: Str, right: Str) -> Bool {
+  left in Map.getOr(reach, right, setOf([])) && right in Map.getOr(reach, left, setOf([]))
+}
+
+fn cyclesOf(graph: &Map[Str, Array[Str]], reach: &Map[Str, Set[Str]]) -> Array[Array[Str]] {
+  var placed: Set[Str] = setOf([])
+  var cycles: Array[Array[Str]] = []
+
+  for name in Map.keys(graph) {
+    if !(name in placed) && name in Map.getOr(reach, name, setOf([])) {
+      let members = Map.keys(graph).filter(|other: Str| other == name || together(reach, name, other))
+
+      for member in members { placed = placed.insert(member) }
+
+      cycles = cycles.push(members)
+    }
+  }
+
+  cycles
+}
+
+fn depthsOf(graph: &Map[Str, Array[Str]], reach: &Map[Str, Set[Str]]) -> Array[(Str, Int)] {
+  var depth: Map[Str, Int] = Map.mapValues(graph, |_targets: Array[Str]| 0)
+  var changed = true
+  var rounds = 0
+  let limit = Map.size(graph) + 1
+
+  while changed && rounds < limit {
+    changed = false
+    rounds = rounds + 1
+
+    for name in Map.keys(graph) {
+      var best = 0
+
+      for target in Map.getOr(graph, name, []) {
+        if !together(reach, name, target) {
+          let candidate = Map.getOr(&depth, target, 0) + 1
+
+          if candidate > best { best = candidate }
+        }
+      }
+
+      if best != Map.getOr(&depth, name, 0) {
+        depth = Map.insert(&depth, name, best)
+        changed = true
+      }
+    }
+  }
+
+  Map.pairs(&depth)
+}

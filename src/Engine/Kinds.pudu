@@ -1,0 +1,78 @@
+/** @Engine.Kinds.Factory — the behavior of every kind, chosen once by name */
+module Engine.Kinds
+
+import Std.Json as Json
+import Std.Option as Option
+import Constants.Events as Events
+import Constants.Rpc as Rpc
+import Contract.Vocabulary as Vocabulary
+import Utils.JsonRead as JsonRead
+
+/** @Engine.Kinds.Effect — what accepting an envelope of a kind does to lifecycles */
+export type Effect
+  = Records
+  | Opens
+  | Moves(Str)
+
+/** @Engine.Kinds.Actor — who may send a kind */
+export type Actor
+  = Anyone
+  | Recipient
+  | Source
+  | Fabric
+
+/** @Engine.Kinds.Stream — the part a kind plays in a stream */
+export type Stream
+  = Outside
+  | OpensStream
+  | InStream
+  | ClosesStream
+
+/** @Engine.Kinds.Behavior — what a kind does to lifecycles, who may send it, and its part in a stream; a kind that opens a lifecycle is dependency gated */
+export type Behavior = { effect: Effect, actor: Actor, stream: Stream }
+
+/// A kind that only leaves a record.
+const RECORDED: Behavior = Behavior{effect: Records, actor: Anyone, stream: Outside}
+
+/// The behavior of each reserved kind whose behavior does not depend on its payload.
+const CATALOG: Map[Str, Behavior] = mapOf([
+    (Vocabulary.KIND_TASK, Behavior{effect: Opens, actor: Anyone, stream: Outside}),
+    (Vocabulary.KIND_TOOL_CALL, Behavior{effect: Opens, actor: Anyone, stream: Outside}),
+    (Vocabulary.KIND_RESULT, Behavior{effect: Moves(Events.COMPLETE), actor: Recipient, stream: Outside}),
+    (Vocabulary.KIND_TOOL_RESULT, Behavior{effect: Moves(Events.COMPLETE), actor: Recipient, stream: Outside}),
+    (Vocabulary.KIND_ERROR, Behavior{effect: Moves(Events.FAIL), actor: Recipient, stream: Outside}),
+    (Vocabulary.KIND_PROGRESS, Behavior{effect: Moves(Events.PROGRESS), actor: Recipient, stream: Outside}),
+    (Vocabulary.KIND_INPUT_REQUEST, Behavior{effect: Moves(Events.INPUT), actor: Recipient, stream: Outside}),
+    (Vocabulary.KIND_CANCEL, Behavior{effect: Moves(Events.CANCEL), actor: Source, stream: Outside}),
+    (Vocabulary.KIND_STREAM_OPEN, Behavior{effect: Records, actor: Anyone, stream: OpensStream}),
+    (Vocabulary.KIND_STREAM_CHUNK, Behavior{effect: Records, actor: Anyone, stream: InStream}),
+    (Vocabulary.KIND_STREAM_CLOSE, Behavior{effect: Records, actor: Anyone, stream: ClosesStream}),
+    (Vocabulary.KIND_GRAPH_MUTATION, Behavior{effect: Records, actor: Fabric, stream: Outside})
+  ])
+
+/// The behavior of an envelope's kind. A bridged JSON-RPC message behaves as the request or response it carries.
+export fn behaviorOf(kind: Str, payload: &Option[Json.Json]) -> Behavior {
+  if kind == Vocabulary.KIND_BRIDGE_RPC { return bridged(payload) }
+
+  Option.unwrapOr(CATALOG.get(kind), RECORDED)
+}
+
+/// Whether a kind answers a lifecycle, and so is routed back to the task's source.
+export fn answers(behavior: &Behavior) -> Bool { behavior.actor == Recipient }
+
+fn bridged(payload: &Option[Json.Json]) -> Behavior {
+  match payload {
+    case Some(message) => {
+      let request = Option.isSome(&JsonRead.text(&message, Rpc.METHOD))
+      let identified = Option.isSome(&Json.field(&message, Rpc.ID))
+      let failed = Option.isSome(&Json.field(&message, Rpc.ERROR))
+
+      if request && identified { return Behavior{effect: Opens, actor: Anyone, stream: Outside} }
+      if request { return RECORDED }
+      if failed { return Behavior{effect: Moves(Events.FAIL), actor: Recipient, stream: Outside} }
+
+      Behavior{effect: Moves(Events.COMPLETE), actor: Recipient, stream: Outside}
+    }
+    case None => RECORDED
+  }
+}

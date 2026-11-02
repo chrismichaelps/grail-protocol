@@ -1,0 +1,125 @@
+/** @Test.Support.Fixtures — scopes, graphs, envelopes, and tokens the suites share */
+module Support.Fixtures
+
+import Std.Json as Json
+import Std.Map as Map
+import Std.Result as Result
+import Constants.Security as Security
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Domain.Graph as Graph
+import Domain.Mutation as Mutation
+import Domain.Problem as Problem
+import Domain.Scope as Scope
+import Engine.Admission as Admission
+import Engine.Authority as Authority
+import Engine.Codec.Envelope as EnvelopeCodec
+import Engine.Journal as Journal
+import Engine.Mutations as Mutations
+
+/// The fabric secret every fixture signs with.
+export const SECRET: Str = "fixture-secret-0123456789abcdef-0123"
+
+/// The scope every fixture lives in.
+export const SCOPE: Str = "demo"
+
+/// The graph every fixture routes through.
+export const GRAPH: Str = "team"
+
+/// The time every fixture happens at.
+export const NOW: Int = 1800000000000
+
+/// A day in milliseconds.
+export const DAY: Int = 86400000
+
+/// A participant with roles and abilities.
+export fn member(id: Str, roles: &Array[Str], abilities: &Array[Str]) -> Graph.Participant {
+  Graph.Participant{id: id, kind: Vocabulary.PARTICIPANT_AGENT, roles: *roles, abilities: *abilities, graph: None}
+}
+
+/// An edge of a relation carrying every kind.
+export fn edge(id: Str, from: Str, into: Str, relation: Str) -> Graph.Edge { Graph.Edge{id: id, from: from, to: into, relation: relation, kinds: []} }
+
+/// A planner that reaches a writer and a reviewer, where the reviewer depends on the writer.
+export fn team() -> Mutation.Draft {
+  Mutation.Draft {
+    participants: [member("planner", &["lead"], &[]), member("writer", &["author"], &["draft"]), member("reviewer", &["review"], &["draft"])],
+    edges: [
+      edge("e1", "planner", "writer", Vocabulary.RELATION_FLOW),
+      edge("e2", "planner", "reviewer", Vocabulary.RELATION_FLOW),
+      edge("d1", "writer", "reviewer", Vocabulary.RELATION_DEPENDENCY)
+    ]
+  }
+}
+
+/// A scope holding the team graph.
+export fn teamScope() -> Scope.State {
+  let empty = Scope.empty(SCOPE)
+
+  match Mutations.create(GRAPH, SCOPE, &team(), &empty.graphs) {
+    case Ok(graph) => Journal.recorded(&empty, &graph, &Mutation.Mutation{expectedRevision: 0, steps: []}, Security.OWNER, NOW)
+    case Err(_) => empty
+  }
+}
+
+/// A root token's claims for an audience with abilities.
+export fn claims(id: Str, audience: Str, abilities: &Array[Str]) -> Capability.Token {
+  Capability.Token{id: id, scopeId: SCOPE, graph: None, issuer: Security.OWNER, audience: audience, abilities: *abilities, notBefore: NOW - DAY, expires: NOW + DAY, parent: None, chain: []}
+}
+
+/// The authority of the scope owner.
+export fn owner() -> Capability.Authority {
+  Result.unwrapOr(Authority.authorize(Authority.issue(&claims("root", Security.OWNER, &[Vocabulary.ABILITY_ALL]), SECRET), SCOPE, SECRET, NOW, &setOf([])), Capability.Authority{scopeId: "", graph: None, audience: "", abilities: [], token: "", chain: []})
+}
+
+/// An envelope body in the team graph.
+export fn body(id: Str, source: Str, target: Json.Json, kind: Str, parents: &Array[Str]) -> Json.Json {
+  Json.object(&[
+      ("grail", Json.Text("1.0")),
+      ("id", Json.Text(id)),
+      ("scope", Json.Text(SCOPE)),
+      ("graph", Json.Text(GRAPH)),
+      ("source", Json.Text(source)),
+      ("target", target),
+      ("kind", Json.Text(kind)),
+      ("parents", Json.List(parents.map(|parent: Str| Json.Text(parent))))
+    ])
+}
+
+/// A selector naming one participant.
+export fn to(id: Str) -> Json.Json { Json.object(&[("participant", Json.Text(id))]) }
+
+/// A selector naming a role.
+export fn toRole(role: Str) -> Json.Json { Json.object(&[("role", Json.Text(role))]) }
+
+/// The scope after admitting a body as the owner, or the refusal.
+export fn admitted(state: &Scope.State, sent: &Json.Json) -> Result[Scope.State, Problem.Problem] {
+  let envelope = EnvelopeCodec.decode(sent) ?
+
+  match Admission.admit(state, &envelope, sent, &owner(), NOW) ? {
+    case Admission.Fresh(found) => Ok(Admission.commit(state, &found))
+    case Admission.Repeated(_) => Ok(*state)
+  }
+}
+
+/// The code of a refusal, or empty text for an acceptance.
+export fn code[T](outcome: &Result[T, Problem.Problem]) -> Str {
+  match outcome {
+    case Ok(_) => ""
+    case Err(refused) => refused.code
+  }
+}
+
+/// The lifecycle state of a task in a scope.
+export fn stateOf(state: &Scope.State, taskId: Str) -> Str {
+  match Map.get(&state.lifecycles, taskId) {
+    case Some(found) => found.state
+    case None => ""
+  }
+}
+
+/// The ledger vectors, computed independently of the reference implementation.
+export const VECTORS: Str = "test/Fixtures/ledger-vectors.json"
+
+/// The participants and edges of the attacked graph.
+export const ATTACKED_GRAPH: Str = "\{\"participants\":[\{\"id\":\"boss\",\"kind\":\"agent\"\},\{\"id\":\"w\",\"kind\":\"agent\",\"roles\":[\"author\"]\},\{\"id\":\"r\",\"kind\":\"human\"\}],\"edges\":[\{\"id\":\"e1\",\"from\":\"boss\",\"to\":\"w\",\"relation\":\"flow\"\},\{\"id\":\"e2\",\"from\":\"boss\",\"to\":\"r\",\"relation\":\"flow\"\},\{\"id\":\"d\",\"from\":\"w\",\"to\":\"r\",\"relation\":\"dependency\"\}]\}"

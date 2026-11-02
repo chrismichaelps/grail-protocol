@@ -1,0 +1,41 @@
+/** @Test.Engine.Shapes.Suite — bodies are read against the contract's shapes */
+module Engine.ShapesTest
+
+import Std.Json as Json
+import Std.Result as Result
+import Std.Test as Test
+import Contract.Schemas as Schemas
+import Contract.Vocabulary as Vocabulary
+import Domain.Envelope as Envelope
+import Domain.Identifier as Identifier
+import Domain.Problem as Problem
+import Engine.Codec.Envelope as EnvelopeCodec
+import Engine.Codec.Shapes as Shapes
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+
+fn paths(body: &Json.Json) -> Array[Str] { Shapes.check(Schemas.ENVELOPE, body, "").map(|found: Problem.Violation| found.path) }
+
+fn main() -> Int {
+  let good = Fixtures.body("t1", "planner", Fixtures.to("writer"), Vocabulary.KIND_TASK, &[])
+  let twoTargets = Json.withField(&good, "target", Json.object(&[("participant", Json.Text("writer")), ("role", Json.Text("author"))]))
+  let extended = Json.withField(&good, "x-acme.trace", Json.Text("abc"))
+  let stamped = Json.withField(&good, "digest", Json.Text("sha256:00"))
+  let badPriority = Json.withField(&good, "priority", Json.Number(12))
+  let badMode = Json.withField(&good, "delivery", Json.object(&[("mode", Json.Text("exactly-once"))]))
+  let checks = Test.suite("Shapes", &[
+      Test.equals("a well-formed envelope has no violations", &paths(&good), &[]),
+      Test.equals("a selector names exactly one target", &paths(&twoTargets), &["/target"]),
+      Test.equals("extension members are carried", &paths(&extended), &[]),
+      Test.equals("members the fabric writes cannot be sent", &paths(&stamped), &["/digest"]),
+      Test.equals("priority stays within the contract's range", &paths(&badPriority), &["/priority"]),
+      Test.equals("only the contract's delivery modes are accepted", &paths(&badMode), &["/delivery/mode"]),
+      Test.equals("a decoded envelope keeps its extensions", &Result.map(EnvelopeCodec.decode(&extended), |e: Envelope.Envelope| e.extensions.length()), &Ok(1)),
+      Test.that("an extension kind is a kind", Identifier.isKind("x-acme.quote")),
+      Test.not("an unregistered kind is not", Identifier.isKind("quote")),
+      Test.not("an identifier holds no spaces", Identifier.isIdentifier("bad id")),
+      Test.not("a name holds no capitals", Identifier.isName("Author"))
+    ])
+
+  Runner.finish(&checks)
+}

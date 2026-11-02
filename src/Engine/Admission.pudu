@@ -1,0 +1,172 @@
+/** @Engine.Admission.Gate — decides whether one envelope enters a scope, and what it changes */
+module Engine.Admission
+
+import Std.Json as Json
+import Std.List as List
+import Std.Map as Map
+import Std.Option as Option
+import Constants.Details as Details
+import Constants.Extras as Extras
+import Constants.Fabric as Fabric
+import Constants.Ledger as Hashing
+import Constants.Security as Security
+import Contract.Limits as Limits
+import Contract.Members as Members
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Domain.Envelope as Envelope
+import Domain.Graph as Graph
+import Domain.Ledger as Ledger
+import Domain.Lifecycle as Lifecycle
+import Domain.Problem as Problem
+import Domain.Scope as Scope
+import Engine.Authority as Authority
+import Engine.Causality as Causality
+import Engine.Gating as Gating
+import Engine.Kinds as Kinds
+import Engine.Ledger as Chain
+import Engine.Lifecycle as Machine
+import Engine.Routing as Routing
+import Utils.JsonRead as JsonRead
+import Utils.Pointer as Pointer
+
+/** @Engine.Admission.Admitted — the record to append and the lifecycle it opens or moves */
+export type Admitted = { record: Ledger.Record, lifecycle: Option[Lifecycle.Lifecycle], closes: Option[Str] }
+
+/** @Engine.Admission.Outcome — a new acceptance, or the original answer to a repeated delivery key */
+export type Outcome
+  = Fresh(Admitted)
+  | Repeated(Ledger.Record)
+
+/** @Engine.Admission.Plan — who receives an envelope and which lifecycle it touches */
+type Plan = { recipients: Array[Envelope.Address], lifecycle: Option[Lifecycle.Lifecycle], closes: Option[Str] }
+
+/// Whether `envelope`, whose body is `body`, enters the scope under `authority` at `now`.
+export fn admit(state: &Scope.State, envelope: &Envelope.Envelope, body: &Json.Json, authority: &Capability.Authority, now: Int) -> Result[Outcome, Problem.Problem] {
+  let behavior = Kinds.behaviorOf(envelope.kind, &envelope.payload)
+  let digest = Chain.digestOf(body)
+
+  if !Fabric.PROTOCOLS.contains(envelope.grail) { return Err(Problem.withMember(&Problem.of(Codes.UNSUPPORTED_VERSION, Details.UNSUPPORTED_VERSION), Extras.SUPPORTED, JsonRead.textList(&Fabric.PROTOCOLS))) }
+  if envelope.scopeId != authority.scopeId { return Err(Problem.of(Codes.FORBIDDEN, Details.SCOPE_MISMATCH)) }
+
+  let _allowed = Authority.require(authority, Vocabulary.ABILITY_TRANSFER_SEND, Some(envelope.graph)) ?
+
+  if authority.audience != Security.OWNER && authority.audience != envelope.source { return Err(Problem.of(Codes.FORBIDDEN, Details.SOURCE_MISMATCH)) }
+  if behavior.actor == Kinds.Fabric { return Err(Problem.of(Codes.FORBIDDEN, Details.RESERVED_KIND)) }
+
+  if let Some(original) = repeated(state, envelope, digest, now) ? { return Ok(Repeated(original)) }
+
+  if Map.containsKey(&state.records, envelope.id) { return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_TRANSFER)) }
+  if envelope.id.startsWith(Hashing.MUTATION_PREFIX) { return Err(Problem.invalid(&[Problem.violation(Pointer.of(&[Members.ENVELOPE_ID]), Details.RESERVED_ID)])) }
+  if Scope.length(state) >= Limits.SCOPE_ENTRIES { return Err(exceeded(Limits.SCOPE_ENTRIES)) }
+  if envelope.delivery.mode == Vocabulary.DELIVERY_EFFECTIVELY_ONCE && state.keys.size() >= Limits.DELIVERY_KEYS { return Err(exceeded(Limits.DELIVERY_KEYS)) }
+
+  let graph = Option.okOr(state.graphs.get(envelope.graph), Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) ?
+
+  if !Graph.hasParticipant(&graph, envelope.source) { return Err(Problem.of(Codes.NOT_FOUND, Details.UNKNOWN_SOURCE)) }
+  if Option.holds(&envelope.deadline, |deadline: Int| deadline <= now) { return Err(Problem.of(Codes.EXPIRED, Details.EXPIRED)) }
+  if Option.holds(&envelope.clock, |reading: Envelope.Clock| reading.wall > now + Limits.CLOCK_SKEW_MILLIS) { return Err(Problem.of(Codes.CLOCK_SKEW, Details.CLOCK_SKEW)) }
+
+  let missing = envelope.parents.filter(|parent: Str| !Map.containsKey(&state.records, parent))
+
+  if !missing.isEmpty() { return Err(Problem.withMember(&Problem.of(Codes.UNKNOWN_PARENT, Details.UNKNOWN_PARENT), Extras.PARENTS, JsonRead.textList(&missing))) }
+
+  let sender = Envelope.Address{graph: graph.id, participant: envelope.source}
+  let plan = if Kinds.answers(&behavior) || behavior.actor == Kinds.Source { answering(state, envelope, &behavior, &sender, now) ? } else { routed(state, &graph, envelope, &behavior, &sender) ? }
+  let opened = if behavior.effect == Kinds.Opens { Some(Lifecycle.Lifecycle{taskId: envelope.id, state: Machine.initial(), source: sender, recipients: plan.recipients, deadline: envelope.deadline}) } else { plan.lifecycle }
+  let sequence = Scope.length(state) + 1
+  let stamp = Envelope.Stamp{sequence: sequence, digest: digest, accepted: now}
+  let entry = Ledger.Entry{sequence: sequence, id: envelope.id, digest: digest, link: Chain.linkAfter(state.link, digest)}
+  Ok(Fresh(Admitted{record: Ledger.Record{entry: entry, envelope: *envelope, body: *body, stamp: stamp, recipients: plan.recipients, erased: false}, lifecycle: opened, closes: plan.closes}))
+}
+
+/// The scope after an admitted envelope is appended.
+export fn commit(state: &Scope.State, admitted: &Admitted) -> Scope.State {
+  let record = admitted.record
+  let keys = match record.envelope.delivery.key {
+    case Some(key) => if record.envelope.delivery.mode == Vocabulary.DELIVERY_EFFECTIVELY_ONCE { Map.insert(&state.keys, key, Scope.Keyed{id: record.entry.id, digest: record.entry.digest, accepted: record.stamp.accepted}) } else { state.keys }
+    case None => state.keys
+  }
+  let lifecycles = match admitted.lifecycle {
+    case Some(changed) => Map.insert(&state.lifecycles, changed.taskId, changed)
+    case None => state.lifecycles
+  }
+  let closed = match admitted.closes {
+    case Some(stream) => state.closedStreams.insert(stream)
+    case None => state.closedStreams
+  }
+
+  let live = Map.filterValues(&keys, |keyed: Scope.Keyed| keyed.accepted + Limits.DEDUPLICATION_MILLIS > record.stamp.accepted)
+  Scope.State{..*state, records: Map.insert(&state.records, record.entry.id, record), sequence: state.sequence.push(record.entry.id), link: record.entry.link, lifecycles: lifecycles, keys: live, closedStreams: closed}
+}
+
+/// A lifecycle's state as of `now`: an unfinished task whose deadline passed has expired.
+export fn stateAt(lifecycle: &Lifecycle.Lifecycle, now: Int) -> Str {
+  if !Machine.isFinal(lifecycle.state) && Option.holds(&lifecycle.deadline, |deadline: Int| deadline <= now) { Vocabulary.STATE_EXPIRED } else { lifecycle.state }
+}
+
+fn repeated(state: &Scope.State, envelope: &Envelope.Envelope, digest: Str, now: Int) -> Result[Option[Ledger.Record], Problem.Problem] {
+  if envelope.delivery.mode != Vocabulary.DELIVERY_EFFECTIVELY_ONCE { return Ok(None) }
+
+  let key = Option.okOr(envelope.delivery.key, Problem.invalid(&[Problem.violation(Pointer.of(&[Members.ENVELOPE_DELIVERY, Members.DELIVERY_KEY]), Details.MISSING_MEMBER)])) ?
+
+  match state.keys.get(key) {
+    case Some(keyed) => {
+      if keyed.accepted + Limits.DEDUPLICATION_MILLIS <= now { return Ok(None) }
+
+      if keyed.digest == digest { Ok(state.records.get(keyed.id)) } else { Err(Problem.of(Codes.KEY_REUSED, Details.KEY_REUSED)) }
+    }
+    case None => Ok(None)
+  }
+}
+
+fn answering(state: &Scope.State, envelope: &Envelope.Envelope, behavior: &Kinds.Behavior, sender: &Envelope.Address, now: Int) -> Result[Plan, Problem.Problem] {
+  let asked = Option.okOr(Option.fromArray(&Option.present(&envelope.parents.map(|parent: Str| state.lifecycles.get(parent)))), Problem.invalid(&[Problem.violation(Pointer.of(&[Members.ENVELOPE_PARENTS]), Details.PARENT_REQUIRED)])) ?
+  let event = match behavior.effect {
+    case Kinds.Moves(named) => named
+    case _ => ""
+  }
+
+  if Kinds.answers(behavior) && !asked.recipients.contains(*sender) { return Err(Problem.of(Codes.FORBIDDEN, Details.NOT_RECIPIENT)) }
+  if behavior.actor == Kinds.Source && asked.source != *sender { return Err(Problem.of(Codes.FORBIDDEN, Details.NOT_SOURCE)) }
+
+  let next = Machine.advance(stateAt(&asked, now), event) ?
+  let recipients = if Kinds.answers(behavior) { [asked.source] } else { asked.recipients }
+
+  if Kinds.answers(behavior) && Routing.named(&envelope.target) != Some(asked.source.participant) { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) }
+
+  Ok(Plan{recipients: recipients, lifecycle: Some(Lifecycle.Lifecycle{..asked, state: next}), closes: None})
+}
+
+fn routed(state: &Scope.State, graph: &Graph.Graph, envelope: &Envelope.Envelope, behavior: &Kinds.Behavior, sender: &Envelope.Address) -> Result[Plan, Problem.Problem] {
+  let stream = streamOf(state, envelope, behavior) ?
+  let resolve = Routing.resolverOf(&envelope.target)
+  let participants = resolve(*graph, envelope.source, envelope.kind)
+
+  if participants.isEmpty() { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) }
+
+  if behavior.effect == Kinds.Opens {
+    let producers = Causality.producers(state, &envelope.parents, graph.id)
+    let unmet = List.distinct(&List.flatMap(&participants, |target: Str| Gating.unmet(graph, target, &producers)))
+
+    if !unmet.isEmpty() { return Err(Problem.withMember(&Problem.of(Codes.DEPENDENCY_UNMET, Details.DEPENDENCY_UNMET), Extras.UNMET, JsonRead.textList(&unmet))) }
+  }
+
+  Ok(Plan{recipients: Routing.addresses(graph, &participants, &state.graphs), lifecycle: None, closes: if behavior.stream == Kinds.ClosesStream { stream } else { None }})
+}
+
+fn streamOf(state: &Scope.State, envelope: &Envelope.Envelope, behavior: &Kinds.Behavior) -> Result[Option[Str], Problem.Problem] {
+  if behavior.stream != Kinds.InStream && behavior.stream != Kinds.ClosesStream { return Ok(None) }
+
+  let opened = envelope.parents.filter(|parent: Str| Option.holds(&state.records.get(parent), |record: Ledger.Record| record.envelope.kind == Vocabulary.KIND_STREAM_OPEN))
+
+  if opened.isEmpty() { return Err(Problem.invalid(&[Problem.violation(Pointer.of(&[Members.ENVELOPE_PARENTS]), Details.PARENT_REQUIRED)])) }
+  if state.closedStreams.contains(opened[0]) { return Err(Problem.withMember(&Problem.of(Codes.INVALID_TRANSITION, Details.STREAM_CLOSED), Extras.STATE, Json.Text(Vocabulary.STATE_COMPLETED))) }
+
+  Ok(Some(opened[0]))
+}
+
+fn exceeded(limit: Int) -> Problem.Problem {
+  Problem.withMember(&Problem.of(Codes.LIMIT_EXCEEDED, Details.LIMIT_EXCEEDED), Extras.LIMIT, Json.Number(limit))
+}

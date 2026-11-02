@@ -1,0 +1,46 @@
+/** @App.Messages.Vocabulary — every request the fabric answers, one kind per contract operation */
+module App.Messages
+
+import Contract.Operations as Operations
+import Domain.Capability as Capability
+import Domain.Graph as Graph
+import Domain.Problem as Problem
+import Domain.Request as Request
+import Domain.Transfer as Transfer
+import PuduLangMediator.Request as Kind
+
+/** @App.Messages.Kinds — every kind of request, made once and shared */
+export type Kinds = {
+  createGraph: Kind.Kind[Request.Call[Request.Creation], Graph.Graph, Problem.Problem],
+  readGraph: Kind.Kind[Request.Call[Str], Graph.Graph, Problem.Problem],
+  mutateGraph: Kind.Kind[Request.Call[Request.Change], Graph.Graph, Problem.Problem],
+  sendEnvelope: Kind.Kind[Request.Call[Request.Sending], Transfer.Receipt, Problem.Problem],
+  readTransfer: Kind.Kind[Request.Call[Str], Transfer.View, Problem.Problem],
+  traceTransfer: Kind.Kind[Request.Call[Str], Request.Traced, Problem.Problem],
+  pullDeliveries: Kind.Kind[Request.Call[Request.Pulling], Transfer.Page, Problem.Problem],
+  readLedger: Kind.Kind[Request.Call[Request.Paging], Transfer.Page, Problem.Problem],
+  delegateToken: Kind.Kind[Request.Call[Capability.Request], Request.Granted, Problem.Problem],
+  bridgeRpc: Kind.Kind[Request.Call[Request.Bridging], Transfer.Receipt, Problem.Problem],
+  inspectToken: Kind.Kind[Request.Call[()], (Capability.Token, Int), Problem.Problem],
+  revokeToken: Kind.Kind[Request.Call[Str], Str, Problem.Problem],
+  eraseTransfer: Kind.Kind[Request.Call[Str], Request.Erased, Problem.Problem]
+}
+
+/// Every kind, named after the contract operation it serves.
+export fn kinds() -> Kinds {
+  Kinds {
+    createGraph: Kind.kind(Operations.CREATE_GRAPH),
+    readGraph: Kind.kind(Operations.READ_GRAPH),
+    mutateGraph: Kind.kind(Operations.MUTATE_GRAPH),
+    sendEnvelope: Kind.kind(Operations.SEND_ENVELOPE),
+    readTransfer: Kind.kind(Operations.READ_TRANSFER),
+    traceTransfer: Kind.kind(Operations.TRACE_TRANSFER),
+    pullDeliveries: Kind.kind(Operations.PULL_DELIVERIES),
+    readLedger: Kind.kind(Operations.READ_LEDGER),
+    delegateToken: Kind.kind(Operations.DELEGATE_TOKEN),
+    bridgeRpc: Kind.kind(Operations.BRIDGE_RPC),
+    inspectToken: Kind.kind(Operations.INSPECT_TOKEN),
+    revokeToken: Kind.kind(Operations.REVOKE_TOKEN),
+    eraseTransfer: Kind.kind(Operations.ERASE_TRANSFER)
+  }
+}

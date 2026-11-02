@@ -1,0 +1,41 @@
+---
+type: module
+path: "@root/src/Constants/Ledger.pudu"
+layer: 0
+grammar: "[[grammar/pudu]]"
+tags: [module, constants]
+---
+
+# Constants.Ledger
+
+> @Constants.Ledger.Hashing — the prefixes of digests and ledger links
+
+## Purpose
+
+The prefixes of digests and ledger links.
+
+## Interface
+
+### Signatures
+
+```pudu
+/// The prefix of every envelope digest.
+export const DIGEST_PREFIX: Str = "sha256:"
+/// The seed hashed with the first digest of a ledger.
+export const LINK_SEED: Str = "grail-ledger:"
+/// What joins the previous link and the next digest.
+export const LINK_SEPARATOR: Str = ":"
+/// The prefix of the transfer id the fabric gives a recorded mutation.
+export const MUTATION_PREFIX: Str = "mutation:"
+/// What joins a graph id and its revision in a recorded mutation's id.
+export const REVISION_SEPARATOR: Str = "@"
+```
+
+### Linkage
+
+- **Requires:** nothing inside the fabric
+- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]]
+
+## Referenced by
+
+[[src/Constants/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]]

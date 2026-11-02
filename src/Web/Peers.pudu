@@ -1,0 +1,33 @@
+/** @Web.Peers.Identity — names a peer by its host, so a new connection is not a new peer */
+module Web.Peers
+
+import Std.Http.Server.Route as Route
+import Constants.Text as Text
+
+/// A step that replaces the request's peer, written host and port, with its host alone; placed before rate limiting, it keeps a client from earning a fresh window by opening a new connection.
+export fn byHost() -> Route.Middleware {
+  |request: Route.Request, next: Route.Handler| next(Route.Request{..request, peer: hostOf(request.peer)})
+}
+
+/// The host of a peer written `host:port` or `[v6]:port`.
+export fn hostOf(peer: Str) -> Str {
+  let colon = lastColon(peer)
+
+  if peer.startsWith(Text.BRACKET_OPEN) && peer.contains(Text.BRACKET_CLOSE) { return peer.drop(1).take(peer.indexOf(Text.BRACKET_CLOSE) - 1) }
+  if colon < 0 || peer.indexOf(Text.PORT_JOIN) != colon { return peer }
+
+  peer.take(colon)
+}
+
+fn lastColon(text: Str) -> Int {
+  var found = -1
+  var index = 0
+
+  for character in text.chars() {
+    if character == ':' { found = index }
+
+    index = index + 1
+  }
+
+  found
+}

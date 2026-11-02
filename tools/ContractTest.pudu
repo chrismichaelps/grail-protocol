@@ -1,0 +1,34 @@
+/** @Tools.Contract.Suite — the projection is current, names are constant case, and literals survive */
+module ContractTest
+
+import Std.Io as Io
+import Std.Result as Result
+import Std.Test as Test
+import Constants.Contract as Names
+import Contract.Emit as Emit
+import Contract.Read as Read
+
+fn main() -> Int {
+  let contract = Result.andThen(Io.read(Names.SCHEMA_PATH), |text: Str| Read.read(text))
+  let files = Result.map(contract, |found: Read.Contract| Emit.files(&found))
+  let stale = Result.unwrapOr(Result.map(files, |found: Array[(Str, Str)]| found.filter(|file: (Str, Str)| Result.unwrapOr(Io.read(file[0]), "") != file[1]).map(|file: (Str, Str)| file[0])), ["unreadable contract"])
+  let operations = Result.unwrapOr(Result.map(contract, |found: Read.Contract| found.operations.map(|operation: Read.Operation| operation.id)), [])
+  let checks = Test.suite("Contract", &[
+      Test.succeeded("the contract reads", &contract),
+      Test.equals("every projected module matches the contract", &stale, &[]),
+      Test.contains("operations are read in contract order", &operations, "sendEnvelope"),
+      Test.equals("camel case becomes constant case", &Emit.constantName("envelopeBytes"), &"ENVELOPE_BYTES"),
+      Test.equals("dots and dashes become underscores", &Emit.constantName("input.request-x"), &"INPUT_REQUEST_X"),
+      Test.equals("the wildcard ability is named", &Emit.constantName("*"), &"ALL"),
+      Test.equals("braces and quotes are escaped in literals", &Emit.literal("\{\"a\"\}"), &"\"\\\{\\\"a\\\"\\\}\"")
+    ])
+  let report = Test.run(&checks)
+
+  for failure in Test.failuresOf(&report) {
+    let _said = Io.writeErrorLine("  failed: " + failure)
+  }
+
+  let _summary = Io.writeLine(Test.summary(&report))
+
+  if Test.passed(&report) { 0 } else { 1 }
+}

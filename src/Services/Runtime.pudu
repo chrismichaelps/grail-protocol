@@ -1,0 +1,44 @@
+/** @Services.Runtime.Context — the settings, the store, and the clock every use case shares */
+module Services.Runtime
+
+import Std.Bytes as ByteSeq
+import Std.Random as Random
+import Std.Result as Result
+import Std.Sync as Sync
+import Std.Time as Time
+import Config.Settings as Settings
+import Constants.Details as Details
+import Constants.Server as Capacity
+import Contract.Problems as Codes
+import Domain.Problem as Problem
+import Services.Store as Store
+
+/** @Services.Runtime.Runtime — what a running fabric holds */
+export type Runtime = { settings: Settings.Settings, store: Store.Store, secret: Str, waiting: Sync.Counter }
+
+/// A runtime over validated settings, with an empty store.
+export fn create(settings: &Settings.Settings) -> Runtime { Runtime{settings: *settings, store: Store.create(), secret: Settings.secretOf(settings), waiting: Sync.counter(0)} }
+
+/// Claims one of the places a pull may wait in, half the workers, so waiting pulls never occupy every worker; `false` when none is free.
+export fn claimWait(runtime: &Runtime) -> Bool {
+  let taken = Result.unwrapOr(Sync.increment(&runtime.waiting, 1), runtime.settings.workers)
+
+  if taken <= runtime.settings.workers / Capacity.WAITING_SHARE { return true }
+
+  let _released = Sync.increment(&runtime.waiting, -1)
+  false
+}
+
+/// Gives back a place claimed with `claimWait`.
+export fn releaseWait(runtime: &Runtime) -> () {
+  let _released = Sync.increment(&runtime.waiting, -1)
+}
+
+/// The fabric's time in milliseconds since the Unix epoch.
+export fn now() -> Int { Time.toMillis(&Time.currentInstant()) }
+
+/// A fresh random identifier with a prefix.
+export fn identifier(prefix: Str, bytes: Int) -> Result[Str, Problem.Problem] {
+  let drawn = Result.mapErr(Random.secureBytes(bytes), |_e: Str| Problem.of(Codes.UNAVAILABLE, Details.ENTROPY_UNAVAILABLE)) ?
+  Ok(prefix + ByteSeq.encodeHex(&drawn))
+}

@@ -1,0 +1,87 @@
+/** @Test.Engine.Authority.Suite — tokens verify only in their scope, expire, and only ever narrow when delegated */
+module Engine.AuthorityTest
+
+import Std.Option as Option
+import Std.Result as Result
+import Std.Test as Test
+import Constants.Security as Security
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Domain.Problem as Problem
+import Engine.Authority as Authority
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+
+fn request(id: Str, abilities: &Array[Str], expires: Int, graph: Option[Str]) -> Capability.Request {
+  Capability.Request{id: id, audience: "writer", graph: graph, abilities: *abilities, notBefore: Fixtures.NOW, expires: expires}
+}
+
+fn chained(depth: Int) -> Result[Str, Problem.Problem] {
+  var authority = Fixtures.owner()
+  var token = ""
+  var index = 0
+
+  while index < depth {
+    let asked = Capability.Request{id: "c" + show(index), audience: "a" + show(index), graph: None, abilities: [Vocabulary.ABILITY_TOKEN_DELEGATE], notBefore: Fixtures.NOW, expires: Fixtures.NOW + 1000}
+    token = Authority.delegate(&authority, &asked, Fixtures.SECRET) ?
+    authority = Authority.authorize(token, Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW, &setOf([])) ?
+    index = index + 1
+  }
+
+  Ok(token)
+}
+
+fn main() -> Int {
+  let owner = Fixtures.owner()
+  let rootToken = Authority.issue(&Fixtures.claims("root", Security.OWNER, &[Vocabulary.ABILITY_ALL]), Fixtures.SECRET)
+  let foreign = Authority.authorize(rootToken, "other", Fixtures.SECRET, Fixtures.NOW, &setOf([]))
+  let forged = Authority.authorize(rootToken, Fixtures.SCOPE, "another-secret-0123456789abcdef-0123", Fixtures.NOW, &setOf([]))
+  let late = Authority.authorize(rootToken, Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW + 2 * Fixtures.DAY, &setOf([]))
+  let revoked = Authority.authorize(rootToken, Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW, &setOf(["root"]))
+  let tampered = Authority.authorize(rootToken.drop(1), Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW, &setOf([]))
+  let rogue = Authority.authorize(Authority.issue(&Capability.Token{..Fixtures.claims("rogue", "writer", &[Vocabulary.ABILITY_ALL]), issuer: "writer"}, Fixtures.SECRET), Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW, &setOf([]))
+  let narrow = Authority.delegate(&owner, &request("w1", &[Vocabulary.ABILITY_TRANSFER_SEND], Fixtures.NOW + 1000, Some(Fixtures.GRAPH)), Fixtures.SECRET)
+  let held = Result.andThen(narrow, |token: Str| Authority.authorize(token, Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW, &setOf([])))
+  let longer = Authority.delegate(&owner, &request("w2", &[Vocabulary.ABILITY_TRANSFER_SEND], Fixtures.NOW + 3 * Fixtures.DAY, None), Fixtures.SECRET)
+  let widened = Result.andThen(held, |authority: Capability.Authority| Authority.require(&authority, Vocabulary.ABILITY_TOKEN_DELEGATE, None))
+  let everything = Authority.delegate(&owner, &request("w3", &[Vocabulary.ABILITY_ALL], Fixtures.NOW + 1000, None), Fixtures.SECRET)
+  let parentRevoked = Result.andThen(narrow, |token: Str| Authority.authorize(token, Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW, &setOf(["root"])))
+  let key = Authority.scopeKey(Fixtures.SECRET, Fixtures.SCOPE)
+  let narrowRoot = Fixtures.claims("narrow-root", "lead", &[Vocabulary.ABILITY_GRAPH_READ, Vocabulary.ABILITY_TOKEN_DELEGATE])
+  let narrowRootToken = Authority.encode(&narrowRoot, &key)
+  let forgedChild = Authority.encode(&Capability.Token{..Fixtures.claims("forged", "writer", &[Vocabulary.ABILITY_LEDGER_READ]), issuer: "lead", parent: Some("narrow-root"), chain: [narrowRootToken]}, &key)
+  let boundParent = Capability.Token{..Fixtures.claims("bound", "x", &[Vocabulary.ABILITY_GRAPH_READ]), graph: Some(Fixtures.GRAPH)}
+  let boundChild = Capability.Token{..Fixtures.claims("child", "y", &[Vocabulary.ABILITY_GRAPH_READ]), issuer: "x", parent: Some("bound"), graph: Some(Fixtures.GRAPH)}
+  let checks = Test.suite("Authority", &[
+      Test.succeeded("a chain as deep as the limit verifies", &chained(Limits.DELEGATION_DEPTH - 1)),
+      Test.equals("a chain deeper than the limit is refused", &Fixtures.code(&chained(Limits.DELEGATION_DEPTH)), &Codes.LIMIT_EXCEEDED),
+      Test.equals("a token is expired at its expiry instant", &Fixtures.code(&Authority.authorize(rootToken, Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW + Fixtures.DAY, &setOf([]))), &Codes.UNAUTHORIZED),
+      Test.equals("a signed child that widens its parent is refused", &Fixtures.code(&Authority.authorize(forgedChild, Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW, &setOf([]))), &Codes.UNAUTHORIZED),
+      Test.that("a graph-bound parent narrows to the same graph", Authority.narrows(&boundParent, &boundChild)),
+      Test.not("a graph-bound parent does not narrow to another graph", Authority.narrows(&boundParent, &Capability.Token{..boundChild, graph: Some("elsewhere")})),
+      Test.not("a child whose window is empty does not narrow", Authority.narrows(&boundParent, &Capability.Token{..boundChild, notBefore: boundChild.expires})),
+      Test.succeeded("the owner's token verifies in its scope", &Authority.authorize(rootToken, Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW, &setOf([]))),
+      Test.equals("a token of one scope is unauthorized in another", &Fixtures.code(&foreign), &Codes.UNAUTHORIZED),
+      Test.equals("a token signed with another secret is unauthorized", &Fixtures.code(&forged), &Codes.UNAUTHORIZED),
+      Test.equals("an expired token is unauthorized", &Fixtures.code(&late), &Codes.UNAUTHORIZED),
+      Test.equals("a revoked token is unauthorized", &Fixtures.code(&revoked), &Codes.UNAUTHORIZED),
+      Test.equals("a tampered token is unauthorized", &Fixtures.code(&tampered), &Codes.UNAUTHORIZED),
+      Test.equals("a root token not issued by the owner is unauthorized", &Fixtures.code(&rogue), &Codes.UNAUTHORIZED),
+      Test.succeeded("a narrower token is delegated", &narrow),
+      Test.equals("the delegated token acts for its audience", &Result.map(held, |authority: Capability.Authority| authority.audience), &Ok("writer")),
+      Test.equals("the delegated token keeps its graph", &Result.map(held, |authority: Capability.Authority| authority.graph), &Ok(Some(Fixtures.GRAPH))),
+      Test.equals("a delegation that outlives its parent is forbidden", &Fixtures.code(&longer), &Codes.FORBIDDEN),
+      Test.equals("a delegated token lacks abilities it was not given", &Fixtures.code(&widened), &Codes.FORBIDDEN),
+      Test.equals("only the owner grants every ability", &Fixtures.code(&everything), &Codes.FORBIDDEN),
+      Test.equals("revoking a parent revokes its delegations", &Fixtures.code(&parentRevoked), &Codes.UNAUTHORIZED),
+      Test.equals("a graph-bound token is forbidden on another graph", &Fixtures.code(&Result.andThen(held, |authority: Capability.Authority| Authority.require(&authority, Vocabulary.ABILITY_TRANSFER_SEND, Some("elsewhere")))), &Codes.FORBIDDEN),
+      Test.that("the owner holds every ability", Authority.permits(&owner, Vocabulary.ABILITY_LEDGER_READ)),
+      Test.not("a child naming another issuer does not narrow", Authority.narrows(&Fixtures.claims("a", "x", &[Vocabulary.ABILITY_ALL]), &Capability.Token{..Fixtures.claims("b", "y", &[Vocabulary.ABILITY_GRAPH_READ]), issuer: "z", parent: Some("a")})),
+      Test.that("a child within its parent narrows", Authority.narrows(&Fixtures.claims("a", "x", &[Vocabulary.ABILITY_ALL]), &Capability.Token{..Fixtures.claims("b", "y", &[Vocabulary.ABILITY_GRAPH_READ]), issuer: "x", parent: Some("a")})),
+      Test.not("an option of nothing is never a graph", Option.isSome(&owner.graph))
+    ])
+
+  Runner.finish(&checks)
+}

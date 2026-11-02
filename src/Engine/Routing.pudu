@@ -1,0 +1,64 @@
+/** @Engine.Routing.Resolvers — the strategy that turns a selector into recipients, chosen once */
+module Engine.Routing
+
+import Std.List as List
+import Std.Option as Option
+import Constants.Graphs as Graphs
+import Contract.Vocabulary as Vocabulary
+import Domain.Envelope as Envelope
+import Domain.Graph as Graph
+
+/** @Engine.Routing.Resolve — the participants a sender reaches with a kind */
+export type Resolve = fn(Graph.Graph, Str, Str) -> Array[Str]
+
+/// The resolver for a selector.
+export fn resolverOf(selector: &Envelope.Selector) -> Resolve {
+  match selector {
+    case Envelope.ToParticipant(id) => |graph: Graph.Graph, source: Str, kind: Str| if Graph.carries(&graph, source, id, kind) { [id] } else { [] }
+    case Envelope.ToRole(role) => |graph: Graph.Graph, source: Str, kind: Str| reachable(&graph, source, kind, |member: Graph.Participant| member.roles.contains(role))
+    case Envelope.ToAbility(ability) => |graph: Graph.Graph, source: Str, kind: Str| reachable(&graph, source, kind, |member: Graph.Participant| member.abilities.contains(ability))
+  }
+}
+
+/// Every address an envelope reaches: resolved participants, with graph participants replaced by the entry participants of the graph they stand for.
+export fn addresses(graph: &Graph.Graph, participants: &Array[Str], graphs: &Map[Str, Graph.Graph]) -> Array[Envelope.Address] {
+  var found: Array[Envelope.Address] = []
+
+  for id in *participants {
+    found = found.concat(expanded(graph, id, graphs, 0))
+  }
+
+  List.distinct(&found)
+}
+
+/// The participant a selector names directly, if it names one.
+export fn named(selector: &Envelope.Selector) -> Option[Str] {
+  match selector {
+    case Envelope.ToParticipant(id) => Some(id)
+    case _ => None
+  }
+}
+
+fn reachable(graph: &Graph.Graph, source: Str, kind: Str, holds: fn(Graph.Participant) -> Bool) -> Array[Str] {
+  graph.participants.filter(|member: Graph.Participant| member.id != source && holds(member) && Graph.carries(graph, source, member.id, kind)).map(|member: Graph.Participant| member.id)
+}
+
+fn expanded(graph: &Graph.Graph, id: Str, graphs: &Map[Str, Graph.Graph], depth: Int) -> Array[Envelope.Address] {
+  let member = Graph.participant(graph, id)
+  let inner = Option.andThen(Option.andThen(member, |found: Graph.Participant| if found.kind == Vocabulary.PARTICIPANT_GRAPH { found.graph } else { None }), |name: Str| graphs.get(name))
+
+  match inner {
+    case Some(nested) => {
+      var found: Array[Envelope.Address] = []
+
+      if depth >= graphs.size() { return found }
+
+      for entry in nested.participants.filter(|candidate: Graph.Participant| candidate.roles.contains(Graphs.ENTRY_ROLE)) {
+        found = found.concat(expanded(&nested, entry.id, graphs, depth + 1))
+      }
+
+      found
+    }
+    case None => [Envelope.Address{graph: graph.id, participant: id}]
+  }
+}

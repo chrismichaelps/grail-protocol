@@ -1,0 +1,74 @@
+/** @Test.Engine.Delivery.Suite — pages respect their limit, cursors acknowledge, and visibility hides */
+module Engine.DeliveryTest
+
+import Std.Json as Json
+import Std.Option as Option
+import Std.Result as Result
+import Std.Test as Test
+import Contract.Limits as Limits
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Domain.Envelope as Envelope
+import Domain.Ledger as Ledger
+import Domain.Scope as Scope
+import Domain.Transfer as Transfer
+import Engine.Delivery as Delivery
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+
+fn sent(state: &Scope.State, id: Str, mode: Str, visibility: Str) -> Scope.State {
+  let body = Json.withField(&Json.withField(&Fixtures.body(id, "planner", Fixtures.to("writer"), Vocabulary.KIND_MEMORY, &[]), "delivery", Json.object(&[("mode", Json.Text(mode))])), "visibility", Json.Text(visibility))
+  Result.unwrapOr(Fixtures.admitted(state, &body), *state)
+}
+
+fn ids(page: &Transfer.Page) -> Array[Str] { page.records.map(|record: Ledger.Record| record.entry.id) }
+
+fn main() -> Int {
+  let writer = Envelope.Address{graph: Fixtures.GRAPH, participant: "writer"}
+  var state = Fixtures.teamScope()
+
+  for id in ["m1", "m2", "m3"] {
+    state = sent(&state, id, Vocabulary.DELIVERY_AT_LEAST_ONCE, Vocabulary.VISIBILITY_SCOPE)
+  }
+
+  state = sent(&state, "m4", Vocabulary.DELIVERY_AT_MOST_ONCE, Vocabulary.VISIBILITY_RECIPIENTS)
+
+  let firstPage = Delivery.pull(&state, &writer, 0, 2, Fixtures.NOW)
+  let again = Delivery.pull(&firstPage[1], &writer, 0, 10, Fixtures.NOW)
+  let onward = Delivery.pull(&again[1], &writer, firstPage[0].cursor, 10, Fixtures.NOW)
+  let replay = Delivery.pull(&onward[1], &writer, 0, 10, Fixtures.NOW)
+  let planner = Delivery.pull(&state, &Envelope.Address{graph: Fixtures.GRAPH, participant: "planner"}, 0, 10, Fixtures.NOW)
+  let ledger = Delivery.ledger(&state, 1, 2)
+  let reviewer = Capability.Authority{scopeId: Fixtures.SCOPE, graph: None, audience: "reviewer", abilities: [Vocabulary.ABILITY_LEDGER_READ], token: "", chain: []}
+  let writerAuthority = Capability.Authority{..reviewer, audience: "writer"}
+  let hiddenRecord = state.records.get("m4")
+  let due = Result.unwrapOr(Fixtures.admitted(&state, &Json.withField(&Fixtures.body("dl", "planner", Fixtures.to("writer"), Vocabulary.KIND_MEMORY, &[]), "deadline", Json.Number(Fixtures.NOW + 10))), state)
+  let atDeadline = Delivery.pull(&due, &writer, Scope.length(&state), 10, Fixtures.NOW + 10)
+  let beforeDeadline = Delivery.pull(&due, &writer, Scope.length(&state), 10, Fixtures.NOW + 9)
+  let whole = Delivery.ledger(&state, 0, Scope.length(&state))
+  let graphRecord = Option.map(state.records.get("m1"), |found: Ledger.Record| Ledger.Record{..found, envelope: Envelope.Envelope{..found.envelope, visibility: Vocabulary.VISIBILITY_GRAPH}})
+  let sameGraph = Capability.Authority{..reviewer, graph: Some(Fixtures.GRAPH)}
+  let otherGraph = Capability.Authority{..reviewer, graph: Some("elsewhere")}
+  let checks = Test.suite("Delivery", &[
+      Test.equals("an envelope is not delivered at its deadline", &ids(&atDeadline[0]), &[]),
+      Test.equals("and is delivered just before it", &ids(&beforeDeadline[0]), &["dl"]),
+      Test.equals("the ledger reads through its last entry", &whole.records.length(), &Scope.length(&state)),
+      Test.that("a graph envelope is visible to a reader of the whole scope", Option.fold(graphRecord, |record: Ledger.Record| Delivery.visible(&record, &reviewer), false)),
+      Test.that("and to a reader of its graph", Option.fold(graphRecord, |record: Ledger.Record| Delivery.visible(&record, &sameGraph), false)),
+      Test.not("but not to a reader of another graph", Option.fold(graphRecord, |record: Ledger.Record| Delivery.visible(&record, &otherGraph), true)),
+      Test.that("a scope envelope is visible to a reader of another graph", Option.fold(state.records.get("m1"), |record: Ledger.Record| Delivery.visible(&record, &otherGraph), false)),
+      Test.equals("a page never exceeds its limit", &ids(&firstPage[0]), &["m1", "m2"]),
+      Test.equals("the cursor is the last sequence delivered", &firstPage[0].cursor, &(Scope.length(&state) - 2)),
+      Test.equals("at-least-once deliveries return until acknowledged", &ids(&again[0]), &["m1", "m2", "m3", "m4"]),
+      Test.equals("a cursor acknowledges everything up to it, and an at-most-once delivery already served stays served", &ids(&onward[0]), &["m3"]),
+      Test.equals("at-most-once deliveries are never served twice", &ids(&replay[0]), &["m1", "m2", "m3"]),
+      Test.equals("a participant receives only what is addressed to it", &ids(&planner[0]), &[]),
+      Test.equals("the ledger reads after its cursor", &ids(&ledger), &["m1", "m2"]),
+      Test.equals("page sizes are bounded by the contract", &Delivery.pageSize(Some(Limits.PAGE_MAX * 10)), &Limits.PAGE_MAX),
+      Test.equals("a missing page size takes the default", &Delivery.pageSize(None), &Limits.PAGE_DEFAULT),
+      Test.not("a recipients-only envelope is hidden from others", Option.fold(hiddenRecord, |record: Ledger.Record| Delivery.visible(&record, &reviewer), true)),
+      Test.that("a recipients-only envelope is visible to its recipient", Option.fold(hiddenRecord, |record: Ledger.Record| Delivery.visible(&record, &writerAuthority), false))
+    ])
+
+  Runner.finish(&checks)
+}

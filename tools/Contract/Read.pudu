@@ -1,0 +1,235 @@
+/** @Tools.Contract.Reader — the parts of the contract the projection needs */
+module Contract.Read
+
+import Std.Json as Json
+import Std.Option as Option
+import Std.Result as Result
+import Constants.Contract as Names
+
+/** @Tools.Contract.Operation — one operation as a binding serves it */
+export type Operation = {
+  id: Str,
+  method: Str,
+  path: Str,
+  ability: Str,
+  status: Int,
+  secured: Bool,
+  bodied: Bool,
+  pathParameters: Array[Str],
+  queryParameters: Array[Str]
+}
+
+/** @Tools.Contract.Enumeration — one closed set of names */
+export type Enumeration = { prefix: Str, collection: Str, values: Array[Str] }
+
+/** @Tools.Contract.ProblemCode — one registered problem */
+export type ProblemCode = { code: Str, status: Int, title: Str }
+
+/** @Tools.Contract.Members — the members an object schema allows and requires */
+export type Members = { schema: Str, allowed: Array[Str], required: Array[Str], closed: Bool, extensible: Bool }
+
+/** @Tools.Contract.Contract — everything projected from the document */
+export type Contract = {
+  protocol: Str,
+  version: Str,
+  title: Str,
+  mediaType: Str,
+  problemMediaType: Str,
+  problemPrefix: Str,
+  headers: Array[(Str, Str)],
+  operations: Array[Operation],
+  enumerations: Array[Enumeration],
+  finalStates: Array[Str],
+  openingKinds: Array[Str],
+  problems: Array[ProblemCode],
+  limits: Array[(Str, Int)],
+  members: Array[Members],
+  document: Str
+}
+
+/// The contract read from the document's text, or why it cannot be.
+export fn read(source: Str) -> Result[Contract, Str] {
+  let document = match Json.decode(source) {
+    case Ok(found) => found
+    case Err(problem) => { return Err("the contract is not JSON: " + Json.explain(&problem)) }
+  }
+  let info = member(&document, "info") ?
+  let schemas = member(&member(&document, "components") ?, "schemas") ?
+  let parameters = member(&member(&document, "components") ?, "parameters") ?
+  let operations = operationsOf(&member(&document, "paths") ?, &parameters) ?
+  var enumerations: Array[Enumeration] = []
+
+  for entry in Names.ENUMERATIONS {
+    let values = enumerationOf(&member(&schemas, entry[0]) ?, entry[0]) ?
+    enumerations = enumerations.push(Enumeration{prefix: entry[1], collection: entry[2], values: values})
+  }
+
+  Ok(Contract {
+      protocol: text(&document, "x-grail-version") ?,
+      version: text(&info, "version") ?,
+      title: text(&info, "title") ?,
+      mediaType: text(&document, "x-grail-media-type") ?,
+      problemMediaType: text(&document, "x-grail-problem-media-type") ?,
+      problemPrefix: text(&document, "x-grail-problem-prefix") ?,
+      headers: textPairs(&member(&document, "x-grail-headers") ?) ?,
+      operations: operations,
+      enumerations: enumerations,
+      finalStates: texts(&member(&document, "x-grail-final-states") ?) ?,
+      openingKinds: texts(&member(&document, "x-grail-opening-kinds") ?) ?,
+      problems: problemsOf(&member(&document, "x-grail-problems") ?) ?,
+      limits: numberPairs(&member(&document, "x-grail-limits") ?) ?,
+      members: membersOf(&schemas),
+      document: Json.encode(&document)
+    })
+}
+
+fn operationsOf(paths: &Json.Json, parameters: &Json.Json) -> Result[Array[Operation], Str] {
+  var found: Array[Operation] = []
+  let entries = Option.unwrapOr(Json.asObject(paths), [])
+
+  for entry in entries {
+    let shared = Option.unwrapOr(Option.andThen(Json.field(&entry[1], "parameters"), |given: Json.Json| Json.asList(&given)), [])
+
+    for method in Names.METHODS {
+      if let Some(described) = Json.field(&entry[1], method) {
+        found = found.push(operationOf(entry[0], method, &described, &shared, parameters) ?)
+      }
+    }
+  }
+
+  Ok(found)
+}
+
+fn operationOf(path: Str, method: Str, described: &Json.Json, shared: &Array[Json.Json], parameters: &Json.Json) -> Result[Operation, Str] {
+  let id = text(described, "operationId") ?
+  let answers = Option.unwrapOr(Option.andThen(Json.field(described, "responses"), |given: Json.Json| Json.asObject(&given)), [])
+  let statuses = answers.map(|answer: (Str, Json.Json)| answer[0]).filter(|code: Str| code.startsWith("2"))
+  let resolved = resolvedParameters(shared, parameters) ?
+  let secured = match Json.field(described, "security") {
+    case Some(given) => Option.unwrapOr(Option.map(Json.asList(&given), |list: Array[Json.Json]| !list.isEmpty()), true)
+    case None => true
+  }
+
+  if statuses.isEmpty() { return Err(id + " declares no success answer") }
+
+  Ok(Operation {
+      id: id,
+      method: method.toUpper(),
+      path: path,
+      ability: text(described, "x-grail-ability") ?,
+      status: Option.unwrapOr(statuses[0].toInt(), 200),
+      secured: secured,
+      bodied: Json.field(described, "requestBody") != None,
+      pathParameters: resolved.filter(|pair: (Str, Str)| pair[1] == "path").map(|pair: (Str, Str)| pair[0]),
+      queryParameters: resolved.filter(|pair: (Str, Str)| pair[1] == "query").map(|pair: (Str, Str)| pair[0])
+    })
+}
+
+fn resolvedParameters(shared: &Array[Json.Json], parameters: &Json.Json) -> Result[Array[(Str, Str)], Str] {
+  var found: Array[(Str, Str)] = []
+
+  for given in *shared {
+    let reference = text(&given, "$ref") ?
+    let name = reference.drop(Names.REFERENCE_PREFIX.length() + Names.PARAMETER_GROUP.length())
+    let declared = member(parameters, name) ?
+    found = found.push((text(&declared, "name") ?, text(&declared, "in") ?))
+  }
+
+  Ok(found)
+}
+
+fn enumerationOf(schema: &Json.Json, name: Str) -> Result[Array[Str], Str] {
+  if let Some(values) = Json.field(schema, "enum") { return texts(&values) }
+
+  for alternative in Option.unwrapOr(Option.andThen(Json.field(schema, "anyOf"), |given: Json.Json| Json.asList(&given)), []) {
+    if let Some(values) = Json.field(&alternative, "enum") { return texts(&values) }
+  }
+
+  Err(name + " has no enumeration")
+}
+
+fn problemsOf(listed: &Json.Json) -> Result[Array[ProblemCode], Str] {
+  var found: Array[ProblemCode] = []
+
+  for entry in Option.unwrapOr(Json.asList(listed), []) {
+    found = found.push(ProblemCode{code: text(&entry, "code") ?, status: number(&entry, "status") ?, title: text(&entry, "title") ?})
+  }
+
+  Ok(found)
+}
+
+fn membersOf(schemas: &Json.Json) -> Array[Members] {
+  var found: Array[Members] = []
+
+  for entry in Option.unwrapOr(Json.asObject(schemas), []) {
+    if let Some(properties) = Json.field(&entry[1], "properties") {
+      let allowed = Json.keys(&properties)
+      let required = Option.unwrapOr(Option.andThen(Json.field(&entry[1], "required"), |given: Json.Json| Result.toOption(texts(&given))), [])
+      let closed = Json.field(&entry[1], "additionalProperties") == Some(Json.Boolean(false))
+      let extensible = Json.field(&entry[1], "patternProperties") != None
+      found = found.push(Members{schema: entry[0], allowed: allowed, required: required, closed: closed, extensible: extensible})
+    }
+  }
+
+  found
+}
+
+fn member(value: &Json.Json, name: Str) -> Result[Json.Json, Str] {
+  match Json.field(value, name) {
+    case Some(found) => Ok(found)
+    case None => Err("the contract has no member " + name)
+  }
+}
+
+fn text(value: &Json.Json, name: Str) -> Result[Str, Str] {
+  match Option.andThen(Json.field(value, name), |given: Json.Json| Json.asText(&given)) {
+    case Some(found) => Ok(found)
+    case None => Err("the contract member " + name + " is not text")
+  }
+}
+
+fn number(value: &Json.Json, name: Str) -> Result[Int, Str] {
+  match Option.andThen(Json.field(value, name), |given: Json.Json| Json.asInt(&given)) {
+    case Some(found) => Ok(found)
+    case None => Err("the contract member " + name + " is not a whole number")
+  }
+}
+
+fn texts(value: &Json.Json) -> Result[Array[Str], Str] {
+  var found: Array[Str] = []
+
+  for entry in Option.unwrapOr(Json.asList(value), []) {
+    match Json.asText(&entry) {
+      case Some(given) => { found = found.push(given) }
+      case None => { return Err("a list of names holds something else") }
+    }
+  }
+
+  Ok(found)
+}
+
+fn textPairs(value: &Json.Json) -> Result[Array[(Str, Str)], Str] {
+  var found: Array[(Str, Str)] = []
+
+  for entry in Option.unwrapOr(Json.asObject(value), []) {
+    match Json.asText(&entry[1]) {
+      case Some(given) => { found = found.push((entry[0], given)) }
+      case None => { return Err(entry[0] + " is not text") }
+    }
+  }
+
+  Ok(found)
+}
+
+fn numberPairs(value: &Json.Json) -> Result[Array[(Str, Int)], Str] {
+  var found: Array[(Str, Int)] = []
+
+  for entry in Option.unwrapOr(Json.asObject(value), []) {
+    match Json.asInt(&entry[1]) {
+      case Some(given) => { found = found.push((entry[0], given)) }
+      case None => { return Err(entry[0] + " is not a whole number") }
+    }
+  }
+
+  Ok(found)
+}

@@ -1,0 +1,49 @@
+/** @App.Assembly.Composition — the mediator built once over the runtime */
+module App.Assembly
+
+import App.Events as Events
+import App.Handlers as Handlers
+import App.Logging as Logging
+import App.Messages as Messages
+import App.Pipeline as Pipeline
+import App.Resilience as Resilience
+import Constants.Logging as Names
+import Domain.Problem as Problem
+import PuduLangLog.Logger as Logger
+import PuduLangLog.Value as Value
+import PuduLangMediator.Mediator as Mediator
+import PuduLangMediator.Notification as Notification
+import PuduLangMediator.Request as Request
+import Services.Runtime as Runtime
+
+/** @App.Assembly.App — the runtime, the mediator, its kinds, and the loggers */
+export type App = { runtime: Runtime.Runtime, mediator: Mediator.Mediator, kinds: Messages.Kinds, events: Events.Kinds, logs: Logging.Logs }
+
+/// The fabric over a runtime, or every registration problem at once.
+export fn assemble(runtime: &Runtime.Runtime, logs: &Logging.Logs) -> Result[App, Str] {
+  let kinds = Messages.kinds()
+  let events = Events.kinds()
+  let guards = Resilience.registrations(&kinds) ?
+  let registrations = Pipeline.registrations(&kinds, &logs.messages).concat(guards).concat(Handlers.registrations(&kinds, runtime)).concat(Events.registrations(&events, &logs.server))
+
+  match Mediator.build(registrations) {
+    case Ok(mediator) => Ok(App{runtime: *runtime, mediator: mediator, kinds: kinds, events: events, logs: *logs})
+    case Err(invalid) => Err(Mediator.explain(&invalid))
+  }
+}
+
+/// A message sent through the mediator, its failure as a problem.
+export fn send[Q, R](app: &App, kind: &Request.Kind[Q, R, Problem.Problem], request: Q) -> Result[R, Problem.Problem] {
+  match Mediator.send(&app.mediator, kind, request) {
+    case Ok(found) => Ok(found)
+    case Err(failure) => Err(Pipeline.problemOf(&failure))
+  }
+}
+
+/// The fabric's time in milliseconds since the Unix epoch.
+export fn now() -> Int { Runtime.now() }
+
+/// Announces a notification; a listener's failure is logged, never returned to the caller whose change already happened.
+export fn announce[N](app: &App, kind: &Notification.Kind[N, Problem.Problem], notification: N) -> () {
+  if let Err(failure) = Mediator.publish(&app.mediator, kind, notification) { app.logs.server.warning(Names.UNANNOUNCED, [Value.text(kind.info.name), Value.text(Pipeline.problemOf(&failure).detail)]) }
+}

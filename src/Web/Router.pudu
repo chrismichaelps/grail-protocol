@@ -1,0 +1,54 @@
+/** @Web.Router.Binding — the HTTP routes, built from the contract's operations and nothing else */
+module Web.Router
+
+import Std.Http as Http
+import Std.Http.Server.Guard as Guard
+import Std.Http.Server.Route as Route
+import Std.Option as Option
+import App.Assembly as Assembly
+import Config.Settings as Settings
+import Constants.Details as Details
+import Constants.Http as Names
+import Constants.Server as Capacity
+import Constants.Text as Text
+import Contract.Operations as Operations
+import Contract.Problems as Codes
+import Domain.Problem as Problem
+import Web.Caller as Caller
+import Web.Handlers as Handlers
+import Web.Peers as Peers
+import Web.Respond as Respond
+
+/// Every contract operation as a route, or the operations without a handler and the handlers without an operation.
+export fn router(app: &Assembly.App) -> Result[Route.Router, Str] {
+  let unbound = Operations.ALL.filter(|operation: Operations.Operation| !Handlers.bound().contains(operation.id)).map(|operation: Operations.Operation| Names.UNBOUND + operation.id)
+  let stray = Handlers.bound().filter(|id: Str| Operations.ALL.filter(|operation: Operations.Operation| operation.id == id).isEmpty()).map(|id: Str| Names.STRAY + id)
+  let problems = unbound.concat(stray)
+
+  if !problems.isEmpty() { return Err(problems.join(Text.LIST_JOIN)) }
+
+  let held = *app
+  let routes = Operations.ALL.map(|operation: Operations.Operation| routeOf(&held, &operation))
+  Ok(Route.withFallback(&Route.routing(&routes), |_request: Route.Request| Respond.problem(&Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND))))
+}
+
+/// The hardening every request passes: a request identity, protective headers, sharing with listed origins only, a rate limit, a concurrency bound, and a deadline. Same-site form protection is left out on purpose: every operation is authorized by a bearer token, never by a cookie.
+export fn middleware(settings: &Settings.Settings) -> Array[Route.Middleware] {
+  let sharing = Guard.Sharing{origins: Settings.origins(settings), methods: Names.SHARED_METHODS, headers: Names.SHARED_HEADERS, credentials: false}
+  [Guard.identified(), Guard.protectedHeaders(), Guard.shared(&sharing), Peers.byHost()].concat([
+      Guard.rateLimited(Capacity.RATE_REQUESTS, Capacity.RATE_WINDOW_SECONDS),
+      Guard.boundedConcurrency(Capacity.INFLIGHT_MAX),
+      Guard.timeout(Capacity.HANDLER_TIMEOUT_MILLIS)
+    ])
+}
+
+fn routeOf(app: &Assembly.App, operation: &Operations.Operation) -> Route.Route {
+  let held = *app
+  let status = operation.status
+  let id = operation.id
+
+  Route.on(Http.methodFrom(operation.method), operation.pattern, |request: Route.Request| match Caller.version(&request) {
+      case Ok(_) => Option.unwrapOr(Handlers.respond(id, held, request, status), Respond.problem(&Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)))
+      case Err(refused) => Respond.problem(&refused)
+    })
+}

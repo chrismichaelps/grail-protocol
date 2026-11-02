@@ -1,0 +1,50 @@
+/** @Tools.Layers.Catalog — judges one import against the layer table */
+module Layers.Catalog
+
+import Constants.Layers as Table
+
+/// The folder a module belongs to: its first segment.
+export fn folderOf(name: Str) -> Str {
+  let dot = name.indexOf(".")
+
+  if dot < 0 { name } else { name.take(dot) }
+}
+
+/// Why an import is refused, or `None` when the catalog allows it.
+export fn judge(from: Str, target: Str, known: &Set[Str]) -> Option[Str] {
+  let folder = folderOf(from)
+
+  if Table.RANKS.get(folder) == None { return Some("uncatalogued folder " + folder) }
+  if target.startsWith("Std.") { return judgeStandard(folder, target) }
+  if target.startsWith("PuduLang") { return judgePackage(folder, target) }
+  if !(target in *known) { return Some("missing module") }
+  if folder == Table.ENTRY { return None }
+
+  let into = folderOf(target)
+
+  match Table.ALLOWED.get(folder) {
+    case Some(permitted) => if into in permitted { None } else { Some(folder + " may not import " + into) }
+    case None => Some("uncatalogued folder " + folder)
+  }
+}
+
+fn judgeStandard(folder: Str, target: Str) -> Option[Str] {
+  if !(folder in Table.PURE) || target in Table.PURE_EXCEPTIONS { return None }
+
+  for prefix in Table.EFFECTFUL {
+    if target == prefix || target.startsWith(prefix + ".") { return Some(folder + " is pure and may not import " + target) }
+  }
+
+  None
+}
+
+fn judgePackage(folder: Str, target: Str) -> Option[Str] {
+  if folder == Table.ENTRY { return None }
+
+  let root = folderOf(target)
+
+  match Table.PACKAGES.get(folder) {
+    case Some(permitted) => if root in permitted { None } else { Some(folder + " may not import package " + root) }
+    case None => Some(folder + " may not import package " + root)
+  }
+}

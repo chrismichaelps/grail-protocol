@@ -1,0 +1,31 @@
+/** @Contract.Version.Generated — protocol version, media types, and headers */
+module Contract.Version
+
+// projected from schema/grail.openapi.json by tools/Contract.pudu; edit the schema, not this file
+
+/// The protocol version this contract describes.
+export const PROTOCOL: Str = "1.0"
+
+/// The version of the contract document.
+export const CONTRACT: Str = "1.0.0"
+
+/// The contract's title.
+export const TITLE: Str = "Grail Protocol"
+
+/// The media type of requests and answers.
+export const MEDIA_TYPE: Str = "application/json"
+
+/// The media type of problem documents.
+export const PROBLEM_MEDIA_TYPE: Str = "application/problem+json"
+
+/// The prefix of every problem type.
+export const PROBLEM_PREFIX: Str = "urn:grail:problem:"
+
+/// The `version` header.
+export const HEADER_VERSION: Str = "Grail-Version"
+
+/// The `authorization` header.
+export const HEADER_AUTHORIZATION: Str = "Authorization"
+
+/// The `retryAfter` header.
+export const HEADER_RETRY_AFTER: Str = "Retry-After"

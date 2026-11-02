@@ -1,0 +1,53 @@
+/** @Test.Support.Fabric.Harness — a whole fabric in process, driven through its router without sockets */
+module Support.Fabric
+
+import Std.Http as Http
+import Std.Http.Server.Route as Route
+import Std.Json as Json
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import App.Assembly as Assembly
+import App.Logging as Logging
+import Config.Settings as Settings
+import Constants.Security as Security
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Engine.Authority as Authority
+import Services.Runtime as Runtime
+import Support.Fixtures as Fixtures
+import Utils.JsonRead as JsonRead
+import Web.Router as Router
+
+/** @Test.Support.Fabric.Answer — a status, the JSON body, and how long the answer took */
+export type Answer = { status: Int, body: Json.Json, millis: Int }
+
+/// A router over a fresh runtime, or why one could not be built.
+export fn start() -> Result[Route.Router, Str] {
+  let settings = Settings.loadFrom(&mapOf([("GRAIL_SECRET", Fixtures.SECRET)])) ?
+  let app = Assembly.assemble(&Runtime.create(&settings), &Logging.quiet()) ?
+  Router.router(&app)
+}
+
+/// The owner's root token for a scope, valid for a day around the current time.
+export fn owner(scopeId: Str) -> Str {
+  let now = Assembly.now()
+  Authority.issue(&Capability.Token{..Fixtures.claims("root", Security.OWNER, &[Vocabulary.ABILITY_ALL]), scopeId: scopeId, notBefore: now - Fixtures.DAY, expires: now + Fixtures.DAY}, Fixtures.SECRET)
+}
+
+/// One request through the router.
+export fn sent(router: &Route.Router, method: Http.Method, path: Str, token: Str, body: Str) -> Answer {
+  let started = Assembly.now()
+  let message = Http.Request{method: method, target: path, headers: [("authorization", Security.BEARER_PREFIX + token), ("content-type", "application/json")], body: body, binaryBody: None}
+  let response = Route.dispatch(router, Route.Request{message: message, path: Route.pathOf(path), params: Map.empty(), query: Route.queryOf(path), peer: "test"})
+  Answer{status: response.status.code, body: Result.unwrapOr(Json.decode(response.body), Json.Null), millis: Assembly.now() - started}
+}
+
+/// A token delegated by `from` in scope `demo`, or empty text when refused.
+export fn delegated(router: &Route.Router, from: Str, id: Str, audience: Str, abilities: &Array[Str], graph: Str, expires: Int) -> Str {
+  let body = Json.encode(&Json.object(&[("id", Json.Text(id)), ("audience", Json.Text(audience)), ("graph", Json.Text(graph)), ("abilities", JsonRead.textList(abilities)), ("expires", Json.Number(expires))]))
+  Option.unwrapOr(JsonRead.text(&sent(router, Http.Post, "/v1/scopes/demo/tokens", from, body).body, "token"), "")
+}
+
+/// The problem code of an answer, or empty text.
+export fn code(answer: &Answer) -> Str { Option.unwrapOr(JsonRead.text(&answer.body, "code"), "") }

@@ -1,0 +1,58 @@
+/** @Services.Bridge.Carrier — carries one JSON-RPC message through a graph as an envelope */
+module Services.Bridge
+
+import Std.Json as Json
+import Std.Option as Option
+import Api.Bridge as Inspection
+import Constants.Fabric as Identity
+import Constants.Rpc as Rpc
+import Contract.Members as Members
+import Contract.Vocabulary as Vocabulary
+import Domain.Envelope as Envelope
+import Domain.Lifecycle as Lifecycle
+import Domain.Problem as Problem
+import Domain.Request as Request
+import Domain.Scope as Scope
+import Domain.Transfer as Transfer
+import Engine.Admission as Admission
+import Engine.Bridge as Correlation
+import Engine.Codec.Envelope as EnvelopeCodec
+import Services.Fabric as Fabric
+import Services.Runtime as Runtime
+import Services.Store as Store
+import Utils.JsonRead as JsonRead
+
+/// Admits a JSON-RPC message from the token's participant to a tool participant; a response is linked to the request it answers.
+export fn carry(runtime: &Runtime.Runtime, call: &Request.Call[Request.Bridging]) -> Result[Transfer.Receipt, Problem.Problem] {
+  let message = Inspection.inspect(Json.encode(&call.input.message)) ?
+  let id = Runtime.identifier(Rpc.TRANSFER_PREFIX, Rpc.ID_BYTES) ?
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = Fabric.authorized(&state, &asked, secret, now) ?
+      let sender = Envelope.Address{graph: asked.input.graph, participant: authority.audience}
+      let parents = if Correlation.isResponse(&message) { Option.toArray(Option.andThen(Json.field(&message, Rpc.ID), |rpcId: Json.Json| Correlation.requestFor(&state, &sender, &rpcId))) } else { [] }
+      let body = Json.object(&[
+          (Members.ENVELOPE_GRAIL, Json.Text(Identity.PROTOCOLS[0])),
+          (Members.ENVELOPE_ID, Json.Text(id)),
+          (Members.ENVELOPE_SCOPE, Json.Text(asked.scopeId)),
+          (Members.ENVELOPE_GRAPH, Json.Text(asked.input.graph)),
+          (Members.ENVELOPE_SOURCE, Json.Text(authority.audience)),
+          (Members.ENVELOPE_TARGET, EnvelopeCodec.selectorJson(&Envelope.ToParticipant(asked.input.participant))),
+          (Members.ENVELOPE_KIND, Json.Text(Vocabulary.KIND_BRIDGE_RPC)),
+          (Members.ENVELOPE_PARENTS, JsonRead.textList(&parents)),
+          (Members.ENVELOPE_SCHEMA, Json.Text(Rpc.SCHEMA)),
+          (Members.ENVELOPE_PAYLOAD, message)
+        ])
+      let envelope = EnvelopeCodec.decode(&body) ?
+
+      match Admission.admit(&state, &envelope, &body, &authority, now) ? {
+        case Admission.Fresh(admitted) => {
+          let next = Admission.commit(&state, &admitted)
+          Ok((Transfer.Receipt{id: id, sequence: admitted.record.entry.sequence, digest: admitted.record.entry.digest, recipients: admitted.record.recipients, state: Option.map(admitted.lifecycle, |found: Lifecycle.Lifecycle| found.state), duplicate: false}, next))
+        }
+        case Admission.Repeated(original) => Ok((Transfer.Receipt{id: original.entry.id, sequence: original.entry.sequence, digest: original.entry.digest, recipients: original.recipients, state: None, duplicate: true}, state))
+      }
+    })
+}

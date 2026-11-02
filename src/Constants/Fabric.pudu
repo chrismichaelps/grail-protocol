@@ -1,0 +1,44 @@
+/** @Constants.Fabric.Identity — the reference fabric's name, release, and claims */
+module Constants.Fabric
+
+/// The implementation name published in discovery.
+export const NAME: Str = "grail-fabric"
+
+/// The release this build is.
+export const VERSION: Str = "0.1.0"
+
+/// The name of the command-line executable.
+export const EXECUTABLE: Str = "grail"
+
+/// Protocol versions this fabric speaks, newest first.
+export const PROTOCOLS: Array[Str] = ["1.0"]
+
+/// The conformance profiles this fabric claims.
+export const PROFILES: Array[Str] = ["core"]
+
+/// The bindings this fabric offers.
+export const BINDINGS: Array[Str] = ["http", "lines"]
+
+/// Extensions this fabric supports.
+export const EXTENSIONS: Array[Str] = []
+
+/// The status the health operation reports.
+export const ALIVE: Str = "alive"
+
+/// The member naming the implementation in discovery.
+export const NAME_MEMBER: Str = "name"
+
+/// The member giving the implementation's version in discovery.
+export const VERSION_MEMBER: Str = "version"
+
+/// The member listing claimed profiles in discovery.
+export const PROFILES_MEMBER: Str = "profiles"
+
+/// The member giving the contract version in discovery.
+export const CONTRACT_MEMBER: Str = "contract"
+
+/// The name of the client a peer connection is configured under.
+export const PEER_CLIENT: Str = "grail-peer"
+
+/// Milliseconds a peer request may take.
+export const PEER_TIMEOUT_MILLIS: Int = 30000

@@ -1,0 +1,36 @@
+/** @Validation.Graph.Rules — what drafts and mutations must hold beyond their shape */
+module Validation.Graph
+
+import Std.List as List
+import Std.Option as Option
+import Constants.Details as Details
+import Contract.Members as Members
+import Contract.Vocabulary as Vocabulary
+import Domain.Graph as Graph
+import Domain.Mutation as Mutation
+import PuduLangValidator.Rule as Rule
+import PuduLangValidator.Validator as Validator
+
+/// Rules for a graph about to be created.
+export fn draft() -> Validator.Validator[Mutation.Draft] {
+  let participants = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.GRAPH_DRAFT_PARTICIPANTS, |d: Mutation.Draft| d.participants), |members: Array[Graph.Participant]| List.all(&members, |member: Graph.Participant| participantHolds(&member))), Details.GRAPH_PARTICIPANT))
+  let edges = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.GRAPH_DRAFT_EDGES, |d: Mutation.Draft| d.edges), |links: Array[Graph.Edge]| List.all(&links, |edge: Graph.Edge| edge.from != edge.to)), Details.SELF_EDGE))
+  Validator.add(Validator.add(Validator.create(), participants), edges)
+}
+
+/// Rules for a mutation.
+export fn mutation() -> Validator.Validator[Mutation.Mutation] {
+  let steps = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.MUTATION_OPERATIONS, |m: Mutation.Mutation| m.steps), |listed: Array[Mutation.Step]| List.all(&listed, |step: Mutation.Step| stepHolds(&step))), Details.GRAPH_PARTICIPANT))
+  Validator.add(Validator.create(), steps)
+}
+
+/// Whether a participant names a graph exactly when it is a graph participant.
+export fn participantHolds(member: &Graph.Participant) -> Bool { (member.kind == Vocabulary.PARTICIPANT_GRAPH) == Option.isSome(&member.graph) }
+
+fn stepHolds(step: &Mutation.Step) -> Bool {
+  match step {
+    case Mutation.AddParticipant(member) => participantHolds(&member)
+    case Mutation.AddEdge(edge) => edge.from != edge.to
+    case _ => true
+  }
+}

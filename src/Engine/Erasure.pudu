@@ -1,0 +1,19 @@
+/** @Engine.Erasure.Payloads — removes a payload while the chain still proves it existed */
+module Engine.Erasure
+
+import Std.Option as Option
+import Constants.Details as Details
+import Contract.Members as Members
+import Contract.Problems as Codes
+import Domain.Envelope as Envelope
+import Domain.Ledger as Ledger
+import Domain.Problem as Problem
+import Domain.Scope as Scope
+import Utils.Canonical as Canonical
+
+/// The scope with one record's payload removed and the record marked erased; its digest and link are untouched.
+export fn erase(state: &Scope.State, id: Str) -> Result[(Ledger.Record, Scope.State), Problem.Problem] {
+  let record = Option.okOr(state.records.get(id), Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) ?
+  let erased = Ledger.Record{..record, body: Canonical.without(&record.body, &[Members.ENVELOPE_PAYLOAD]), envelope: Envelope.Envelope{..record.envelope, payload: None}, erased: true}
+  Ok((erased, Scope.State{..*state, records: state.records.insert(id, erased)}))
+}

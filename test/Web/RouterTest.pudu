@@ -1,0 +1,116 @@
+/** @Test.Web.Router.Suite — the router serves exactly the contract, over HTTP and over lines */
+module Web.RouterTest
+
+import Std.Http as Http
+import Std.Http.Server.Route as Route
+import Std.Json as Json
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import Std.Test as Test
+import App.Assembly as Assembly
+import App.Logging as Logging
+import Config.Settings as Settings
+import Constants.Security as Security
+import Contract.Operations as Operations
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Engine.Authority as Authority
+import Services.Runtime as Runtime
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+import Utils.JsonRead as JsonRead
+import Web.Description as Description
+import Web.Lines as Lines
+import Web.Router as Router
+
+fn request(method: Http.Method, path: Str, token: Str, body: Str) -> Route.Request {
+  let message = Http.Request{method: method, target: path, headers: [("authorization", Security.BEARER_PREFIX + token), ("content-type", "application/json")], body: body, binaryBody: None}
+  Route.Request{message: message, path: path, params: Map.empty(), query: Map.empty(), peer: "test"}
+}
+
+fn sent(router: &Route.Router, method: Http.Method, path: Str, token: Str, body: Str) -> (Int, Json.Json) {
+  let response = Route.dispatch(router, request(method, path, token, body))
+  (response.status.code, Result.unwrapOr(Json.decode(response.body), Json.Null))
+}
+
+fn delegate(router: &Route.Router, owner: Str, id: Str, audience: Str, now: Int) -> Str {
+  let body = "\{\"id\":\"" + id + "\",\"audience\":\"" + audience + "\",\"abilities\":[\"transfer.send\",\"transfer.receive\"],\"expires\":" + show(now + 100000) + "\}"
+  Option.unwrapOr(JsonRead.text(&sent(router, Http.Post, "/v1/scopes/demo/tokens", owner, body)[1], "token"), "")
+}
+
+fn codeOf(answer: &(Int, Json.Json)) -> Str { Option.unwrapOr(JsonRead.text(&answer[1], "code"), "") }
+
+fn main() -> Int {
+  let settings = match Settings.loadFrom(&mapOf([("GRAIL_SECRET", Fixtures.SECRET)])) {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Router", &[Test.that("settings load: " + reason, false)])) }
+  }
+  let app = match Assembly.assemble(&Runtime.create(&settings), &Logging.quiet()) {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Router", &[Test.that("assembly: " + reason, false)])) }
+  }
+  let router = match Router.router(&app) {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Router", &[Test.that("router: " + reason, false)])) }
+  }
+  let now = Assembly.now()
+  let owner = Authority.issue(&Capability.Token{..Fixtures.claims("root", Security.OWNER, &[Vocabulary.ABILITY_ALL]), notBefore: now - Fixtures.DAY, expires: now + Fixtures.DAY}, Fixtures.SECRET)
+  let base = "/v1/scopes/demo"
+  let draft = "\{\"participants\":[\{\"id\":\"planner\",\"kind\":\"agent\"\},\{\"id\":\"writer\",\"kind\":\"agent\",\"roles\":[\"author\"]\}],\"edges\":[\{\"id\":\"e1\",\"from\":\"planner\",\"to\":\"writer\",\"relation\":\"flow\"\}]\}"
+  let envelope = "\{\"grail\":\"1.0\",\"id\":\"t1\",\"scope\":\"demo\",\"graph\":\"team\",\"source\":\"planner\",\"target\":\{\"role\":\"author\"\},\"kind\":\"task\"\}"
+  let gaps = Description.gaps(&router)
+  let discovered = sent(&router, Http.Get, "/.well-known/grail", "", "")
+  let contract = sent(&router, Http.Get, "/openapi.json", "", "")
+  let anonymous = sent(&router, Http.Put, base + "/graphs/team", "", draft)
+  let created = sent(&router, Http.Put, base + "/graphs/team", owner, draft)
+  let again = sent(&router, Http.Put, base + "/graphs/team", owner, draft)
+  let foreignExisting = sent(&router, Http.Get, "/v1/scopes/other/graphs/team", owner, "")
+  let foreignMissing = sent(&router, Http.Get, "/v1/scopes/other/graphs/none", owner, "")
+  let accepted = sent(&router, Http.Post, base + "/transfers", owner, envelope)
+  let unmatched = sent(&router, Http.Get, "/nowhere", owner, "")
+  let delegated = sent(&router, Http.Post, base + "/tokens", owner, "\{\"id\":\"w1\",\"audience\":\"writer\",\"abilities\":[\"transfer.receive\"],\"expires\":" + show(now + 1000) + "\}")
+  let writerToken = Option.unwrapOr(JsonRead.text(&delegated[1], "token"), "")
+  let inbox = sent(&router, Http.Get, base + "/graphs/team/participants/writer/deliveries", writerToken, "")
+  let snooping = sent(&router, Http.Get, base + "/graphs/team/participants/planner/deliveries", writerToken, "")
+  let plannerToken = delegate(&router, owner, "p2", "planner", now)
+  let toolToken = delegate(&router, owner, "w2", "writer", now)
+  let toolRequest = sent(&router, Http.Post, base + "/graphs/team/bridge/writer", plannerToken, "\{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/list\"\}")
+  let toolAnswer = sent(&router, Http.Post, base + "/graphs/team/bridge/planner", toolToken, "\{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":\{\"tools\":[]\}\}")
+  let bridged = sent(&router, Http.Get, base + "/transfers/" + Option.unwrapOr(JsonRead.text(&toolRequest[1], "id"), ""), owner, "")
+  let notRpc = sent(&router, Http.Post, base + "/graphs/team/bridge/writer", plannerToken, "\{\"hello\":1\}")
+  let lineDiscovered = Result.unwrapOr(Json.decode(Lines.answer(&router, "\{\"operation\":\"discover\"\}")), Json.Null)
+  let lineGraph = Result.unwrapOr(Json.decode(Lines.answer(&router, "\{\"operation\":\"readGraph\",\"token\":\"" + owner + "\",\"params\":\{\"scope\":\"demo\",\"graph\":\"team\"\}\}")), Json.Null)
+  let lineUnknown = Result.unwrapOr(Json.decode(Lines.answer(&router, "\{\"operation\":\"nothing\"\}")), Json.Null)
+  let checks = Test.suite("Router", &[
+      Test.equals("every route is a contract operation", &gaps[0], &[]),
+      Test.equals("every contract operation is a route", &gaps[1], &[]),
+      Test.equals("the description is consistent", &Description.problems(), &[]),
+      Test.equals("there is a route per operation", &router.routes.length(), &Operations.ALL.length()),
+      Test.equals("discovery answers", &discovered[0], &200),
+      Test.equals("discovery names the protocol version", &JsonRead.texts(&discovered[1], "grail"), &Some(["1.0"])),
+      Test.equals("the contract is served", &JsonRead.text(&contract[1], "openapi"), &Some("3.1.0")),
+      Test.equals("no token is unauthorized", &codeOf(&anonymous), &Codes.UNAUTHORIZED),
+      Test.equals("a graph is created with the contract's status", &created[0], &201),
+      Test.equals("a graph is created once", &codeOf(&again), &Codes.DUPLICATE),
+      Test.equals("another scope's existing graph is unauthorized", &codeOf(&foreignExisting), &Codes.UNAUTHORIZED),
+      Test.equals("another scope's missing graph answers the same", &foreignMissing, &foreignExisting),
+      Test.equals("an envelope is accepted with the contract's status", &accepted[0], &202),
+      Test.equals("an accepted task is submitted", &JsonRead.text(&accepted[1], "state"), &Some(Vocabulary.STATE_SUBMITTED)),
+      Test.equals("a problem's type is the registry's", &JsonRead.text(&anonymous[1], "type"), &Some("urn:grail:problem:unauthorized")),
+      Test.equals("an unknown path is a not-found problem", &codeOf(&unmatched), &Codes.NOT_FOUND),
+      Test.equals("a token is delegated", &delegated[0], &201),
+      Test.equals("the delegated participant pulls its deliveries", &Option.map(JsonRead.list(&inbox[1], "deliveries"), |items: Array[Json.Json]| items.length()), &Some(1)),
+      Test.equals("it may not pull another participant's", &codeOf(&snooping), &Codes.FORBIDDEN),
+      Test.equals("a bridged request opens a lifecycle", &JsonRead.text(&toolRequest[1], "state"), &Some(Vocabulary.STATE_SUBMITTED)),
+      Test.equals("the tool's response is accepted", &toolAnswer[0], &202),
+      Test.equals("the response completes the request it answers", &JsonRead.text(&bridged[1], "state"), &Some(Vocabulary.STATE_COMPLETED)),
+      Test.equals("a body that is not JSON-RPC is refused", &codeOf(&notRpc), &Codes.INVALID),
+      Test.equals("the line binding answers with a status", &JsonRead.whole(&lineDiscovered, "status"), &Some(200)),
+      Test.equals("the line binding reaches the same graph", &Option.andThen(Json.field(&lineGraph, "body"), |graph: Json.Json| JsonRead.whole(&graph, "revision")), &Some(1)),
+      Test.equals("the line binding refuses unknown operations", &JsonRead.whole(&lineUnknown, "status"), &Some(400))
+    ])
+
+  Runner.finish(&checks)
+}

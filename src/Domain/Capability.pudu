@@ -1,0 +1,22 @@
+/** @Domain.Capability.Grant — signed, expiring, narrowing grants of abilities */
+module Domain.Capability
+
+/** @Domain.Capability.Token — the claims a token carries */
+export type Token = {
+  id: Str,
+  scopeId: Str,
+  graph: Option[Str],
+  issuer: Str,
+  audience: Str,
+  abilities: Array[Str],
+  notBefore: Int,
+  expires: Int,
+  parent: Option[Str],
+  chain: Array[Str]
+}
+
+/** @Domain.Capability.Authority — what a verified token lets its holder do */
+export type Authority = { scopeId: Str, graph: Option[Str], audience: Str, abilities: Array[Str], token: Str, chain: Array[Token] }
+
+/** @Domain.Capability.Request — a delegation asked for by a token's holder */
+export type Request = { id: Str, audience: Str, graph: Option[Str], abilities: Array[Str], notBefore: Int, expires: Int }

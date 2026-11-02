@@ -1,0 +1,274 @@
+/** @Tools.Contract.Emitter — renders the projected contract modules */
+module Contract.Emit
+
+import Std.Char as Char
+import Constants.Contract as Names
+import Contract.Read as Read
+
+/// Every projected file: its path and its text.
+export fn files(contract: &Read.Contract) -> Array[(Str, Str)] {
+  [
+    (path("Version"), version(contract)),
+    (path("Operations"), operations(contract)),
+    (path("Vocabulary"), vocabulary(contract)),
+    (path("Problems"), problems(contract)),
+    (path("Limits"), limits(contract)),
+    (path("Members"), members(contract)),
+    (path("Schemas"), schemas(contract)),
+    (path("Parameters"), parameters(contract)),
+    (path("Document"), document(contract))
+  ]
+}
+
+/// A name in constant case: `envelopeBytes` is `ENVELOPE_BYTES`, `tool.call` is `TOOL_CALL`, `*` is `ALL`.
+export fn constantName(name: Str) -> Str {
+  if name == "*" { return "ALL" }
+
+  var out = ""
+  var previous = ' '
+
+  for character in name.chars() {
+    if Char.isUpper(character) && (Char.isLower(previous) || Char.isDigit(previous)) {
+      out = out + "_" + character.toText()
+    } else if Char.isAlphanumeric(character) {
+      out = out + Char.toUpper(character).toText()
+    } else {
+      out = out + "_"
+    }
+
+    previous = character
+  }
+
+  out
+}
+
+/// Text as a source string literal.
+export fn literal(text: Str) -> Str {
+  var out = "\""
+
+  for character in text.chars() {
+    if character == '\\' {
+      out = out + "\\\\"
+    } else if character == '"' {
+      out = out + "\\\""
+    } else if character == '\{' {
+      out = out + "\\\{"
+    } else if character == '\}' {
+      out = out + "\\\}"
+    } else if character == '\n' {
+      out = out + "\\n"
+    } else {
+      out = out + character.toText()
+    }
+  }
+
+  out + "\""
+}
+
+fn path(name: Str) -> Str { Names.OUTPUT_DIRECTORY + "/" + name + ".pudu" }
+
+fn header(name: Str, role: Str, intent: Str) -> Array[Str] {
+  [
+    "/** @Contract." + name + "." + role + " — " + intent + " */",
+    "module " + Names.MODULE_PREFIX + name,
+    "",
+    "// " + Names.PROVENANCE
+  ]
+}
+
+fn textConstant(doc: Str, name: Str, value: Str) -> Array[Str] {
+  ["", "/// " + doc, "export const " + name + ": Str = " + literal(value)]
+}
+
+fn intConstant(doc: Str, name: Str, value: Int) -> Array[Str] {
+  ["", "/// " + doc, "export const " + name + ": Int = " + show(value)]
+}
+
+fn textList(doc: Str, name: Str, values: &Array[Str]) -> Array[Str] {
+  let rendered = values.map(|value: Str| literal(value))
+  ["", "/// " + doc].concat(listed("export const " + name + ": Array[Str] = [", &rendered, "]"))
+}
+
+fn listed(opening: Str, items: &Array[Str], closing: Str) -> Array[Str] {
+  if items.isEmpty() { return [opening + closing] }
+
+  var lines = [opening]
+  var index = 0
+
+  for item in *items {
+    index = index + 1
+
+    let separator = if index < items.length() { "," } else { "" }
+    lines = lines.push("  " + item + separator)
+  }
+
+  lines.push(closing)
+}
+
+fn joined(lines: &Array[Str]) -> Str { lines.join("\n") + "\n" }
+
+fn version(contract: &Read.Contract) -> Str {
+  var lines = header("Version", "Generated", "protocol version, media types, and headers")
+  lines = lines.concat(textConstant("The protocol version this contract describes.", "PROTOCOL", contract.protocol))
+  lines = lines.concat(textConstant("The version of the contract document.", "CONTRACT", contract.version))
+  lines = lines.concat(textConstant("The contract's title.", "TITLE", contract.title))
+  lines = lines.concat(textConstant("The media type of requests and answers.", "MEDIA_TYPE", contract.mediaType))
+  lines = lines.concat(textConstant("The media type of problem documents.", "PROBLEM_MEDIA_TYPE", contract.problemMediaType))
+  lines = lines.concat(textConstant("The prefix of every problem type.", "PROBLEM_PREFIX", contract.problemPrefix))
+
+  for pair in contract.headers {
+    lines = lines.concat(textConstant("The `" + pair[0] + "` header.", "HEADER_" + constantName(pair[0]), pair[1]))
+  }
+
+  joined(&lines)
+}
+
+fn operations(contract: &Read.Contract) -> Str {
+  var lines = header("Operations", "Generated", "every operation of the bindings")
+  lines = lines.concat([
+      "",
+      "/** @Contract.Operations.Operation — one operation as the bindings serve it */",
+      "export type Operation = \{",
+      "  id: Str,",
+      "  method: Str,",
+      "  path: Str,",
+      "  pattern: Str,",
+      "  ability: Str,",
+      "  status: Int,",
+      "  secured: Bool,",
+      "  bodied: Bool,",
+      "  pathParameters: Array[Str],",
+      "  queryParameters: Array[Str]",
+      "\}"
+    ])
+
+  for operation in contract.operations {
+    lines = lines.concat(textConstant("`" + operation.method + " " + operation.path + "`.", constantName(operation.id), operation.id))
+  }
+
+  let rendered = contract.operations.map(|operation: Read.Operation| operationLiteral(&operation))
+  lines = lines.push("")
+  lines = lines.push("/// Every operation, in contract order.")
+  lines = lines.concat(listed("export const ALL: Array[Operation] = [", &rendered, "]"))
+  joined(&lines)
+}
+
+fn operationLiteral(operation: &Read.Operation) -> Str {
+  "Operation\{id: " + literal(operation.id)
+    + ", method: " + literal(operation.method)
+    + ", path: " + literal(operation.path)
+    + ", pattern: " + literal(routePattern(operation.path))
+    + ", ability: " + literal(operation.ability)
+    + ", status: " + show(operation.status)
+    + ", secured: " + show(operation.secured)
+    + ", bodied: " + show(operation.bodied)
+    + ", pathParameters: " + inline(&operation.pathParameters)
+    + ", queryParameters: " + inline(&operation.queryParameters)
+    + "\}"
+}
+
+fn routePattern(template: Str) -> Str {
+  template.split("/").map(|piece: Str| if piece.startsWith("\{") && piece.endsWith("\}") { ":" + piece.drop(1).take(piece.length() - 2) } else { piece }).join("/")
+}
+
+fn inline(values: &Array[Str]) -> Str { "[" + values.map(|value: Str| literal(value)).join(", ") + "]" }
+
+fn vocabulary(contract: &Read.Contract) -> Str {
+  var lines = header("Vocabulary", "Generated", "every closed set of names in the contract")
+
+  for enumeration in contract.enumerations {
+    for value in enumeration.values {
+      lines = lines.concat(textConstant("`" + value + "`.", enumeration.prefix + "_" + constantName(value), value))
+    }
+
+    lines = lines.concat(textList("Every value of the set.", enumeration.collection, &enumeration.values))
+  }
+
+  lines = lines.concat(textList("The lifecycle states that never change again.", "FINAL_STATES", &contract.finalStates))
+  lines = lines.concat(textList("The kinds that open a lifecycle.", "OPENING_KINDS", &contract.openingKinds))
+  joined(&lines)
+}
+
+fn problems(contract: &Read.Contract) -> Str {
+  var lines = header("Problems", "Generated", "the registry of problem codes")
+  lines = lines.concat([
+      "",
+      "/** @Contract.Problems.Entry — one registered problem */",
+      "export type Entry = \{ code: Str, status: Int, title: Str \}"
+    ])
+
+  for entry in contract.problems {
+    lines = lines.concat(textConstant(entry.title + " (" + show(entry.status) + ").", constantName(entry.code.drop(Names.PROBLEM_CODE_PREFIX.length())), entry.code))
+  }
+
+  let rendered = contract.problems.map(|entry: Read.ProblemCode| "Entry\{code: " + literal(entry.code) + ", status: " + show(entry.status) + ", title: " + literal(entry.title) + "\}")
+  lines = lines.push("")
+  lines = lines.push("/// Every registered problem, in contract order.")
+  lines = lines.concat(listed("export const ALL: Array[Entry] = [", &rendered, "]"))
+  joined(&lines)
+}
+
+fn limits(contract: &Read.Contract) -> Str {
+  var lines = header("Limits", "Generated", "every limit the fabric enforces")
+
+  for pair in contract.limits {
+    lines = lines.concat(intConstant("The `" + pair[0] + "` limit.", constantName(pair[0]), pair[1]))
+  }
+
+  let rendered = contract.limits.map(|pair: (Str, Int)| "(" + literal(pair[0]) + ", " + show(pair[1]) + ")")
+  lines = lines.push("")
+  lines = lines.push("/// Every limit by its contract name, for discovery.")
+  lines = lines.concat(listed("export const ALL: Array[(Str, Int)] = [", &rendered, "]"))
+  joined(&lines)
+}
+
+fn members(contract: &Read.Contract) -> Str {
+  var lines = header("Members", "Generated", "the members each object allows and requires")
+
+  for entry in contract.members {
+    let name = constantName(entry.schema)
+
+    for member in entry.allowed {
+      lines = lines.concat(textConstant("The `" + member + "` member of `" + entry.schema + "`.", name + "_" + constantName(member), member))
+    }
+
+    lines = lines.concat(textList("Members `" + entry.schema + "` allows.", name + "_ALLOWED", &entry.allowed))
+    lines = lines.concat(textList("Members `" + entry.schema + "` requires.", name + "_REQUIRED", &entry.required))
+    lines = lines.concat(["", "/// Whether `" + entry.schema + "` refuses members it does not list.", "export const " + name + "_CLOSED: Bool = " + show(entry.closed)])
+    lines = lines.concat(["", "/// Whether `" + entry.schema + "` accepts `x-` members.", "export const " + name + "_EXTENSIBLE: Bool = " + show(entry.extensible)])
+  }
+
+  joined(&lines)
+}
+
+fn schemas(contract: &Read.Contract) -> Str {
+  var lines = header("Schemas", "Generated", "the name of every object schema")
+
+  for entry in contract.members {
+    lines = lines.concat(textConstant("The `" + entry.schema + "` schema.", constantName(entry.schema), entry.schema))
+  }
+
+  joined(&lines)
+}
+
+fn parameters(contract: &Read.Contract) -> Str {
+  var lines = header("Parameters", "Generated", "the name of every path and query parameter")
+  var seen: Array[Str] = []
+
+  for operation in contract.operations {
+    for name in operation.pathParameters.concat(operation.queryParameters) {
+      if !seen.contains(name) {
+        seen = seen.push(name)
+        lines = lines.concat(textConstant("The `" + name + "` parameter.", constantName(name), name))
+      }
+    }
+  }
+
+  joined(&lines)
+}
+
+fn document(contract: &Read.Contract) -> Str {
+  var lines = header("Document", "Generated", "the contract document served to clients")
+  lines = lines.concat(textConstant("The whole contract as compact JSON.", "TEXT", contract.document))
+  joined(&lines)
+}

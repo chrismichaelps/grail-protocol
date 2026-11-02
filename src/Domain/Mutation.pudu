@@ -1,0 +1,17 @@
+/** @Domain.Mutation.Change — an atomic, revision-checked change to a graph */
+module Domain.Mutation
+
+import Domain.Graph as Graph
+
+/** @Domain.Mutation.Step — one operation of a mutation */
+export type Step
+  = AddParticipant(Graph.Participant)
+  | RemoveParticipant(Str)
+  | AddEdge(Graph.Edge)
+  | RemoveEdge(Str)
+
+/** @Domain.Mutation.Mutation — the revision it was written against and its steps in order */
+export type Mutation = { expectedRevision: Int, steps: Array[Step] }
+
+/** @Domain.Mutation.Draft — the participants and edges of a graph about to be created */
+export type Draft = { participants: Array[Graph.Participant], edges: Array[Graph.Edge] }

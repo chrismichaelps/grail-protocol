@@ -1,0 +1,70 @@
+/** @Tools.Siege.Pressure — floods a live fabric and holds its pulls open, then judges how it held up */
+module Siege
+
+import Std.Concurrent as Concurrent
+import Std.Env as Env
+import Std.Http.Client as Client
+import Std.Http.Client {Limiting}
+import Std.Http as Http
+import Std.Io as Io
+import Std.List as List
+import Std.Math as Math
+import Std.Option as Option
+import Std.Result as Result
+import Std.Time as Time
+import Std.Url as Url
+import Constants.Siege as Pressure
+
+/** @Tools.Siege.Outcome — a status and how long it took */
+type Outcome = { status: Int, millis: Int }
+
+/// Holds pulls open, then floods `--fabric`. With an owner `--token` for `--scope`, the siege creates its own graph and the held pulls really wait. Answers 0 when the fabric stayed responsive with pulls held and rate limited the flood.
+fn main() -> Int {
+  let fabric = Option.unwrapOr(Env.option("--fabric"), Pressure.FABRIC_DEFAULT)
+  let host = Result.unwrapOr(Result.map(Url.parse(fabric), |url: Url.Url| url.host), "")
+  let limits = Client.limits().within(Pressure.REQUEST_DEADLINE_MILLIS).reaching(&[host])
+  let token = Option.unwrapOr(Env.option("--token"), "")
+  let scopeName = Option.unwrapOr(Env.option("--scope"), Pressure.SCOPE_DEFAULT)
+  let graph = fabric + Pressure.GRAPH_TEMPLATE.replace("\{scope\}", scopeName) + Pressure.GRAPH_DEFAULT
+  let headers = if token.isEmpty() { [] } else { [(Pressure.AUTHORIZATION, Pressure.BEARER + token), (Pressure.CONTENT_TYPE, Pressure.JSON)] }
+  let _prepared = Client.send(&Http.Request{method: Http.Put, target: graph, headers: headers, body: Pressure.GRAPH_BODY, binaryBody: None}, &limits)
+  let pull = fabric + Pressure.PULL_TEMPLATE.replace("\{scope\}", scopeName).replace("\{graph\}", Pressure.GRAPH_DEFAULT).replace("\{participant\}", Pressure.PARTICIPANT_DEFAULT) + show(Pressure.WAIT_MILLIS)
+  let held = Concurrent.start(|| {
+      let _pulled = Concurrent.mapBounded(&List.range(0, Pressure.WAITERS), Pressure.WAITERS, |_n: Int| timed(pull, token, &limits))
+    })
+  let _settled = Concurrent.sleep(Pressure.SETTLE_MILLIS)
+  let probe = timed(fabric + Pressure.DISCOVERY_PATH, "", &limits)
+  let _joined = Result.map(held, |worker: Concurrent.Task| Concurrent.join(&worker))
+  let _probed = Io.writeLine("exhaustion: " + show(Pressure.WAITERS) + " pulls held; discovery answered " + show(probe.status) + " in " + show(probe.millis) + " ms")
+
+  if probe.status != 200 || probe.millis > Pressure.PROBE_MILLIS_MAX { return failed("the fabric stopped answering while pulls were held") }
+
+  let flood = Result.unwrapOr(Concurrent.mapBounded(&List.range(0, Pressure.FLOOD_REQUESTS), Pressure.FLOOD_WORKERS, |_n: Int| timed(fabric + Pressure.HEALTH_PATH, "", &limits)), [])
+  let refused = flood.filter(|outcome: Outcome| outcome.status == Pressure.TOO_MANY).length()
+  let answered = flood.filter(|outcome: Outcome| outcome.status == 200).length()
+  let latencies = List.sorted(&flood.map(|outcome: Outcome| outcome.millis))
+  let _flooded = Io.writeLine("flood: " + show(flood.length()) + " requests, " + show(answered) + " answered, " + show(refused) + " rate limited, p50 " + show(percentile(&latencies, 50)) + " ms, p95 " + show(percentile(&latencies, 95)) + " ms")
+
+  if refused == 0 { return failed("the flood was never rate limited") }
+
+  let _passed = Io.writeLine("siege passed")
+  0
+}
+
+fn timed(target: Str, token: Str, limits: &Client.Limits) -> Outcome {
+  let started = Time.elapsed()
+  let headers = if token.isEmpty() { [] } else { [(Pressure.AUTHORIZATION, Pressure.BEARER + token)] }
+  let answered = Client.send(&Http.Request{method: Http.Get, target: target, headers: headers, body: "", binaryBody: None}, limits)
+  Outcome{status: Result.unwrapOr(Result.map(answered, |response: Http.Response| response.status.code), 0), millis: Time.elapsed() - started}
+}
+
+fn percentile(sorted: &Array[Int], percent: Int) -> Int {
+  if sorted.isEmpty() { return 0 }
+
+  sorted[Math.min(sorted.length() - 1, sorted.length() * percent / 100)]
+}
+
+fn failed(reason: Str) -> Int {
+  let _said = Io.writeErrorLine("Siege: " + reason)
+  1
+}

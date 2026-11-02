@@ -1,0 +1,46 @@
+/** @Tools.Spacing.Suite — guards after declarations are spaced, consecutive declarations are not */
+module SpacingTest
+
+import Std.Io as Io
+import Std.Test as Test
+import Constants.Spacing as Style
+import Spacing.Rules as Rules
+
+fn lines(text: Str) -> Array[Int] { Rules.check(text).map(|finding: Rules.Finding| finding.line) }
+
+fn main() -> Int {
+  let spaced = "fn f() -> Int \{\n  let a = 1\n  let b = 2\n\n  if a > b \{ return a \}\n\n  b\n\}\n"
+  let crowded = "fn f() -> Int \{\n  let a = 1\n  if a > 0 \{ return 1 \}\n  0\n\}\n"
+  let looped = "fn f() -> Int \{\n  var total = 0\n  for x in [1] \{ total = total + x \}\n  total\n\}\n"
+  let split = "fn f() -> Int \{\n  let a = 1\n\n  let b = 2\n  a + b\n\}\n"
+  let multiline = "fn f() -> Int \{\n  let a = match 1 \{\n    case 1 => 2\n    case _ => 3\n  \}\n  if a > 0 \{ return a \}\n  0\n\}\n"
+  let quoted = "fn f() -> Str \{\n  let a = \"\{ if\"\n\n  if a == \"\" \{ return a \}\n\n  a\n\}\n"
+  let grouped = "fn f() -> Int \{\n  if true \{ return 1 \}\n  if false \{ return 2 \}\n  0\n\}\n"
+  var long = ""
+  var count = 0
+
+  while count <= Style.LINES_MAX {
+    long = long + "// line\n"
+    count = count + 1
+  }
+
+  let checks = Test.suite("Spacing", &[
+      Test.equals("well spaced code has no findings", &lines(spaced), &[]),
+      Test.equals("an if right after a declaration is found", &lines(crowded), &[3]),
+      Test.equals("a for right after a declaration is found", &lines(looped), &[3]),
+      Test.equals("a blank line between declarations is found", &lines(split), &[3]),
+      Test.equals("a guard after a multi-line declaration is found", &lines(multiline), &[6]),
+      Test.equals("braces inside strings are not brackets", &lines(quoted), &[]),
+      Test.equals("consecutive guards stay together", &lines(grouped), &[]),
+      Test.equals("a file over the limit is found", &Rules.check(long).map(|finding: Rules.Finding| finding.reason), &[Style.TOO_LONG])
+    ])
+  let report = Test.run(&checks)
+
+  for failure in Test.failuresOf(&report) {
+    let _said = Io.writeErrorLine("  failed: " + failure)
+  }
+
+  let _summary = Io.writeLine(Test.summary(&report))
+
+  if Test.passed(&report) { 0 } else { 1 }
+}

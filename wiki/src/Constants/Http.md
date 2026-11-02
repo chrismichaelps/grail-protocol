@@ -1,0 +1,73 @@
+---
+type: module
+path: "@root/src/Constants/Http.pudu"
+layer: 0
+grammar: "[[grammar/pudu]]"
+tags: [module, constants]
+---
+
+# Constants.Http
+
+> @Constants.Http.Binding — names the HTTP and line bindings use
+
+## Purpose
+
+Names the HTTP and line bindings use.
+
+## Interface
+
+### Signatures
+
+```pudu
+/// The member of a problem document that carries the stable code.
+export const CODE_MEMBER: Str = "code"
+/// The header a request's content type travels in.
+export const CONTENT_TYPE: Str = "Content-Type"
+/// The peer recorded for requests that arrive over the line binding.
+export const LINE_PEER: Str = "lines"
+/// The member of a line naming its operation.
+export const LINE_OPERATION: Str = "operation"
+/// The member of a line carrying its token.
+export const LINE_TOKEN: Str = "token"
+/// The member of a line carrying path and query parameters.
+export const LINE_PARAMS: Str = "params"
+/// The member of a line carrying the request body.
+export const LINE_BODY: Str = "body"
+/// The member of an answer line carrying its status.
+export const LINE_STATUS: Str = "status"
+/// The member of an answer line carrying a problem.
+export const LINE_PROBLEM: Str = "problem"
+/// The prefix of a path parameter in a contract path.
+export const PARAMETER_OPEN: Str = "\{"
+/// The suffix of a path parameter in a contract path.
+export const PARAMETER_CLOSE: Str = "\}"
+/// The query separator.
+export const QUERY_MARK: Str = "?"
+/// The query pair separator.
+export const QUERY_JOIN: Str = "&"
+/// The query value separator.
+export const QUERY_EQUALS: Str = "="
+/// The operation a line names is not in the contract.
+export const UNKNOWN_OPERATION: Str = "the contract has no operation with this name"
+/// An operation has no handler.
+export const UNBOUND: Str = "the contract operation has no handler: "
+/// A handler serves no operation.
+export const STRAY: Str = "a handler serves no contract operation: "
+/// A whole number was expected.
+export const NOT_WHOLE: Str = "is not a whole number"
+/// Methods other origins may use, when any origin is allowed.
+export const SHARED_METHODS: Array[Str] = ["GET", "HEAD", "POST", "PUT"]
+/// Request headers other origins may send.
+export const SHARED_HEADERS: Array[Str] = ["content-type", "authorization", "grail-version"]
+/// The scheme of the address the server reports.
+export const SCHEME: Str = "http://"
+```
+
+### Linkage
+
+- **Requires:** nothing inside the fabric
+- **Consumed by:** [[src/Engine/Paths]] · [[src/Main]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[src/Web/Respond]] · [[src/Web/Router]]
+
+## Referenced by
+
+[[src/Constants/_MOC]] · [[src/Engine/Paths]] · [[src/Main]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[src/Web/Respond]] · [[src/Web/Router]]

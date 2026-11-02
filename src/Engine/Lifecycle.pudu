@@ -1,0 +1,46 @@
+/** @Engine.Lifecycle.Machine — the legal moves of a task lifecycle */
+module Engine.Lifecycle
+
+import Std.Json as Json
+import Std.Option as Option
+import Constants.Details as Details
+import Constants.Events as Events
+import Constants.Extras as Extras
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Problem as Problem
+
+/// Each legal move: the state and event it starts from, and the state it ends in.
+const TRANSITIONS: Map[Str, Str] = mapOf([
+    (Vocabulary.STATE_SUBMITTED + Events.ON + Events.PROGRESS, Vocabulary.STATE_WORKING),
+    (Vocabulary.STATE_WORKING + Events.ON + Events.PROGRESS, Vocabulary.STATE_WORKING),
+    (Vocabulary.STATE_INPUT_REQUIRED + Events.ON + Events.PROGRESS, Vocabulary.STATE_WORKING),
+    (Vocabulary.STATE_SUBMITTED + Events.ON + Events.INPUT, Vocabulary.STATE_INPUT_REQUIRED),
+    (Vocabulary.STATE_WORKING + Events.ON + Events.INPUT, Vocabulary.STATE_INPUT_REQUIRED),
+    (Vocabulary.STATE_SUBMITTED + Events.ON + Events.COMPLETE, Vocabulary.STATE_COMPLETED),
+    (Vocabulary.STATE_WORKING + Events.ON + Events.COMPLETE, Vocabulary.STATE_COMPLETED),
+    (Vocabulary.STATE_INPUT_REQUIRED + Events.ON + Events.COMPLETE, Vocabulary.STATE_COMPLETED),
+    (Vocabulary.STATE_SUBMITTED + Events.ON + Events.FAIL, Vocabulary.STATE_REJECTED),
+    (Vocabulary.STATE_WORKING + Events.ON + Events.FAIL, Vocabulary.STATE_FAILED),
+    (Vocabulary.STATE_INPUT_REQUIRED + Events.ON + Events.FAIL, Vocabulary.STATE_FAILED),
+    (Vocabulary.STATE_SUBMITTED + Events.ON + Events.CANCEL, Vocabulary.STATE_CANCELED),
+    (Vocabulary.STATE_WORKING + Events.ON + Events.CANCEL, Vocabulary.STATE_CANCELED),
+    (Vocabulary.STATE_INPUT_REQUIRED + Events.ON + Events.CANCEL, Vocabulary.STATE_CANCELED),
+    (Vocabulary.STATE_SUBMITTED + Events.ON + Events.EXPIRE, Vocabulary.STATE_EXPIRED),
+    (Vocabulary.STATE_WORKING + Events.ON + Events.EXPIRE, Vocabulary.STATE_EXPIRED),
+    (Vocabulary.STATE_INPUT_REQUIRED + Events.ON + Events.EXPIRE, Vocabulary.STATE_EXPIRED)
+  ])
+
+/// The state a lifecycle moves to on an event, or the refusal naming where it stands.
+export fn advance(state: Str, event: Str) -> Result[Str, Problem.Problem] {
+  match TRANSITIONS.get(state + Events.ON + event) {
+    case Some(next) => Ok(next)
+    case None => Err(Problem.withMember(&Problem.of(Codes.INVALID_TRANSITION, Details.INVALID_TRANSITION), Extras.STATE, Json.Text(state)))
+  }
+}
+
+/// Whether a state never changes again.
+export fn isFinal(state: Str) -> Bool { Vocabulary.FINAL_STATES.contains(state) }
+
+/// The state a new lifecycle starts in.
+export fn initial() -> Str { Vocabulary.STATE_SUBMITTED }

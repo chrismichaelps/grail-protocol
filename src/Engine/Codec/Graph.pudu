@@ -1,0 +1,146 @@
+/** @Engine.Codec.Graph — graphs, drafts, and mutations to and from JSON */
+module Engine.Codec.Graph
+
+import Std.Json as Json
+import Std.Option as Option
+import Constants.Details as Details
+import Contract.Members as Members
+import Contract.Schemas as Schemas
+import Contract.Vocabulary as Vocabulary
+import Domain.Graph as Graph
+import Domain.Mutation as Mutation
+import Domain.Problem as Problem
+import Engine.Codec.Shapes as Shapes
+import Utils.JsonRead as JsonRead
+import Utils.Pointer as Pointer
+
+/// The reader of each mutation operation, chosen once by its name.
+const STEP_READERS: Map[Str, fn(Json.Json) -> Option[Mutation.Step]] = mapOf([
+    (Vocabulary.OP_ADD_PARTICIPANT, addParticipant),
+    (Vocabulary.OP_REMOVE_PARTICIPANT, removeParticipant),
+    (Vocabulary.OP_ADD_EDGE, addEdge),
+    (Vocabulary.OP_REMOVE_EDGE, removeEdge)
+  ])
+
+/// The draft a body describes, or how it departs from the contract.
+export fn decodeDraft(body: &Json.Json) -> Result[Mutation.Draft, Problem.Problem] {
+  let violations = Shapes.check(Schemas.GRAPH_DRAFT, body, "")
+
+  if !violations.isEmpty() { return Err(Problem.invalid(&violations)) }
+
+  Ok(Mutation.Draft{participants: listOf(body, Members.GRAPH_DRAFT_PARTICIPANTS).map(|item: Json.Json| participantOf(&item)), edges: listOf(body, Members.GRAPH_DRAFT_EDGES).map(|item: Json.Json| edgeOf(&item))})
+}
+
+/// The mutation a body describes, or how it departs from the contract.
+export fn decodeMutation(body: &Json.Json) -> Result[Mutation.Mutation, Problem.Problem] {
+  let violations = Shapes.check(Schemas.MUTATION, body, "")
+
+  if !violations.isEmpty() { return Err(Problem.invalid(&violations)) }
+
+  var steps: Array[Mutation.Step] = []
+  var index = 0
+
+  for item in listOf(body, Members.MUTATION_OPERATIONS) {
+    match stepOf(&item) {
+      case Some(step) => { steps = steps.push(step) }
+      case None => { return Err(Problem.invalid(&[Problem.violation(Pointer.item(Pointer.of(&[Members.MUTATION_OPERATIONS]), index), Details.MISSING_MEMBER)])) }
+    }
+
+    index = index + 1
+  }
+
+  Ok(Mutation.Mutation{expectedRevision: Option.unwrapOr(JsonRead.whole(body, Members.MUTATION_EXPECTED_REVISION), 0), steps: steps})
+}
+
+/// A graph as JSON.
+export fn encode(graph: &Graph.Graph) -> Json.Json {
+  Json.object(&[
+      (Members.GRAPH_ID, Json.Text(graph.id)),
+      (Members.GRAPH_SCOPE, Json.Text(graph.scopeId)),
+      (Members.GRAPH_REVISION, Json.Number(graph.revision)),
+      (Members.GRAPH_PARTICIPANTS, Json.List(graph.participants.map(|member: Graph.Participant| participantJson(&member)))),
+      (Members.GRAPH_EDGES, Json.List(graph.edges.map(|edge: Graph.Edge| edgeJson(&edge))))
+    ])
+}
+
+/// A participant as JSON.
+export fn participantJson(member: &Graph.Participant) -> Json.Json {
+  JsonRead.objectOf(&[
+      (Members.PARTICIPANT_ID, Some(Json.Text(member.id))),
+      (Members.PARTICIPANT_KIND, Some(Json.Text(member.kind))),
+      (Members.PARTICIPANT_ROLES, Some(JsonRead.textList(&member.roles))),
+      (Members.PARTICIPANT_ABILITIES, Some(JsonRead.textList(&member.abilities))),
+      (Members.PARTICIPANT_GRAPH, Option.map(member.graph, |name: Str| Json.Text(name)))
+    ])
+}
+
+/// An edge as JSON.
+export fn edgeJson(edge: &Graph.Edge) -> Json.Json {
+  Json.object(&[
+      (Members.EDGE_ID, Json.Text(edge.id)),
+      (Members.EDGE_FROM, Json.Text(edge.from)),
+      (Members.EDGE_TO, Json.Text(edge.to)),
+      (Members.EDGE_RELATION, Json.Text(edge.relation)),
+      (Members.EDGE_KINDS, JsonRead.textList(&edge.kinds))
+    ])
+}
+
+/// A mutation as JSON, as the ledger records it.
+export fn mutationJson(mutation: &Mutation.Mutation) -> Json.Json {
+  Json.object(&[(Members.MUTATION_EXPECTED_REVISION, Json.Number(mutation.expectedRevision)), (Members.MUTATION_OPERATIONS, Json.List(mutation.steps.map(|step: Mutation.Step| stepJson(&step))))])
+}
+
+fn stepJson(step: &Mutation.Step) -> Json.Json {
+  match step {
+    case Mutation.AddParticipant(member) => Json.object(&[(Members.MUTATION_STEP_OP, Json.Text(Vocabulary.OP_ADD_PARTICIPANT)), (Members.MUTATION_STEP_PARTICIPANT, participantJson(&member))])
+    case Mutation.RemoveParticipant(id) => Json.object(&[(Members.MUTATION_STEP_OP, Json.Text(Vocabulary.OP_REMOVE_PARTICIPANT)), (Members.MUTATION_STEP_ID, Json.Text(id))])
+    case Mutation.AddEdge(edge) => Json.object(&[(Members.MUTATION_STEP_OP, Json.Text(Vocabulary.OP_ADD_EDGE)), (Members.MUTATION_STEP_EDGE, edgeJson(&edge))])
+    case Mutation.RemoveEdge(id) => Json.object(&[(Members.MUTATION_STEP_OP, Json.Text(Vocabulary.OP_REMOVE_EDGE)), (Members.MUTATION_STEP_ID, Json.Text(id))])
+  }
+}
+
+fn stepOf(item: &Json.Json) -> Option[Mutation.Step] {
+  let op = JsonRead.text(item, Members.MUTATION_STEP_OP) ?
+  let read = STEP_READERS.get(op) ?
+  read(*item)
+}
+
+fn addParticipant(item: Json.Json) -> Option[Mutation.Step] {
+  Option.map(Json.field(&item, Members.MUTATION_STEP_PARTICIPANT), |found: Json.Json| Mutation.AddParticipant(participantOf(&found)))
+}
+
+fn removeParticipant(item: Json.Json) -> Option[Mutation.Step] {
+  Option.map(JsonRead.text(&item, Members.MUTATION_STEP_ID), |found: Str| Mutation.RemoveParticipant(found))
+}
+
+fn addEdge(item: Json.Json) -> Option[Mutation.Step] {
+  Option.map(Json.field(&item, Members.MUTATION_STEP_EDGE), |found: Json.Json| Mutation.AddEdge(edgeOf(&found)))
+}
+
+fn removeEdge(item: Json.Json) -> Option[Mutation.Step] {
+  Option.map(JsonRead.text(&item, Members.MUTATION_STEP_ID), |found: Str| Mutation.RemoveEdge(found))
+}
+
+fn participantOf(item: &Json.Json) -> Graph.Participant {
+  Graph.Participant {
+    id: text(item, Members.PARTICIPANT_ID),
+    kind: text(item, Members.PARTICIPANT_KIND),
+    roles: Option.unwrapOr(JsonRead.texts(item, Members.PARTICIPANT_ROLES), []),
+    abilities: Option.unwrapOr(JsonRead.texts(item, Members.PARTICIPANT_ABILITIES), []),
+    graph: JsonRead.text(item, Members.PARTICIPANT_GRAPH)
+  }
+}
+
+fn edgeOf(item: &Json.Json) -> Graph.Edge {
+  Graph.Edge {
+    id: text(item, Members.EDGE_ID),
+    from: text(item, Members.EDGE_FROM),
+    to: text(item, Members.EDGE_TO),
+    relation: text(item, Members.EDGE_RELATION),
+    kinds: Option.unwrapOr(JsonRead.texts(item, Members.EDGE_KINDS), [])
+  }
+}
+
+fn listOf(body: &Json.Json, name: Str) -> Array[Json.Json] { Option.unwrapOr(JsonRead.list(body, name), []) }
+
+fn text(value: &Json.Json, name: Str) -> Str { Option.unwrapOr(JsonRead.text(value, name), "") }

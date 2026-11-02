@@ -1,0 +1,18 @@
+/** @Domain.Ledger.Record — the hash-linked history of one scope */
+module Domain.Ledger
+
+import Std.Json as Json
+import Domain.Envelope as Envelope
+
+/** @Domain.Ledger.Entry — one link of the chain */
+export type Entry = { sequence: Int, id: Str, digest: Str, link: Str }
+
+/** @Domain.Ledger.Record — an accepted envelope as the fabric keeps it */
+export type Record = {
+  entry: Entry,
+  envelope: Envelope.Envelope,
+  body: Json.Json,
+  stamp: Envelope.Stamp,
+  recipients: Array[Envelope.Address],
+  erased: Bool
+}

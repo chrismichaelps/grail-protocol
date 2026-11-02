@@ -1,0 +1,28 @@
+/** @Contract.Parameters.Generated — the name of every path and query parameter */
+module Contract.Parameters
+
+// projected from schema/grail.openapi.json by tools/Contract.pudu; edit the schema, not this file
+
+/// The `scope` parameter.
+export const SCOPE: Str = "scope"
+
+/// The `graph` parameter.
+export const GRAPH: Str = "graph"
+
+/// The `transfer` parameter.
+export const TRANSFER: Str = "transfer"
+
+/// The `participant` parameter.
+export const PARTICIPANT: Str = "participant"
+
+/// The `after` parameter.
+export const AFTER: Str = "after"
+
+/// The `limit` parameter.
+export const LIMIT: Str = "limit"
+
+/// The `wait` parameter.
+export const WAIT: Str = "wait"
+
+/// The `token` parameter.
+export const TOKEN: Str = "token"

@@ -1,0 +1,47 @@
+/** @Domain.Problem.Refusal — why the fabric refused an operation */
+module Domain.Problem
+
+import Std.Json as Json
+import Constants.Details as Details
+import Constants.Extras as Extras
+import Contract.Problems as Codes
+
+/** @Domain.Problem.Problem — a registered code, what a person is told, and the code's extra members */
+export type Problem = { code: Str, detail: Str, extras: Array[(Str, Json.Json)] }
+
+/** @Domain.Problem.Violation — one member of a request that does not match the contract */
+export type Violation = { path: Str, message: Str }
+
+/// A problem with a code from the registry and a detail for people.
+export fn of(code: Str, detail: Str) -> Problem { Problem{code: code, detail: detail, extras: []} }
+
+/// The problem with one more member.
+export fn withMember(problem: &Problem, name: Str, value: Json.Json) -> Problem {
+  Problem{..*problem, extras: problem.extras.push((name, value))}
+}
+
+/// A refusal of a request that does not match the contract.
+export fn invalid(violations: &Array[Violation]) -> Problem {
+  let listed = violations.map(|found: Violation| Json.object(&[(Extras.PATH, Json.Text(found.path)), (Extras.MESSAGE, Json.Text(found.message))]))
+  withMember(&of(Codes.INVALID, show(violations.length()) + Details.INVALID_MEMBERS), Extras.VIOLATIONS, Json.List(listed))
+}
+
+/// A violation at a path.
+export fn violation(path: Str, message: Str) -> Violation { Violation{path: path, message: message} }
+
+/// The registry entry of a problem's code; unregistered codes are reported as unavailable.
+export fn entryOf(problem: &Problem) -> Codes.Entry {
+  for entry in Codes.ALL {
+    if entry.code == problem.code { return entry }
+  }
+
+  unavailable()
+}
+
+fn unavailable() -> Codes.Entry {
+  for entry in Codes.ALL {
+    if entry.code == Codes.UNAVAILABLE { return entry }
+  }
+
+  Codes.Entry{code: Codes.UNAVAILABLE, status: 503, title: Codes.UNAVAILABLE}
+}

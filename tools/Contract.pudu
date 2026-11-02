@@ -1,0 +1,67 @@
+/** @Tools.Contract.Projector — writes or checks the modules projected from the contract */
+module Contract
+
+import Std.Env as Env
+import Std.Io as Io
+import Std.Option as Option
+import Std.Result as Result
+import Constants.Contract as Names
+import Contract.Emit as Emit
+import Contract.Read as Read
+
+/// Writes the projection, or with `--check` reports stale files; answers 0 when the projection matches the contract.
+fn main() -> Int {
+  let schema = Option.unwrapOr(Env.option("--schema"), Names.SCHEMA_PATH)
+  let checking = Env.hasFlag("--check")
+  let contract = match Result.andThen(Io.read(schema), |text: Str| Read.read(text)) {
+    case Ok(found) => found
+    case Err(reason) => {
+      let _said = Io.writeErrorLine("Contract: " + reason)
+
+      return 1
+    }
+  }
+  let files = Emit.files(&contract)
+
+  if checking { return checked(&files) }
+
+  if !Io.exists(Names.OUTPUT_DIRECTORY) {
+    let _made = Io.makeDirectory(Names.OUTPUT_DIRECTORY)
+  }
+
+  for file in files {
+    if Io.write(file[0], file[1]) != Ok(()) {
+      let _said = Io.writeErrorLine("Contract: could not write " + file[0])
+
+      return 1
+    }
+  }
+
+  let _said = Io.writeLine("projected " + show(files.length()) + " modules from " + schema)
+  0
+}
+
+fn checked(files: &Array[(Str, Str)]) -> Int {
+  var stale = 0
+
+  for file in *files {
+    match Io.read(file[0]) {
+      case Ok(text) => {
+        if text != file[1] {
+          stale = stale + 1
+
+          let _said = Io.writeLine(Names.STALE + file[0])
+        }
+      }
+      case Err(_) => {
+        stale = stale + 1
+
+        let _said = Io.writeLine(Names.MISSING + file[0])
+      }
+    }
+  }
+
+  let _summary = Io.writeLine("contract projection " + (if stale == 0 { "current" } else { "stale" }) + ": " + show(files.length()) + " modules, " + show(stale) + " to regenerate")
+
+  if stale == 0 { 0 } else { 1 }
+}

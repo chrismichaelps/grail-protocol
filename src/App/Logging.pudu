@@ -1,0 +1,46 @@
+/** @App.Logging.Events — the structured loggers of the fabric */
+module App.Logging
+
+import Config.Settings as Settings
+import Constants.Environment as Levels
+import Constants.Fabric as Fabric
+import Constants.Logging as Names
+import PuduLangLog.Configuration as Configuration
+import PuduLangLog as Log
+import PuduLangLog.Logger as Logger
+import PuduLangLog.Sinks.Console as Console
+import PuduLangLog.Value as Value
+
+/** @App.Logging.Logs — the server's events and the mediator's events */
+export type Logs = { server: Logger.Logger, messages: Logger.Logger }
+
+/// The level each configured name means.
+const LEVELS: Map[Str, Log.Level] = mapOf([
+    (Levels.VERBOSE, Log.Verbose),
+    (Levels.DEBUG, Log.Debug),
+    (Levels.INFORMATION, Log.Information),
+    (Levels.WARNING, Log.Warning),
+    (Levels.ERROR, Log.Error),
+    (Levels.FATAL, Log.Fatal)
+  ])
+
+/// The loggers the settings describe.
+export fn logs(settings: &Settings.Settings) -> Logs {
+  let messagesLevel = if settings.logLevel == Levels.VERBOSE || settings.logLevel == Levels.DEBUG { settings.logLevel } else { Levels.WARNING }
+  Logs{server: logger(settings.logLevel), messages: logger(messagesLevel).forSource(Names.MESSAGES_SOURCE)}
+}
+
+/// Loggers that write nothing.
+export fn quiet() -> Logs { Logs{server: Logger.none(), messages: Logger.none()} }
+
+fn logger(level: Str) -> Logger.Logger {
+  let console = Console.defaults()
+  Configuration.create()
+    .minimumLevel(match LEVELS.get(level) {
+      case Some(found) => found
+      case None => Log.Information
+    })
+    .enrichWithProperty(Names.APPLICATION_PROPERTY, Value.text(Fabric.NAME))
+    .writeTo(Console.sink(Console.Options{..console, colored: false, standardErrorFromLevel: Some(Log.Verbose)}))
+    .createLogger()
+}

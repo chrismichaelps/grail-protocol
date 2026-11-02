@@ -1,0 +1,24 @@
+/** @Utils.Canonical.Form — one JSON text per value, so equal values hash equally */
+module Utils.Canonical
+
+import Std.Json as Json
+
+/// The value with every object's members sorted by key, at every depth.
+export fn sorted(value: &Json.Json) -> Json.Json {
+  match value {
+    case Json.Object(members) => Json.Object(members.map(|pair: (Str, Json.Json)| (pair[0], sorted(&pair[1]))).sortBy(|left: (Str, Json.Json), right: (Str, Json.Json)| left[0] < right[0]))
+    case Json.List(items) => Json.List(items.map(|item: Json.Json| sorted(&item)))
+    case other => other
+  }
+}
+
+/// The canonical text of a value: sorted members and no insignificant whitespace.
+export fn text(value: &Json.Json) -> Str { Json.encode(&sorted(value)) }
+
+/// The value without the named top-level members.
+export fn without(value: &Json.Json, names: &Array[Str]) -> Json.Json {
+  match value {
+    case Json.Object(members) => Json.Object(members.filter(|pair: (Str, Json.Json)| !names.contains(pair[0])))
+    case other => other
+  }
+}

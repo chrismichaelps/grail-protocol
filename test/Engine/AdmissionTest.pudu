@@ -1,0 +1,118 @@
+/** @Test.Engine.Admission.Suite — routing, dependency gating, lifecycles, deduplication, and streams */
+module Engine.AdmissionTest
+
+import Std.Json as Json
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import Std.Test as Test
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Envelope as Envelope
+import Domain.Ledger as Ledger
+import Domain.Lifecycle as Lifecycle
+import Domain.Problem as Problem
+import Domain.Scope as Scope
+import Engine.Admission as Admission
+import Engine.Codec.Envelope as EnvelopeCodec
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+
+fn after(state: &Scope.State, body: &Json.Json) -> Scope.State { Result.unwrapOr(Fixtures.admitted(state, body), *state) }
+
+fn withMember(body: &Json.Json, name: Str, value: Json.Json) -> Json.Json { Json.withField(body, name, value) }
+
+fn keyed(key: Str) -> Json.Json { Json.object(&[("mode", Json.Text(Vocabulary.DELIVERY_EFFECTIVELY_ONCE)), ("key", Json.Text(key))]) }
+
+fn keysAfter(state: &Scope.State, sent: &Json.Json, now: Int) -> Result[Int, Problem.Problem] {
+  let envelope = EnvelopeCodec.decode(sent) ?
+
+  match Admission.admit(state, &envelope, sent, &Fixtures.owner(), now) ? {
+    case Admission.Fresh(found) => Ok(Map.size(&Admission.commit(state, &found).keys))
+    case Admission.Repeated(_) => Ok(-1)
+  }
+}
+
+fn main() -> Int {
+  let start = Fixtures.teamScope()
+  let request = Fixtures.body("t1", "planner", Fixtures.toRole("author"), Vocabulary.KIND_TASK, &[])
+  let sent = after(&start, &request)
+  let early = Fixtures.admitted(&sent, &Fixtures.body("t2", "planner", Fixtures.to("reviewer"), Vocabulary.KIND_TASK, &["t1"]))
+  let progressed = after(&sent, &Fixtures.body("p1", "writer", Fixtures.to("planner"), Vocabulary.KIND_PROGRESS, &["t1"]))
+  let asking = after(&progressed, &Fixtures.body("i1", "writer", Fixtures.to("planner"), Vocabulary.KIND_INPUT_REQUEST, &["t1"]))
+  let resumed = after(&asking, &Fixtures.body("p2", "writer", Fixtures.to("planner"), Vocabulary.KIND_PROGRESS, &["t1"]))
+  let done = after(&resumed, &Fixtures.body("r1", "writer", Fixtures.to("planner"), Vocabulary.KIND_RESULT, &["t1"]))
+  let again = Fixtures.admitted(&done, &Fixtures.body("r2", "writer", Fixtures.to("planner"), Vocabulary.KIND_RESULT, &["t1"]))
+  let gated = Fixtures.admitted(&done, &Fixtures.body("t3", "planner", Fixtures.to("reviewer"), Vocabulary.KIND_TASK, &["r1"]))
+  let stranger = Fixtures.admitted(&sent, &Fixtures.body("r3", "reviewer", Fixtures.to("planner"), Vocabulary.KIND_RESULT, &["t1"]))
+  let rejected = after(&sent, &Fixtures.body("x1", "writer", Fixtures.to("planner"), Vocabulary.KIND_ERROR, &["t1"]))
+  let canceledBySource = after(&sent, &Fixtures.body("c1", "planner", Fixtures.to("writer"), Vocabulary.KIND_CANCEL, &["t1"]))
+  let canceledByOther = Fixtures.admitted(&sent, &Fixtures.body("c2", "writer", Fixtures.to("writer"), Vocabulary.KIND_CANCEL, &["t1"]))
+  let misdirected = Fixtures.admitted(&sent, &Fixtures.body("r4", "writer", Fixtures.to("reviewer"), Vocabulary.KIND_RESULT, &["t1"]))
+  let orphan = Fixtures.admitted(&start, &Fixtures.body("r5", "writer", Fixtures.to("planner"), Vocabulary.KIND_RESULT, &[]))
+  let unrouted = Fixtures.admitted(&start, &Fixtures.body("t4", "writer", Fixtures.to("planner"), Vocabulary.KIND_TASK, &[]))
+  let byAbility = Fixtures.admitted(&start, &Fixtures.body("t5", "planner", Json.object(&[("ability", Json.Text("draft"))]), Vocabulary.KIND_OBSERVATION, &[]))
+  let first = withMember(&Fixtures.body("k1", "planner", Fixtures.to("writer"), Vocabulary.KIND_MEMORY, &[]), "delivery", keyed("once"))
+  let once = after(&start, &first)
+  let repeated = Fixtures.admitted(&once, &first)
+  let reused = Fixtures.admitted(&once, &withMember(&Fixtures.body("k2", "planner", Fixtures.to("writer"), Vocabulary.KIND_MEMORY, &[]), "delivery", keyed("once")))
+  let duplicate = Fixtures.admitted(&sent, &request)
+  let unknownParent = Fixtures.admitted(&start, &Fixtures.body("t6", "planner", Fixtures.to("writer"), Vocabulary.KIND_THOUGHT, &["ghost"]))
+  let late = Fixtures.admitted(&start, &withMember(&Fixtures.body("t7", "planner", Fixtures.to("writer"), Vocabulary.KIND_TASK, &[]), "deadline", Json.Number(Fixtures.NOW - 1)))
+  let skewed = Fixtures.admitted(&start, &withMember(&Fixtures.body("t8", "planner", Fixtures.to("writer"), Vocabulary.KIND_TASK, &[]), "clock", Json.object(&[("wall", Json.Number(Fixtures.NOW + Fixtures.DAY)), ("counter", Json.Number(0)), ("node", Json.Text("planner"))])))
+  let reserved = Fixtures.admitted(&start, &Fixtures.body("g1", "planner", Fixtures.to("writer"), Vocabulary.KIND_GRAPH_MUTATION, &[]))
+  let opened = after(&start, &Fixtures.body("s1", "planner", Fixtures.to("writer"), Vocabulary.KIND_STREAM_OPEN, &[]))
+  let chunked = after(&opened, &Fixtures.body("s2", "planner", Fixtures.to("writer"), Vocabulary.KIND_STREAM_CHUNK, &["s1"]))
+  let closed = after(&chunked, &Fixtures.body("s3", "planner", Fixtures.to("writer"), Vocabulary.KIND_STREAM_CLOSE, &["s1"]))
+  let afterClose = Fixtures.admitted(&closed, &Fixtures.body("s4", "planner", Fixtures.to("writer"), Vocabulary.KIND_STREAM_CHUNK, &["s1"]))
+  let loose = Fixtures.admitted(&start, &Fixtures.body("s5", "planner", Fixtures.to("writer"), Vocabulary.KIND_STREAM_CHUNK, &[]))
+  let wrongVersion = Fixtures.admitted(&start, &withMember(&request, "grail", Json.Text("2.0")))
+  let onTime = Fixtures.admitted(&start, &withMember(&Fixtures.body("b1", "planner", Fixtures.to("writer"), Vocabulary.KIND_TASK, &[]), "deadline", Json.Number(Fixtures.NOW)))
+  let edge = Json.object(&[("wall", Json.Number(Fixtures.NOW + Limits.CLOCK_SKEW_MILLIS)), ("counter", Json.Number(0)), ("node", Json.Text("planner"))])
+  let atSkew = Fixtures.admitted(&start, &withMember(&Fixtures.body("b2", "planner", Fixtures.to("writer"), Vocabulary.KIND_TASK, &[]), "clock", edge))
+  let closedAfterChunk = Fixtures.admitted(&chunked, &Fixtures.body("s6", "planner", Fixtures.to("writer"), Vocabulary.KIND_STREAM_CLOSE, &["s1"]))
+  let finished = Lifecycle.Lifecycle{taskId: "t", state: Vocabulary.STATE_COMPLETED, source: Envelope.Address{graph: "g", participant: "a"}, recipients: [], deadline: Some(Fixtures.NOW)}
+  let due = Lifecycle.Lifecycle{..finished, state: Vocabulary.STATE_WORKING}
+  let afterWindow = keysAfter(&once, &Json.withField(&first, "id", Json.Text("k3")), Fixtures.NOW + Limits.DEDUPLICATION_MILLIS)
+  let checks = Test.suite("Admission", &[
+      Test.equals("a fresh record is not erased", &Option.map(sent.records.get("t1"), |found: Ledger.Record| found.erased), &Some(false)),
+      Test.equals("a delivery key may be reused once its window ends, and the old one is forgotten", &afterWindow, &Ok(1)),
+      Test.equals("a deadline equal to now has passed", &Fixtures.code(&onTime), &Codes.EXPIRED),
+      Test.succeeded("a clock exactly at the skew bound is accepted", &atSkew),
+      Test.succeeded("a stream closes after its chunks", &closedAfterChunk),
+      Test.equals("a finished task never reads as expired", &Admission.stateAt(&finished, Fixtures.NOW + 1), &Vocabulary.STATE_COMPLETED),
+      Test.equals("an unfinished task expires at its deadline", &Admission.stateAt(&due, Fixtures.NOW), &Vocabulary.STATE_EXPIRED),
+      Test.equals("and not before it", &Admission.stateAt(&due, Fixtures.NOW - 1), &Vocabulary.STATE_WORKING),
+      Test.equals("a task to a role opens a submitted lifecycle", &Fixtures.stateOf(&sent, "t1"), &Vocabulary.STATE_SUBMITTED),
+      Test.equals("the role resolves to its holder", &Result.map(Fixtures.admitted(&start, &request), |s: Scope.State| Option.map(s.records.get("t1"), |found: Ledger.Record| found.recipients.length())), &Ok(Some(1))),
+      Test.equals("a task waits for its dependency's result", &Fixtures.code(&early), &Codes.DEPENDENCY_UNMET),
+      Test.equals("progress moves the task to working", &Fixtures.stateOf(&progressed, "t1"), &Vocabulary.STATE_WORKING),
+      Test.equals("an input task pauses the task", &Fixtures.stateOf(&asking, "t1"), &Vocabulary.STATE_INPUT_REQUIRED),
+      Test.equals("progress resumes it", &Fixtures.stateOf(&resumed, "t1"), &Vocabulary.STATE_WORKING),
+      Test.equals("a result completes it", &Fixtures.stateOf(&done, "t1"), &Vocabulary.STATE_COMPLETED),
+      Test.equals("a completed task takes no second answer", &Fixtures.code(&again), &Codes.INVALID_TRANSITION),
+      Test.succeeded("a task naming its dependency's result is admitted", &gated),
+      Test.equals("only a recipient may answer", &Fixtures.code(&stranger), &Codes.FORBIDDEN),
+      Test.equals("an error before any progress rejects the task", &Fixtures.stateOf(&rejected, "t1"), &Vocabulary.STATE_REJECTED),
+      Test.equals("the source may cancel", &Fixtures.stateOf(&canceledBySource, "t1"), &Vocabulary.STATE_CANCELED),
+      Test.equals("nobody else may cancel", &Fixtures.code(&canceledByOther), &Codes.FORBIDDEN),
+      Test.equals("an answer goes back to the task's source", &Fixtures.code(&misdirected), &Codes.NO_ROUTE),
+      Test.equals("an answer names its task", &Fixtures.code(&orphan), &Codes.INVALID),
+      Test.equals("without a flow edge there is no route", &Fixtures.code(&unrouted), &Codes.NO_ROUTE),
+      Test.succeeded("an ability reaches its holders", &byAbility),
+      Test.equals("a repeated delivery key answers the original", &Result.map(repeated, |s: Scope.State| Scope.length(&s)), &Ok(Scope.length(&once))),
+      Test.equals("a delivery key reused for another envelope is refused", &Fixtures.code(&reused), &Codes.KEY_REUSED),
+      Test.equals("an envelope id is used once", &Fixtures.code(&duplicate), &Codes.DUPLICATE),
+      Test.equals("every parent must be in the ledger", &Fixtures.code(&unknownParent), &Codes.UNKNOWN_PARENT),
+      Test.equals("a passed deadline is refused", &Fixtures.code(&late), &Codes.EXPIRED),
+      Test.equals("a clock far ahead is refused", &Fixtures.code(&skewed), &Codes.CLOCK_SKEW),
+      Test.equals("the fabric's own kinds cannot be sent", &Fixtures.code(&reserved), &Codes.FORBIDDEN),
+      Test.equals("a closed stream takes no more chunks", &Fixtures.code(&afterClose), &Codes.INVALID_TRANSITION),
+      Test.equals("a chunk names its stream", &Fixtures.code(&loose), &Codes.INVALID),
+      Test.equals("an unknown protocol version is refused", &Fixtures.code(&wrongVersion), &Codes.UNSUPPORTED_VERSION),
+      Test.equals("every acceptance extends the ledger by one", &Scope.length(&done), &(Scope.length(&start) + 5))
+    ])
+
+  Runner.finish(&checks)
+}

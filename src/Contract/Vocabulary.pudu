@@ -1,0 +1,260 @@
+/** @Contract.Vocabulary.Generated — every closed set of names in the contract */
+module Contract.Vocabulary
+
+// projected from schema/grail.openapi.json by tools/Contract.pudu; edit the schema, not this file
+
+/// `task`.
+export const KIND_TASK: Str = "task"
+
+/// `result`.
+export const KIND_RESULT: Str = "result"
+
+/// `error`.
+export const KIND_ERROR: Str = "error"
+
+/// `progress`.
+export const KIND_PROGRESS: Str = "progress"
+
+/// `input.request`.
+export const KIND_INPUT_REQUEST: Str = "input.request"
+
+/// `cancel`.
+export const KIND_CANCEL: Str = "cancel"
+
+/// `thought`.
+export const KIND_THOUGHT: Str = "thought"
+
+/// `observation`.
+export const KIND_OBSERVATION: Str = "observation"
+
+/// `memory`.
+export const KIND_MEMORY: Str = "memory"
+
+/// `tool.call`.
+export const KIND_TOOL_CALL: Str = "tool.call"
+
+/// `tool.result`.
+export const KIND_TOOL_RESULT: Str = "tool.result"
+
+/// `stream.open`.
+export const KIND_STREAM_OPEN: Str = "stream.open"
+
+/// `stream.chunk`.
+export const KIND_STREAM_CHUNK: Str = "stream.chunk"
+
+/// `stream.close`.
+export const KIND_STREAM_CLOSE: Str = "stream.close"
+
+/// `ability.advert`.
+export const KIND_ABILITY_ADVERT: Str = "ability.advert"
+
+/// `graph.mutation`.
+export const KIND_GRAPH_MUTATION: Str = "graph.mutation"
+
+/// `bridge.rpc`.
+export const KIND_BRIDGE_RPC: Str = "bridge.rpc"
+
+/// Every value of the set.
+export const KINDS: Array[Str] = [
+  "task",
+  "result",
+  "error",
+  "progress",
+  "input.request",
+  "cancel",
+  "thought",
+  "observation",
+  "memory",
+  "tool.call",
+  "tool.result",
+  "stream.open",
+  "stream.chunk",
+  "stream.close",
+  "ability.advert",
+  "graph.mutation",
+  "bridge.rpc"
+]
+
+/// `*`.
+export const ABILITY_ALL: Str = "*"
+
+/// `graph.read`.
+export const ABILITY_GRAPH_READ: Str = "graph.read"
+
+/// `graph.write`.
+export const ABILITY_GRAPH_WRITE: Str = "graph.write"
+
+/// `transfer.send`.
+export const ABILITY_TRANSFER_SEND: Str = "transfer.send"
+
+/// `transfer.receive`.
+export const ABILITY_TRANSFER_RECEIVE: Str = "transfer.receive"
+
+/// `transfer.read`.
+export const ABILITY_TRANSFER_READ: Str = "transfer.read"
+
+/// `ledger.read`.
+export const ABILITY_LEDGER_READ: Str = "ledger.read"
+
+/// `ledger.erase`.
+export const ABILITY_LEDGER_ERASE: Str = "ledger.erase"
+
+/// `token.delegate`.
+export const ABILITY_TOKEN_DELEGATE: Str = "token.delegate"
+
+/// Every value of the set.
+export const ABILITIES: Array[Str] = [
+  "*",
+  "graph.read",
+  "graph.write",
+  "transfer.send",
+  "transfer.receive",
+  "transfer.read",
+  "ledger.read",
+  "ledger.erase",
+  "token.delegate"
+]
+
+/// `agent`.
+export const PARTICIPANT_AGENT: Str = "agent"
+
+/// `tool`.
+export const PARTICIPANT_TOOL: Str = "tool"
+
+/// `memory`.
+export const PARTICIPANT_MEMORY: Str = "memory"
+
+/// `human`.
+export const PARTICIPANT_HUMAN: Str = "human"
+
+/// `service`.
+export const PARTICIPANT_SERVICE: Str = "service"
+
+/// `graph`.
+export const PARTICIPANT_GRAPH: Str = "graph"
+
+/// Every value of the set.
+export const PARTICIPANT_KINDS: Array[Str] = [
+  "agent",
+  "tool",
+  "memory",
+  "human",
+  "service",
+  "graph"
+]
+
+/// `flow`.
+export const RELATION_FLOW: Str = "flow"
+
+/// `dependency`.
+export const RELATION_DEPENDENCY: Str = "dependency"
+
+/// Every value of the set.
+export const RELATIONS: Array[Str] = [
+  "flow",
+  "dependency"
+]
+
+/// `at-most-once`.
+export const DELIVERY_AT_MOST_ONCE: Str = "at-most-once"
+
+/// `at-least-once`.
+export const DELIVERY_AT_LEAST_ONCE: Str = "at-least-once"
+
+/// `effectively-once`.
+export const DELIVERY_EFFECTIVELY_ONCE: Str = "effectively-once"
+
+/// Every value of the set.
+export const DELIVERY_MODES: Array[Str] = [
+  "at-most-once",
+  "at-least-once",
+  "effectively-once"
+]
+
+/// `scope`.
+export const VISIBILITY_SCOPE: Str = "scope"
+
+/// `graph`.
+export const VISIBILITY_GRAPH: Str = "graph"
+
+/// `recipients`.
+export const VISIBILITY_RECIPIENTS: Str = "recipients"
+
+/// Every value of the set.
+export const VISIBILITIES: Array[Str] = [
+  "scope",
+  "graph",
+  "recipients"
+]
+
+/// `submitted`.
+export const STATE_SUBMITTED: Str = "submitted"
+
+/// `working`.
+export const STATE_WORKING: Str = "working"
+
+/// `input-required`.
+export const STATE_INPUT_REQUIRED: Str = "input-required"
+
+/// `completed`.
+export const STATE_COMPLETED: Str = "completed"
+
+/// `failed`.
+export const STATE_FAILED: Str = "failed"
+
+/// `canceled`.
+export const STATE_CANCELED: Str = "canceled"
+
+/// `expired`.
+export const STATE_EXPIRED: Str = "expired"
+
+/// `rejected`.
+export const STATE_REJECTED: Str = "rejected"
+
+/// Every value of the set.
+export const STATES: Array[Str] = [
+  "submitted",
+  "working",
+  "input-required",
+  "completed",
+  "failed",
+  "canceled",
+  "expired",
+  "rejected"
+]
+
+/// `add-participant`.
+export const OP_ADD_PARTICIPANT: Str = "add-participant"
+
+/// `remove-participant`.
+export const OP_REMOVE_PARTICIPANT: Str = "remove-participant"
+
+/// `add-edge`.
+export const OP_ADD_EDGE: Str = "add-edge"
+
+/// `remove-edge`.
+export const OP_REMOVE_EDGE: Str = "remove-edge"
+
+/// Every value of the set.
+export const MUTATION_OPS: Array[Str] = [
+  "add-participant",
+  "remove-participant",
+  "add-edge",
+  "remove-edge"
+]
+
+/// The lifecycle states that never change again.
+export const FINAL_STATES: Array[Str] = [
+  "completed",
+  "failed",
+  "canceled",
+  "expired",
+  "rejected"
+]
+
+/// The kinds that open a lifecycle.
+export const OPENING_KINDS: Array[Str] = [
+  "task",
+  "tool.call",
+  "bridge.rpc"
+]

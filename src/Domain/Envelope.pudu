@@ -1,0 +1,46 @@
+/** @Domain.Envelope.Message — the single message shape of the protocol */
+module Domain.Envelope
+
+import Std.Json as Json
+
+/** @Domain.Envelope.Selector — who an envelope is addressed to */
+export type Selector
+  = ToParticipant(Str)
+  | ToRole(Str)
+  | ToAbility(Str)
+
+/** @Domain.Envelope.Address — one participant of one graph */
+export type Address = { graph: Str, participant: Str }
+
+/** @Domain.Envelope.Delivery — the guarantee requested and its deduplication key */
+export type Delivery = { mode: Str, key: Option[Str] }
+
+/** @Domain.Envelope.Clock — a hybrid logical clock reading */
+export type Clock = { wall: Int, counter: Int, node: Str }
+
+/** @Domain.Envelope.Encryption — how a sealed payload was sealed and for whom */
+export type Encryption = { scheme: Str, recipients: Array[Str] }
+
+/** @Domain.Envelope.Envelope — an envelope as a sender wrote it */
+export type Envelope = {
+  grail: Str,
+  id: Str,
+  scopeId: Str,
+  graph: Str,
+  source: Str,
+  target: Selector,
+  kind: Str,
+  parents: Array[Str],
+  schema: Option[Str],
+  payload: Option[Json.Json],
+  delivery: Delivery,
+  priority: Int,
+  deadline: Option[Int],
+  clock: Option[Clock],
+  visibility: Str,
+  encryption: Option[Encryption],
+  extensions: Array[(Str, Json.Json)]
+}
+
+/** @Domain.Envelope.Stamp — what the fabric adds on acceptance */
+export type Stamp = { sequence: Int, digest: Str, accepted: Int }

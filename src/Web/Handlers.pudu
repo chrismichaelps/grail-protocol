@@ -1,0 +1,131 @@
+/** @Web.Handlers.Operations — one handler per contract operation, chosen once by operation id */
+module Web.Handlers
+
+import Std.Http as Http
+import Std.Http.Server.Reply as Reply
+import Std.Http.Server.Route as Route
+import Std.Json as Json
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import App.Assembly as Assembly
+import App.Commands as Commands
+import Contract.Document as Document
+import Contract.Operations as Operations
+import Contract.Parameters as Parameters
+import Domain.Capability as Capability
+import Domain.Envelope as Envelope
+import Domain.Graph as Graph
+import Domain.Mutation as Mutation
+import Domain.Problem as Problem
+import Domain.Request as Request
+import Domain.Transfer as Transfer
+import Engine.Codec.Envelope as EnvelopeCodec
+import Engine.Codec.Graph as GraphCodec
+import Engine.Codec.Token as TokenCodec
+import Engine.Codec.Views as Views
+import Web.Caller as Caller
+import Web.Respond as Respond
+
+/** @Web.Handlers.Handler — what answers one operation */
+export type Handler = fn(Assembly.App, Route.Request, Int) -> Http.Response
+
+/// The handler of every operation, by the contract's operation id. Called only from this module: a function taken out of a constant runs without its module's imports in the pinned runtime.
+const HANDLERS: Map[Str, Handler] = mapOf([
+    (Operations.DISCOVER, discover),
+    (Operations.DESCRIBE_CONTRACT, describeContract),
+    (Operations.CHECK_HEALTH, checkHealth),
+    (Operations.CREATE_GRAPH, createGraph),
+    (Operations.READ_GRAPH, readGraph),
+    (Operations.MUTATE_GRAPH, mutateGraph),
+    (Operations.SEND_ENVELOPE, sendEnvelope),
+    (Operations.READ_TRANSFER, readTransfer),
+    (Operations.TRACE_TRANSFER, traceTransfer),
+    (Operations.PULL_DELIVERIES, pullDeliveries),
+    (Operations.READ_LEDGER, readLedger),
+    (Operations.DELEGATE_TOKEN, delegateToken),
+    (Operations.BRIDGE_RPC, bridgeRpc),
+    (Operations.INSPECT_TOKEN, inspectToken),
+    (Operations.REVOKE_TOKEN, revokeToken),
+    (Operations.ERASE_TRANSFER, eraseTransfer)
+  ])
+
+/// The ids of every operation with a handler.
+export fn bound() -> Array[Str] { Map.keys(&HANDLERS) }
+
+/// The answer of an operation's handler, or `None` when the operation has none.
+export fn respond(id: Str, app: Assembly.App, request: Route.Request, status: Int) -> Option[Http.Response] {
+  let handler = HANDLERS.get(id) ?
+  Some(handler(app, request, status))
+}
+
+fn discover(_app: Assembly.App, _request: Route.Request, status: Int) -> Http.Response { Reply.jsonValue(status, Views.discovery()) }
+
+fn describeContract(_app: Assembly.App, _request: Route.Request, status: Int) -> Http.Response { Reply.json(status, Document.TEXT) }
+
+fn checkHealth(_app: Assembly.App, _request: Route.Request, status: Int) -> Http.Response { Reply.jsonValue(status, Views.health()) }
+
+fn createGraph(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let outcome = Result.andThen(Result.andThen(Caller.body(&request), |body: Json.Json| GraphCodec.decodeDraft(&body)), |draft: Mutation.Draft| Commands.createGraph(&app, Caller.call(&request, Request.Creation{graph: Caller.parameter(&request, Parameters.GRAPH), draft: draft})))
+  Respond.answer(status, outcome, |graph: Graph.Graph| GraphCodec.encode(&graph))
+}
+
+fn readGraph(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  Respond.answer(status, Commands.readGraph(&app, Caller.call(&request, Caller.parameter(&request, Parameters.GRAPH))), |graph: Graph.Graph| GraphCodec.encode(&graph))
+}
+
+fn mutateGraph(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let outcome = Result.andThen(Result.andThen(Caller.body(&request), |body: Json.Json| GraphCodec.decodeMutation(&body)), |mutation: Mutation.Mutation| Commands.mutateGraph(&app, Caller.call(&request, Request.Change{graph: Caller.parameter(&request, Parameters.GRAPH), mutation: mutation})))
+  Respond.answer(status, outcome, |graph: Graph.Graph| GraphCodec.encode(&graph))
+}
+
+fn sendEnvelope(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let outcome = Result.andThen(Caller.body(&request), |body: Json.Json| Result.andThen(EnvelopeCodec.decode(&body), |envelope: Envelope.Envelope| Commands.sendEnvelope(&app, Caller.call(&request, Request.Sending{envelope: envelope, body: body}))))
+  Respond.answer(status, outcome, |receipt: Transfer.Receipt| Views.receipt(&receipt))
+}
+
+fn readTransfer(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  Respond.answer(status, Commands.readTransfer(&app, Caller.call(&request, Caller.parameter(&request, Parameters.TRANSFER))), |view: Transfer.View| Views.transfer(&view))
+}
+
+fn traceTransfer(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  Respond.answer(status, Commands.traceTransfer(&app, Caller.call(&request, Caller.parameter(&request, Parameters.TRANSFER))), |traced: Request.Traced| Views.trace(traced.of, &traced.entries))
+}
+
+fn pullDeliveries(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let outcome = Result.andThen(cursor(&request), |page: (Int, Option[Int])| Result.andThen(Caller.whole(&request, Parameters.WAIT), |wait: Option[Int]| Commands.pullDeliveries(&app, Caller.call(&request, Request.Pulling{graph: Caller.parameter(&request, Parameters.GRAPH), participant: Caller.parameter(&request, Parameters.PARTICIPANT), after: page[0], limit: page[1], wait: Option.unwrapOr(wait, 0)}))))
+  Respond.answer(status, outcome, |found: Transfer.Page| Views.deliveries(&found))
+}
+
+fn readLedger(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let outcome = Result.andThen(cursor(&request), |page: (Int, Option[Int])| Commands.readLedger(&app, Caller.call(&request, Request.Paging{after: page[0], limit: page[1]})))
+  Respond.answer(status, outcome, |found: Transfer.Page| Views.ledger(&found))
+}
+
+fn delegateToken(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let outcome = Result.andThen(Result.andThen(Caller.body(&request), |body: Json.Json| TokenCodec.decodeRequest(&body, Assembly.now())), |asked: Capability.Request| Commands.delegateToken(&app, Caller.call(&request, asked)))
+  Respond.answer(status, outcome, |granted: Request.Granted| Views.grant(granted.token, granted.expires))
+}
+
+fn bridgeRpc(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let outcome = Result.andThen(Caller.body(&request), |message: Json.Json| Commands.bridgeRpc(&app, Caller.call(&request, Request.Bridging{graph: Caller.parameter(&request, Parameters.GRAPH), participant: Caller.parameter(&request, Parameters.PARTICIPANT), message: message})))
+  Respond.answer(status, outcome, |receipt: Transfer.Receipt| Views.receipt(&receipt))
+}
+
+fn inspectToken(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  Respond.answer(status, Commands.inspectToken(&app, Caller.call(&request, ())), |described: (Capability.Token, Int)| Views.tokenView(&described[0], described[1]))
+}
+
+fn revokeToken(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  Respond.answer(status, Commands.revokeToken(&app, Caller.call(&request, Caller.parameter(&request, Parameters.TOKEN))), |token: Str| Views.revocation(token))
+}
+
+fn eraseTransfer(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  Respond.answer(status, Commands.eraseTransfer(&app, Caller.call(&request, Caller.parameter(&request, Parameters.TRANSFER))), |erased: Request.Erased| Views.erasure(&erased))
+}
+
+fn cursor(request: &Route.Request) -> Result[(Int, Option[Int]), Problem.Problem] {
+  let after = Caller.whole(request, Parameters.AFTER) ?
+  let limit = Caller.whole(request, Parameters.LIMIT) ?
+  Ok((Option.unwrapOr(after, 0), limit))
+}

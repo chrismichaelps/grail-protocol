@@ -1,0 +1,90 @@
+/** @Engine.Codec.Envelope — envelopes to and from JSON */
+module Engine.Codec.Envelope
+
+import Std.Json as Json
+import Std.Option as Option
+import Constants.Details as Details
+import Constants.Extras as Extras
+import Constants.Graphs as Graphs
+import Contract.Limits as Limits
+import Contract.Members as Members
+import Contract.Problems as Codes
+import Contract.Schemas as Schemas
+import Contract.Vocabulary as Vocabulary
+import Domain.Envelope as Envelope
+import Domain.Problem as Problem
+import Engine.Codec.Shapes as Shapes
+import Utils.JsonRead as JsonRead
+
+/// The envelope a body describes, or every way it departs from the contract.
+export fn decode(body: &Json.Json) -> Result[Envelope.Envelope, Problem.Problem] {
+  let violations = Shapes.check(Schemas.ENVELOPE, body, "")
+  let payload = Option.unwrapOr(Option.map(Json.field(body, Members.ENVELOPE_PAYLOAD), |held: Json.Json| Json.encode(&held).length()), 0)
+
+  if payload > Limits.PAYLOAD_BYTES { return Err(Problem.withMember(&Problem.of(Codes.TOO_LARGE, Details.TOO_LARGE), Extras.LIMIT, Json.Number(Limits.PAYLOAD_BYTES))) }
+  if !violations.isEmpty() { return Err(Problem.invalid(&violations)) }
+
+  let delivery = Option.unwrapOr(Json.field(body, Members.ENVELOPE_DELIVERY), Json.Null)
+  let clock = Json.field(body, Members.ENVELOPE_CLOCK)
+  let encryption = Json.field(body, Members.ENVELOPE_ENCRYPTION)
+  Ok(Envelope.Envelope {
+      grail: text(body, Members.ENVELOPE_GRAIL),
+      id: text(body, Members.ENVELOPE_ID),
+      scopeId: text(body, Members.ENVELOPE_SCOPE),
+      graph: text(body, Members.ENVELOPE_GRAPH),
+      source: text(body, Members.ENVELOPE_SOURCE),
+      target: selectorOf(&Option.unwrapOr(Json.field(body, Members.ENVELOPE_TARGET), Json.Null)),
+      kind: text(body, Members.ENVELOPE_KIND),
+      parents: Option.unwrapOr(JsonRead.texts(body, Members.ENVELOPE_PARENTS), []),
+      schema: JsonRead.text(body, Members.ENVELOPE_SCHEMA),
+      payload: Json.field(body, Members.ENVELOPE_PAYLOAD),
+      delivery: Envelope.Delivery{mode: Option.unwrapOr(JsonRead.text(&delivery, Members.DELIVERY_MODE), Vocabulary.DELIVERY_AT_LEAST_ONCE), key: JsonRead.text(&delivery, Members.DELIVERY_KEY)},
+      priority: Option.unwrapOr(JsonRead.whole(body, Members.ENVELOPE_PRIORITY), Limits.PRIORITY_DEFAULT),
+      deadline: JsonRead.whole(body, Members.ENVELOPE_DEADLINE),
+      clock: Option.map(clock, |reading: Json.Json| Envelope.Clock{wall: whole(&reading, Members.CLOCK_WALL), counter: whole(&reading, Members.CLOCK_COUNTER), node: text(&reading, Members.CLOCK_NODE)}),
+      visibility: Option.unwrapOr(JsonRead.text(body, Members.ENVELOPE_VISIBILITY), Vocabulary.VISIBILITY_SCOPE),
+      encryption: Option.map(encryption, |sealed: Json.Json| Envelope.Encryption{scheme: text(&sealed, Members.ENCRYPTION_SCHEME), recipients: Option.unwrapOr(JsonRead.texts(&sealed, Members.ENCRYPTION_RECIPIENTS), [])}),
+      extensions: extensionsOf(body)
+    })
+}
+
+/// The body as stored, with the members the fabric adds on acceptance.
+export fn stamped(body: &Json.Json, stamp: &Envelope.Stamp) -> Json.Json {
+  let added = Json.withField(body, Members.ACCEPTED_SEQUENCE, Json.Number(stamp.sequence))
+  let digested = Json.withField(&added, Members.ACCEPTED_DIGEST, Json.Text(stamp.digest))
+  Json.withField(&digested, Members.ACCEPTED_ACCEPTED, Json.Number(stamp.accepted))
+}
+
+/// A selector as JSON.
+export fn selectorJson(selector: &Envelope.Selector) -> Json.Json {
+  match selector {
+    case Envelope.ToParticipant(id) => Json.object(&[(Members.SELECTOR_PARTICIPANT, Json.Text(id))])
+    case Envelope.ToRole(role) => Json.object(&[(Members.SELECTOR_ROLE, Json.Text(role))])
+    case Envelope.ToAbility(ability) => Json.object(&[(Members.SELECTOR_ABILITY, Json.Text(ability))])
+  }
+}
+
+/// An address as JSON.
+export fn addressJson(address: &Envelope.Address) -> Json.Json {
+  Json.object(&[(Members.ADDRESS_GRAPH, Json.Text(address.graph)), (Members.ADDRESS_PARTICIPANT, Json.Text(address.participant))])
+}
+
+fn selectorOf(value: &Json.Json) -> Envelope.Selector {
+  match JsonRead.text(value, Members.SELECTOR_ROLE) {
+    case Some(role) => Envelope.ToRole(role)
+    case None => {
+      match JsonRead.text(value, Members.SELECTOR_ABILITY) {
+        case Some(ability) => Envelope.ToAbility(ability)
+        case None => Envelope.ToParticipant(text(value, Members.SELECTOR_PARTICIPANT))
+      }
+    }
+  }
+}
+
+fn extensionsOf(body: &Json.Json) -> Array[(Str, Json.Json)] {
+  Option.unwrapOr(Json.asObject(body), []).filter(|pair: (Str, Json.Json)| pair[0].startsWith(Graphs.EXTENSION_PREFIX))
+}
+
+fn text(value: &Json.Json, name: Str) -> Str { Option.unwrapOr(JsonRead.text(value, name), "") }
+
+fn whole(value: &Json.Json, name: Str) -> Int { Option.unwrapOr(JsonRead.whole(value, name), 0) }

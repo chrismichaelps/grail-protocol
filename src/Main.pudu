@@ -1,0 +1,81 @@
+/** @Main.Fabric.Entry — the grail process */
+module Main
+
+import Std.Env as Env
+import Std.Http.Server {Configuring}
+import Std.Http.Server as Server
+import Std.Io as Io
+import Std.Result as Result
+import App.Assembly as Assembly
+import App.Logging as Logging
+import Cli.Commands as Commands
+import Config.Settings as Settings
+import Constants.Cli as Names
+import Constants.Fabric as Fabric
+import Constants.Http as Http
+import Constants.Logging as Events
+import Constants.Server as Capacity
+import Constants.Text as Text
+import PuduLangLog.Logger as Logger
+import PuduLangLog.Value as Value
+import Services.Runtime as Runtime
+import Web.Description as Description
+import Web.Router as Router
+
+/// Runs a command, or serves the HTTP binding until stopped.
+fn main() -> Int {
+  let arguments = Env.all()
+
+  if let Some(status) = Commands.offline(&arguments) { return status }
+
+  let settings = match Settings.load() {
+    case Ok(found) => found
+    case Err(reason) => { return stopped(reason) }
+  }
+  let logs = Logging.logs(&settings)
+  let app = match Assembly.assemble(&Runtime.create(&settings), &logs) {
+    case Ok(found) => found
+    case Err(reason) => { return stopped(reason) }
+  }
+  let command = if arguments.isEmpty() { Names.SERVE } else { arguments[0] }
+
+  if command == Names.SERVE { serve(&app) } else { Commands.run(&app, &arguments) }
+}
+
+fn serve(app: &Assembly.App) -> Int {
+  let router = match Router.router(app) {
+    case Ok(found) => found
+    case Err(reason) => { return stopped(reason) }
+  }
+  let gaps = Description.gaps(&router)
+
+  if !gaps[0].isEmpty() || !gaps[1].isEmpty() { return stopped(gaps[0].concat(gaps[1]).join(Text.LIST_JOIN)) }
+
+  let settings = app.runtime.settings
+  let live = match Server.start(settings.host, settings.port) {
+    case Ok(found) => found
+    case Err(_) => { return stopped(settings.host + Text.PORT_JOIN + show(settings.port)) }
+  }
+  var served = Server.server(&router)
+    .withLimits(Capacity.HEAD_BYTES_MAX, Capacity.BODY_BYTES_MAX)
+    .withWorkers(settings.workers, settings.workers * 2)
+    .withReadDeadline(Capacity.SOCKET_DEADLINE_MILLIS)
+    .withWriteDeadline(Capacity.SOCKET_DEADLINE_MILLIS)
+    .withDrainDeadline(Capacity.DRAIN_MILLIS)
+
+  for step in Router.middleware(&settings) { served = served.using(step) }
+
+  let _watching = Server.stopOnSignal(&live)
+  app.logs.server.information(Events.LISTENING, [Value.text(Http.SCHEME + settings.host + Text.PORT_JOIN + show(Server.portOf(&live)))])
+
+  let ran = Server.run(&served, &live, settings.connections)
+  let _stopped = Server.stop(&live)
+  app.logs.server.information(Events.STOPPED, [])
+
+  if Result.isOk(&ran) { 0 } else { 1 }
+}
+
+fn stopped(reason: Str) -> Int {
+  let _said = Io.writeErrorLine(Fabric.EXECUTABLE + Text.LABEL_JOIN + reason)
+  1
+}

@@ -1,0 +1,36 @@
+/** @Engine.Paths.Targets — the request target of an operation with its parameters filled in */
+module Engine.Paths
+
+import Std.Json as Json
+import Std.List as List
+import Std.Option as Option
+import Constants.Http as Names
+import Contract.Operations as Operations
+import Utils.JsonRead as JsonRead
+
+/// The operation with a contract id.
+export fn operationOf(id: Str) -> Option[Operations.Operation] { List.find(&Operations.ALL, |candidate: Operations.Operation| candidate.id == id) }
+
+/// The path of an operation with every path parameter taken from `params`.
+export fn path(operation: &Operations.Operation, params: &Json.Json) -> Str {
+  var filled = operation.path
+
+  for name in operation.pathParameters {
+    filled = filled.replace(Names.PARAMETER_OPEN + name + Names.PARAMETER_CLOSE, Option.unwrapOr(JsonRead.text(params, name), ""))
+  }
+
+  filled
+}
+
+/// The query parameters of an operation present in `params`.
+export fn query(operation: &Operations.Operation, params: &Json.Json) -> Array[(Str, Str)] {
+  Option.present(&operation.queryParameters.map(|name: Str| Option.map(JsonRead.whole(params, name), |value: Int| (name, show(value)))))
+}
+
+/// The full request target: the path and, when any is present, the query.
+export fn target(operation: &Operations.Operation, params: &Json.Json) -> Str {
+  let pairs = query(operation, params)
+  let rendered = pairs.map(|pair: (Str, Str)| pair[0] + Names.QUERY_EQUALS + pair[1]).join(Names.QUERY_JOIN)
+
+  if pairs.isEmpty() { path(operation, params) } else { path(operation, params) + Names.QUERY_MARK + rendered }
+}

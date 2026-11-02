@@ -1,0 +1,21 @@
+# Local governance and working inputs
+spec.md
+fmcf.md
+spec.original.md
+
+# Toolchain output
+deps/
+build/
+*.log
+.DS_Store
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Local editor and preview settings
+.claude/
+
+# Cloudflare local state
+.wrangler/

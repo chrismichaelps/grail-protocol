@@ -1,0 +1,127 @@
+/** @Engine.Codec.Views — the answers of every operation as JSON */
+module Engine.Codec.Views
+
+import Std.Json as Json
+import Std.Option as Option
+import Constants.Fabric as Fabric
+import Contract.Limits as Limits
+import Contract.Members as Members
+import Contract.Version as Version
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Domain.Envelope as Envelope
+import Domain.Ledger as Ledger
+import Domain.Request as Request
+import Domain.Transfer as Transfer
+import Engine.Codec.Envelope as EnvelopeCodec
+import Utils.JsonRead as JsonRead
+
+/// The answer to an accepted envelope.
+export fn receipt(answer: &Transfer.Receipt) -> Json.Json {
+  JsonRead.objectOf(&[
+      (Members.RECEIPT_ID, Some(Json.Text(answer.id))),
+      (Members.RECEIPT_SEQUENCE, Some(Json.Number(answer.sequence))),
+      (Members.RECEIPT_DIGEST, Some(Json.Text(answer.digest))),
+      (Members.RECEIPT_RECIPIENTS, Some(addresses(&answer.recipients))),
+      (Members.RECEIPT_STATE, Option.map(answer.state, |state: Str| Json.Text(state))),
+      (Members.RECEIPT_DUPLICATE, Some(Json.Boolean(answer.duplicate)))
+    ])
+}
+
+/// One envelope with its lifecycle.
+export fn transfer(view: &Transfer.View) -> Json.Json {
+  JsonRead.objectOf(&[
+      (Members.TRANSFER_ENVELOPE, Some(stored(&view.record))),
+      (Members.TRANSFER_RECIPIENTS, Some(addresses(&view.record.recipients))),
+      (Members.TRANSFER_STATE, Option.map(view.state, |state: Str| Json.Text(state)))
+    ])
+}
+
+/// The causal ancestry of an envelope.
+export fn trace(of: Str, entries: &Array[Transfer.TraceEntry]) -> Json.Json {
+  Json.object(&[(Members.TRACE_OF, Json.Text(of)), (Members.TRACE_ENTRIES, Json.List(entries.map(|entry: Transfer.TraceEntry| traceEntry(&entry))))])
+}
+
+/// A page of deliveries.
+export fn deliveries(page: &Transfer.Page) -> Json.Json {
+  let listed = page.records.map(|record: Ledger.Record| Json.object(&[(Members.DELIVERED_SEQUENCE, Json.Number(record.entry.sequence)), (Members.DELIVERED_ENVELOPE, stored(&record))]))
+  Json.object(&[(Members.DELIVERY_PAGE_DELIVERIES, Json.List(listed)), (Members.DELIVERY_PAGE_CURSOR, Json.Number(page.cursor))])
+}
+
+/// A page of ledger entries.
+export fn ledger(page: &Transfer.Page) -> Json.Json {
+  let listed = page.records.map(|record: Ledger.Record| Json.object(&[
+        (Members.LEDGER_ENTRY_SEQUENCE, Json.Number(record.entry.sequence)),
+        (Members.LEDGER_ENTRY_ID, Json.Text(record.entry.id)),
+        (Members.LEDGER_ENTRY_DIGEST, Json.Text(record.entry.digest)),
+        (Members.LEDGER_ENTRY_LINK, Json.Text(record.entry.link))
+      ]))
+  Json.object(&[(Members.LEDGER_PAGE_ENTRIES, Json.List(listed)), (Members.LEDGER_PAGE_CURSOR, Json.Number(page.cursor))])
+}
+
+/// A delegated token.
+export fn grant(token: Str, expires: Int) -> Json.Json {
+  Json.object(&[(Members.GRANT_TOKEN, Json.Text(token)), (Members.GRANT_EXPIRES, Json.Number(expires))])
+}
+
+/// A presented token, described to its holder.
+export fn tokenView(token: &Capability.Token, depth: Int) -> Json.Json {
+  JsonRead.objectOf(&[
+      (Members.TOKEN_VIEW_ID, Some(Json.Text(token.id))),
+      (Members.TOKEN_VIEW_SCOPE, Some(Json.Text(token.scopeId))),
+      (Members.TOKEN_VIEW_GRAPH, Option.map(token.graph, |name: Str| Json.Text(name))),
+      (Members.TOKEN_VIEW_ISSUER, Some(Json.Text(token.issuer))),
+      (Members.TOKEN_VIEW_AUDIENCE, Some(Json.Text(token.audience))),
+      (Members.TOKEN_VIEW_ABILITIES, Some(JsonRead.textList(&token.abilities))),
+      (Members.TOKEN_VIEW_NOT_BEFORE, Some(Json.Number(token.notBefore))),
+      (Members.TOKEN_VIEW_EXPIRES, Some(Json.Number(token.expires))),
+      (Members.TOKEN_VIEW_DEPTH, Some(Json.Number(depth)))
+    ])
+}
+
+/// A revocation.
+export fn revocation(token: Str) -> Json.Json { Json.object(&[(Members.REVOCATION_TOKEN, Json.Text(token)), (Members.REVOCATION_REVOKED, Json.Boolean(true))]) }
+
+/// An erasure.
+export fn erasure(erased: &Request.Erased) -> Json.Json {
+  Json.object(&[(Members.ERASURE_ID, Json.Text(erased.id)), (Members.ERASURE_SEQUENCE, Json.Number(erased.sequence)), (Members.ERASURE_DIGEST, Json.Text(erased.digest)), (Members.ERASURE_ERASED, Json.Boolean(true))])
+}
+
+/// The liveness answer.
+export fn health() -> Json.Json { Json.object(&[(Members.HEALTH_STATUS, Json.Text(Fabric.ALIVE))]) }
+
+/// The discovery document: versions, implementation, bindings, limits, kinds, abilities, and extensions.
+export fn discovery() -> Json.Json {
+  let fabric = Json.object(&[(Fabric.NAME_MEMBER, Json.Text(Fabric.NAME)), (Fabric.VERSION_MEMBER, Json.Text(Fabric.VERSION)), (Fabric.PROFILES_MEMBER, JsonRead.textList(&Fabric.PROFILES)), (Fabric.CONTRACT_MEMBER, Json.Text(Version.CONTRACT))])
+  let bindings = Fabric.BINDINGS.map(|name: Str| Json.object(&[(Fabric.NAME_MEMBER, Json.Text(name))]))
+  let limits = Json.Object(Limits.ALL.map(|pair: (Str, Int)| (pair[0], Json.Number(pair[1]))))
+  Json.object(&[
+      (Members.DISCOVERY_GRAIL, JsonRead.textList(&Fabric.PROTOCOLS)),
+      (Members.DISCOVERY_FABRIC, fabric),
+      (Members.DISCOVERY_BINDINGS, Json.List(bindings)),
+      (Members.DISCOVERY_LIMITS, limits),
+      (Members.DISCOVERY_KINDS, JsonRead.textList(&Vocabulary.KINDS)),
+      (Members.DISCOVERY_ABILITIES, JsonRead.textList(&Vocabulary.ABILITIES)),
+      (Members.DISCOVERY_EXTENSIONS, JsonRead.textList(&Fabric.EXTENSIONS))
+    ])
+}
+
+/// A stored envelope: its body, its stamp, and no payload once erased.
+export fn stored(record: &Ledger.Record) -> Json.Json {
+  let body = EnvelopeCodec.stamped(&record.body, &record.stamp)
+
+  if record.erased { Json.withField(&body, Members.ENVELOPE_PAYLOAD, Json.Null) } else { body }
+}
+
+fn traceEntry(entry: &Transfer.TraceEntry) -> Json.Json {
+  JsonRead.objectOf(&[
+      (Members.TRACE_ENTRY_ID, Some(Json.Text(entry.record.entry.id))),
+      (Members.TRACE_ENTRY_SEQUENCE, Some(Json.Number(entry.record.entry.sequence))),
+      (Members.TRACE_ENTRY_DIGEST, Some(Json.Text(entry.record.entry.digest))),
+      (Members.TRACE_ENTRY_ERASED, Some(Json.Boolean(entry.record.erased))),
+      (Members.TRACE_ENTRY_HIDDEN, Some(Json.Boolean(entry.hidden))),
+      (Members.TRACE_ENTRY_ENVELOPE, if entry.hidden { None } else { Some(stored(&entry.record)) })
+    ])
+}
+
+fn addresses(found: &Array[Envelope.Address]) -> Json.Json { Json.List(found.map(|address: Envelope.Address| EnvelopeCodec.addressJson(&address))) }

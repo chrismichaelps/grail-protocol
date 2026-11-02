@@ -1,0 +1,87 @@
+/** @Tools.Site.Builder — assembles the documentation site's sources from the paper, the vault, and the contract */
+module Site
+
+import Std.Fs as Fs
+import Std.Io as Io
+import Std.Json as Json
+import Std.Result as Result
+import Constants.Site as Site
+import Site.Pages as Pages
+
+/// Assembles the site's sources into one folder that the documentation builder reads.
+fn main() -> Int {
+  match assemble() {
+    case Ok(pages) => {
+      let _said = Io.writeLine("assembled " + show(pages) + " pages into " + Site.SITE_DIRECTORY)
+      0
+    }
+    case Err(reason) => {
+      let _said = Io.writeErrorLine("Site: " + reason)
+      1
+    }
+  }
+}
+
+fn assemble() -> Result[Int, Str] {
+  if Io.exists(Site.SITE_DIRECTORY) { let _cleared = Result.mapErr(Fs.removeTree(Site.SITE_DIRECTORY), |e: Fs.FsError| show(e)) ? }
+
+  for directory in ["build", Site.SITE_DIRECTORY, Site.SITE_DIRECTORY + "/rest"] {
+    if !Io.exists(directory) { Io.makeDirectory(directory) ? }
+  }
+
+  let paper = Io.read(Site.README) ?
+  Io.write(Site.SITE_DIRECTORY + "/" + Site.INDEX_PAGE, Pages.paperLinks(paper)) ?
+  Io.copy(Site.CONTRACT, Site.SITE_DIRECTORY + "/" + Site.CONTRACT_PAGE) ?
+
+  var pages = 1
+  var entries = [entry("Paper", Site.INDEX_PAGE)]
+
+  for section in Site.SECTIONS {
+    pages = pages + (publishSection(section[0]) ?)
+    entries = entries.push(entry(section[1], section[0] + "/"))
+  }
+
+  entries = entries.push(entry("HTTP API", Site.CONTRACT_PAGE))
+  Io.write(Site.SITE_DIRECTORY + "/" + Site.TOC, entries.join("")) ?
+  Io.write(Site.SITE_DIRECTORY + "/" + Site.CONFIGURATION, Json.encodePretty(&configuration()) + "\n") ?
+  Ok(pages)
+}
+
+fn publishSection(folder: Str) -> Result[Int, Str] {
+  let source = Site.VAULT + "/" + folder
+  let target = Site.SITE_DIRECTORY + "/" + folder
+  let names = (Io.list(source) ?).filter(|name: Str| name.endsWith(Site.MARKDOWN)).sortBy(|left: Str, right: Str| left < right)
+  var entries = [entry("Overview", Site.INDEX_PAGE)]
+
+  Io.makeDirectory(target) ?
+
+  for name in names {
+    let text = Io.read(source + "/" + name) ?
+    let page = if name == Site.MAP_PAGE { Site.INDEX_PAGE } else { name }
+    Io.write(target + "/" + page, Pages.published(text, folder)) ?
+
+    if name != Site.MAP_PAGE { entries = entries.push(entry(Pages.titleOf(text, name), name)) }
+  }
+
+  Io.write(target + "/" + Site.TOC, entries.join("")) ?
+  Ok(names.length())
+}
+
+fn entry(name: Str, href: Str) -> Str { "- name: \"" + name.replace("\"", "'") + "\"\n  href: " + href + "\n" }
+
+fn configuration() -> Json.Json {
+  let content = Json.object(&[("files", Json.List([Json.Text("**/*.md"), Json.Text("**/toc.yml"), Json.Text("rest/*.json")])), ("src", Json.Text("."))])
+  let metadata = Json.object(&[
+      ("_appTitle", Json.Text(Site.TITLE)),
+      ("_appName", Json.Text(Site.TITLE)),
+      ("_appFooter", Json.Text(Site.FOOTER)),
+      ("_enableSearch", Json.Boolean(true))
+    ])
+  let build = Json.object(&[
+      ("content", Json.List([content])),
+      ("template", Json.List([Json.Text("default")])),
+      ("globalMetadata", metadata),
+      ("sitemap", Json.object(&[("baseUrl", Json.Text(Site.SITE_URL)), ("changefreq", Json.Text("weekly"))]))
+    ])
+  Json.object(&[("build", build)])
+}

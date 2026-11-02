@@ -1,0 +1,131 @@
+/** @Test.Security.Attack.Suite — forgery, escalation, isolation, poisoning, abuse, and exhaustion attempts all fail safely */
+module Security.AttackTest
+
+import Std.Bytes as ByteSeq
+import Std.Http as Http
+import Std.Json as Json
+import Std.Option as Option
+import Std.Test as Test
+import App.Assembly as Assembly
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Ledger as Ledger
+import Engine.Ledger as Chain
+import Support.Fabric as Fabric
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+import Utils.JsonRead as JsonRead
+import Web.Peers as Peers
+
+fn envelope(id: Str, source: Str, target: Str, kind: Str, parents: &Array[Str], extra: Str) -> Str {
+  "\{\"grail\":\"1.0\",\"id\":\"" + id + "\",\"scope\":\"demo\",\"graph\":\"g\",\"source\":\"" + source + "\",\"target\":\{\"participant\":\"" + target + "\"\},\"kind\":\"" + kind + "\",\"parents\":" + Json.encode(&JsonRead.textList(parents)) + extra + "\}"
+}
+
+fn largeGraph(size: Int, closing: Bool) -> Str {
+  var participants: Array[Json.Json] = []
+  var edges: Array[Json.Json] = []
+  var index = 0
+
+  while index < size {
+    participants = participants.push(Json.object(&[("id", Json.Text("p" + show(index))), ("kind", Json.Text("agent"))]))
+
+    if index > 0 { edges = edges.push(Json.object(&[("id", Json.Text("d" + show(index))), ("from", Json.Text("p" + show(index - 1))), ("to", Json.Text("p" + show(index))), ("relation", Json.Text("dependency"))])) }
+
+    index = index + 1
+  }
+
+  if closing { edges = edges.push(Json.object(&[("id", Json.Text("back")), ("from", Json.Text("p" + show(size - 1))), ("to", Json.Text("p0")), ("relation", Json.Text("dependency"))])) }
+
+  Json.encode(&Json.object(&[("participants", Json.List(participants)), ("edges", Json.List(edges))]))
+}
+
+fn main() -> Int {
+  let router = match Fabric.start() {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Attack", &[Test.that("the fabric starts: " + reason, false)])) }
+  }
+  let root = Fabric.owner("demo")
+  let base = "/v1/scopes/demo"
+  let later = Assembly.now() + 600000
+  let created = Fabric.sent(&router, Http.Put, base + "/graphs/g", root, Fixtures.ATTACKED_GRAPH)
+  let boss = Fabric.delegated(&router, root, "boss1", "boss", &[Vocabulary.ABILITY_GRAPH_READ, Vocabulary.ABILITY_GRAPH_WRITE, Vocabulary.ABILITY_TRANSFER_SEND, Vocabulary.ABILITY_TRANSFER_RECEIVE, Vocabulary.ABILITY_TOKEN_DELEGATE], "g", later)
+  let writer = Fabric.delegated(&router, boss, "w1", "w", &[Vocabulary.ABILITY_TRANSFER_SEND, Vocabulary.ABILITY_TRANSFER_RECEIVE], "g", later - 1000)
+  let reviewer = Fabric.delegated(&router, boss, "r1", "r", &[Vocabulary.ABILITY_TRANSFER_SEND], "g", later - 1000)
+  let parts = root.split(".")
+  let claims = ByteSeq.encodeBase64Url(&ByteSeq.fromText(Json.encode(&Json.object(&[("id", Json.Text("root")), ("scope", Json.Text("demo")), ("issuer", Json.Text("owner")), ("audience", Json.Text("owner")), ("abilities", JsonRead.textList(&["*"])), ("notBefore", Json.Number(0)), ("expires", Json.Number(later * 10))]))))
+  let forged = Fabric.sent(&router, Http.Get, base + "/graphs/g", claims + "." + parts[1], "")
+  let unsigned = Fabric.sent(&router, Http.Get, base + "/graphs/g", parts[0] + ".", "")
+  let foreignExisting = Fabric.sent(&router, Http.Get, "/v1/scopes/other/graphs/g", root, "")
+  let foreignMissing = Fabric.sent(&router, Http.Get, "/v1/scopes/nobody/graphs/none", root, "")
+  let wider = Fabric.delegated(&router, boss, "x1", "r", &[Vocabulary.ABILITY_LEDGER_READ], "g", later - 1000)
+  let elsewhere = Fabric.delegated(&router, boss, "x2", "r", &[Vocabulary.ABILITY_GRAPH_READ], "other", later - 1000)
+  let longer = Fabric.delegated(&router, boss, "x3", "r", &[Vocabulary.ABILITY_GRAPH_READ], "g", later * 10)
+  let spoofed = Fabric.sent(&router, Http.Post, base + "/transfers", writer, envelope("s1", "boss", "w", "task", &[], ""))
+  let foreignRevoke = Fabric.sent(&router, Http.Post, base + "/tokens/boss1/revocation", writer, "")
+  let mutated = Fabric.sent(&router, Http.Post, base + "/graphs/g/mutations", writer, "\{\"expectedRevision\":1,\"operations\":[\{\"op\":\"remove-edge\",\"id\":\"d\"\}]\}")
+  let snooped = Fabric.sent(&router, Http.Get, base + "/graphs/g/participants/boss/deliveries", writer, "")
+  let poisoned = Fabric.sent(&router, Http.Post, base + "/transfers", root, envelope("mutation:g@2", "boss", "w", "thought", &[], ""))
+  let stamped = Fabric.sent(&router, Http.Post, base + "/transfers", root, envelope("st", "boss", "w", "thought", &[], ",\"digest\":\"sha256:00\""))
+  let tasked = Fabric.sent(&router, Http.Post, base + "/transfers", boss, envelope("t1", "boss", "w", "task", &[], ""))
+  let strangerAnswer = Fabric.sent(&router, Http.Post, base + "/transfers", reviewer, envelope("f1", "r", "boss", "result", &["t1"], ""))
+  let strangerCancel = Fabric.sent(&router, Http.Post, base + "/transfers", reviewer, envelope("f2", "r", "boss", "cancel", &["t1"], ""))
+  let unsolicited = Fabric.sent(&router, Http.Post, base + "/graphs/g/bridge/boss", reviewer, "\{\"jsonrpc\":\"2.0\",\"id\":99,\"result\":\{\}\}")
+  let batched = Fabric.sent(&router, Http.Post, base + "/graphs/g/bridge/w", boss, "[\{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"x\"\}]")
+  let hostile = ["../../etc", "a b", "x\r\nSet-Cookie: a=b", "é", ""].map(|id: Str| Fabric.code(&Fabric.sent(&router, Http.Post, base + "/transfers", root, envelope(id, "boss", "w", "thought", &[], ""))))
+  let oversized = Fabric.sent(&router, Http.Post, base + "/transfers", root, envelope("big", "boss", "w", "thought", &[], ",\"payload\":\"" + "x".repeat(1048600) + "\""))
+  let nested = Fabric.sent(&router, Http.Post, base + "/transfers", root, "\{\"a\":".repeat(20000) + "1" + "\}".repeat(20000))
+  let alive = Fabric.sent(&router, Http.Get, "/v1/health", "", "")
+  let erased = Fabric.sent(&router, Http.Post, base + "/transfers/t1/erasure", root, "")
+  let afterErasure = Fabric.sent(&router, Http.Get, base + "/transfers/t1", root, "")
+  let ledger = Fabric.sent(&router, Http.Get, base + "/ledger?limit=1000", root, "")
+  let entries = Option.unwrapOr(JsonRead.list(&ledger.body, "entries"), [])
+  let links = entries.map(|entry: Json.Json| Ledger.Entry{sequence: Option.unwrapOr(JsonRead.whole(&entry, "sequence"), 0), id: "", digest: Option.unwrapOr(JsonRead.text(&entry, "digest"), ""), link: Option.unwrapOr(JsonRead.text(&entry, "link"), "")})
+  let described = Fabric.sent(&router, Http.Get, base + "/tokens/self", writer, "")
+  let revokedBoss = Fabric.sent(&router, Http.Post, base + "/tokens/boss1/revocation", root, "")
+  let afterRevocation = Fabric.sent(&router, Http.Get, base + "/graphs/g/participants/w/deliveries", writer, "")
+  let waited = Fabric.sent(&router, Http.Get, base + "/graphs/g/participants/r/deliveries?after=999&wait=300", Fabric.owner("demo"), "")
+  let large = Fabric.sent(&router, Http.Put, base + "/graphs/large", root, largeGraph(1024, false))
+  let closing = Fabric.sent(&router, Http.Put, base + "/graphs/closing", root, largeGraph(1024, true))
+  let checks = Test.suite("Attack", &[
+      Test.equals("the attacked graph exists", &created.status, &201),
+      Test.that("the delegation chain is issued", !boss.isEmpty() && !writer.isEmpty() && !reviewer.isEmpty()),
+      Test.equals("claims re-signed with another token's signature are refused", &Fabric.code(&forged), &Codes.UNAUTHORIZED),
+      Test.equals("a token without a signature is refused", &Fabric.code(&unsigned), &Codes.UNAUTHORIZED),
+      Test.equals("another scope refuses this token", &Fabric.code(&foreignExisting), &Codes.UNAUTHORIZED),
+      Test.equals("and answers the same whether anything exists there", &foreignMissing.body, &foreignExisting.body),
+      Test.that("a delegation cannot add abilities", wider.isEmpty()),
+      Test.that("a delegation cannot move to another graph", elsewhere.isEmpty()),
+      Test.that("a delegation cannot outlive its parent", longer.isEmpty()),
+      Test.equals("a participant cannot send as another", &Fabric.code(&spoofed), &Codes.FORBIDDEN),
+      Test.equals("a participant cannot revoke a token it did not issue", &Fabric.code(&foreignRevoke), &Codes.FORBIDDEN),
+      Test.equals("a participant without the ability cannot change the graph", &Fabric.code(&mutated), &Codes.FORBIDDEN),
+      Test.equals("a participant cannot read another's deliveries", &Fabric.code(&snooped), &Codes.FORBIDDEN),
+      Test.equals("ids the fabric writes cannot be sent", &Fabric.code(&poisoned), &Codes.INVALID),
+      Test.equals("members the fabric stamps cannot be sent", &Fabric.code(&stamped), &Codes.INVALID),
+      Test.equals("the attacked task is accepted", &tasked.status, &202),
+      Test.equals("a stranger cannot answer a task", &Fabric.code(&strangerAnswer), &Codes.FORBIDDEN),
+      Test.equals("a stranger cannot cancel a task", &Fabric.code(&strangerCancel), &Codes.FORBIDDEN),
+      Test.equals("an unsolicited JSON-RPC response is refused", &Fabric.code(&unsolicited), &Codes.INVALID),
+      Test.equals("batched JSON-RPC is refused", &Fabric.code(&batched), &Codes.INVALID),
+      Test.equals("hostile ids are refused", &hostile, &[Codes.INVALID, Codes.INVALID, Codes.INVALID, Codes.INVALID, Codes.INVALID]),
+      Test.equals("an oversized payload is too large", &Fabric.code(&oversized), &Codes.TOO_LARGE),
+      Test.equals("deep nesting is refused", &Fabric.code(&nested), &Codes.INVALID),
+      Test.equals("the fabric is alive after it", &alive.status, &200),
+      Test.equals("an erasure is answered", &erased.status, &200),
+      Test.equals("an erased payload is gone", &Option.andThen(Json.field(&afterErasure.body, "envelope"), |stored: Json.Json| Json.field(&stored, "payload")), &Some(Json.Null)),
+      Test.absent("the ledger still verifies after an erasure", &Chain.firstBroken(&links)),
+      Test.equals("a token describes its depth", &JsonRead.whole(&described.body, "depth"), &Some(3)),
+      Test.equals("revoking a parent is answered", &revokedBoss.status, &200),
+      Test.equals("revoking a parent revokes its delegations", &Fabric.code(&afterRevocation), &Codes.UNAUTHORIZED),
+      Test.that("a waiting pull waits", waited.millis >= 300),
+      Test.equals("the largest chain of dependencies is created", &large.status, &201),
+      Test.that("and quickly", large.millis < 5000),
+      Test.equals("a cycle through the largest chain is refused", &Fabric.code(&closing), &Codes.CYCLE),
+      Test.that("and quickly", closing.millis < 5000),
+      Test.equals("a peer is its host, not its connection", &Peers.hostOf("10.0.0.7:51544"), &"10.0.0.7"),
+      Test.equals("an IPv6 peer is its host", &Peers.hostOf("[::1]:51544"), &"::1"),
+      Test.equals("a peer without a port is itself", &Peers.hostOf("10.0.0.7"), &"10.0.0.7")
+    ])
+
+  Runner.finish(&checks)
+}

@@ -1,0 +1,274 @@
+/** @Engine.Codec.Shapes — checks a JSON body against the contract's shape of an object */
+module Engine.Codec.Shapes
+
+import Std.Json as Json
+import Std.List as List
+import Std.Option as Option
+import Constants.Details as Details
+import Constants.Graphs as Graphs
+import Constants.Text as Text
+import Contract.Limits as Limits
+import Contract.Members as Members
+import Contract.Schemas as Schemas
+import Contract.Vocabulary as Vocabulary
+import Domain.Identifier as Identifier
+import Domain.Problem as Problem
+import Utils.Pointer as Pointer
+
+/** @Engine.Codec.Shapes.Rule — what one member's value must be */
+export type Rule
+  = IsIdentifier
+  | IsName
+  | IsKind
+  | IsVersion
+  | IsText(Int)
+  | IsWhole(Int, Int)
+  | IsAtLeast(Int)
+  | IsOneOf(Array[Str])
+  | IsIdentifiers(Int)
+  | IsNames(Int)
+  | IsKinds
+  | IsAbilities
+  | IsPayload(Int)
+  | IsShape(Str)
+  | IsShapes(Str, Int)
+
+/** @Engine.Codec.Shapes.Shape — the members an object allows and requires, and the rule of each */
+export type Shape = { allowed: Array[Str], required: Array[Str], closed: Bool, extensible: Bool, single: Bool, rules: Array[(Str, Rule)] }
+
+/// Every shape the fabric reads, by the schema name the contract gives it.
+const SHAPES: Map[Str, Shape] = mapOf([
+    (Schemas.ENVELOPE, Shape {
+        allowed: Members.ENVELOPE_ALLOWED,
+        required: Members.ENVELOPE_REQUIRED,
+        closed: Members.ENVELOPE_CLOSED,
+        extensible: Members.ENVELOPE_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.ENVELOPE_GRAIL, IsVersion),
+          (Members.ENVELOPE_ID, IsIdentifier),
+          (Members.ENVELOPE_SCOPE, IsIdentifier),
+          (Members.ENVELOPE_GRAPH, IsIdentifier),
+          (Members.ENVELOPE_SOURCE, IsIdentifier),
+          (Members.ENVELOPE_TARGET, IsShape(Schemas.SELECTOR)),
+          (Members.ENVELOPE_KIND, IsKind),
+          (Members.ENVELOPE_PARENTS, IsIdentifiers(Limits.PARENTS)),
+          (Members.ENVELOPE_SCHEMA, IsText(Limits.SCHEMA_LENGTH)),
+          (Members.ENVELOPE_PAYLOAD, IsPayload(Limits.PAYLOAD_BYTES)),
+          (Members.ENVELOPE_DELIVERY, IsShape(Schemas.DELIVERY)),
+          (Members.ENVELOPE_PRIORITY, IsWhole(Limits.PRIORITY_MIN, Limits.PRIORITY_MAX)),
+          (Members.ENVELOPE_DEADLINE, IsAtLeast(0)),
+          (Members.ENVELOPE_CLOCK, IsShape(Schemas.CLOCK)),
+          (Members.ENVELOPE_VISIBILITY, IsOneOf(Vocabulary.VISIBILITIES)),
+          (Members.ENVELOPE_ENCRYPTION, IsShape(Schemas.ENCRYPTION))
+        ]
+      }),
+    (Schemas.SELECTOR, Shape {
+        allowed: Members.SELECTOR_ALLOWED,
+        required: Members.SELECTOR_REQUIRED,
+        closed: Members.SELECTOR_CLOSED,
+        extensible: Members.SELECTOR_EXTENSIBLE,
+        single: true,
+        rules: [
+          (Members.SELECTOR_PARTICIPANT, IsIdentifier),
+          (Members.SELECTOR_ROLE, IsName),
+          (Members.SELECTOR_ABILITY, IsName)
+        ]
+      }),
+    (Schemas.DELIVERY, Shape {
+        allowed: Members.DELIVERY_ALLOWED,
+        required: Members.DELIVERY_REQUIRED,
+        closed: Members.DELIVERY_CLOSED,
+        extensible: Members.DELIVERY_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.DELIVERY_MODE, IsOneOf(Vocabulary.DELIVERY_MODES)),
+          (Members.DELIVERY_KEY, IsText(Limits.IDENTIFIER_LENGTH))
+        ]
+      }),
+    (Schemas.CLOCK, Shape {
+        allowed: Members.CLOCK_ALLOWED,
+        required: Members.CLOCK_REQUIRED,
+        closed: Members.CLOCK_CLOSED,
+        extensible: Members.CLOCK_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.CLOCK_WALL, IsAtLeast(0)),
+          (Members.CLOCK_COUNTER, IsAtLeast(0)),
+          (Members.CLOCK_NODE, IsIdentifier)
+        ]
+      }),
+    (Schemas.ENCRYPTION, Shape {
+        allowed: Members.ENCRYPTION_ALLOWED,
+        required: Members.ENCRYPTION_REQUIRED,
+        closed: Members.ENCRYPTION_CLOSED,
+        extensible: Members.ENCRYPTION_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.ENCRYPTION_SCHEME, IsText(Limits.NAME_LENGTH)),
+          (Members.ENCRYPTION_RECIPIENTS, IsIdentifiers(Limits.PARTICIPANTS))
+        ]
+      }),
+    (Schemas.PARTICIPANT, Shape {
+        allowed: Members.PARTICIPANT_ALLOWED,
+        required: Members.PARTICIPANT_REQUIRED,
+        closed: Members.PARTICIPANT_CLOSED,
+        extensible: Members.PARTICIPANT_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.PARTICIPANT_ID, IsIdentifier),
+          (Members.PARTICIPANT_KIND, IsOneOf(Vocabulary.PARTICIPANT_KINDS)),
+          (Members.PARTICIPANT_ROLES, IsNames(Limits.ROLES)),
+          (Members.PARTICIPANT_ABILITIES, IsNames(Limits.ABILITIES)),
+          (Members.PARTICIPANT_GRAPH, IsIdentifier)
+        ]
+      }),
+    (Schemas.EDGE, Shape {
+        allowed: Members.EDGE_ALLOWED,
+        required: Members.EDGE_REQUIRED,
+        closed: Members.EDGE_CLOSED,
+        extensible: Members.EDGE_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.EDGE_ID, IsIdentifier),
+          (Members.EDGE_FROM, IsIdentifier),
+          (Members.EDGE_TO, IsIdentifier),
+          (Members.EDGE_RELATION, IsOneOf(Vocabulary.RELATIONS)),
+          (Members.EDGE_KINDS, IsKinds)
+        ]
+      }),
+    (Schemas.GRAPH_DRAFT, Shape {
+        allowed: Members.GRAPH_DRAFT_ALLOWED,
+        required: Members.GRAPH_DRAFT_REQUIRED,
+        closed: Members.GRAPH_DRAFT_CLOSED,
+        extensible: Members.GRAPH_DRAFT_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.GRAPH_DRAFT_PARTICIPANTS, IsShapes(Schemas.PARTICIPANT, Limits.PARTICIPANTS)),
+          (Members.GRAPH_DRAFT_EDGES, IsShapes(Schemas.EDGE, Limits.EDGES))
+        ]
+      }),
+    (Schemas.MUTATION, Shape {
+        allowed: Members.MUTATION_ALLOWED,
+        required: Members.MUTATION_REQUIRED,
+        closed: Members.MUTATION_CLOSED,
+        extensible: Members.MUTATION_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.MUTATION_EXPECTED_REVISION, IsAtLeast(1)),
+          (Members.MUTATION_OPERATIONS, IsShapes(Schemas.MUTATION_STEP, Limits.OPERATIONS))
+        ]
+      }),
+    (Schemas.MUTATION_STEP, Shape {
+        allowed: Members.MUTATION_STEP_ALLOWED,
+        required: Members.MUTATION_STEP_REQUIRED,
+        closed: Members.MUTATION_STEP_CLOSED,
+        extensible: Members.MUTATION_STEP_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.MUTATION_STEP_OP, IsOneOf(Vocabulary.MUTATION_OPS)),
+          (Members.MUTATION_STEP_PARTICIPANT, IsShape(Schemas.PARTICIPANT)),
+          (Members.MUTATION_STEP_EDGE, IsShape(Schemas.EDGE)),
+          (Members.MUTATION_STEP_ID, IsIdentifier)
+        ]
+      }),
+    (Schemas.DELEGATION, Shape {
+        allowed: Members.DELEGATION_ALLOWED,
+        required: Members.DELEGATION_REQUIRED,
+        closed: Members.DELEGATION_CLOSED,
+        extensible: Members.DELEGATION_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.DELEGATION_ID, IsIdentifier),
+          (Members.DELEGATION_AUDIENCE, IsIdentifier),
+          (Members.DELEGATION_GRAPH, IsIdentifier),
+          (Members.DELEGATION_ABILITIES, IsAbilities),
+          (Members.DELEGATION_NOT_BEFORE, IsAtLeast(0)),
+          (Members.DELEGATION_EXPIRES, IsAtLeast(0))
+        ]
+      })
+  ])
+
+/// Every violation of a body against a named shape; none means the body has that shape.
+export fn check(name: Str, value: &Json.Json, path: Str) -> Array[Problem.Violation] {
+  let expected = match SHAPES.get(name) {
+    case Some(found) => found
+    case None => { return [Problem.violation(path, Details.WRONG_VALUE)] }
+  }
+  let members = match value {
+    case Json.Object(found) => found
+    case _ => { return [Problem.violation(path, Details.WRONG_VALUE)] }
+  }
+  var found: Array[Problem.Violation] = []
+
+  for required in expected.required {
+    if !List.any(&members, |pair: (Str, Json.Json)| pair[0] == required) { found = found.push(Problem.violation(Pointer.at(path, required), Details.MISSING_MEMBER)) }
+  }
+
+  if expected.single && members.length() != 1 { found = found.push(Problem.violation(path, Details.WRONG_VALUE)) }
+
+  for pair in members {
+    let known = expected.allowed.contains(pair[0])
+    let extension = expected.extensible && pair[0].startsWith(Graphs.EXTENSION_PREFIX)
+
+    if !known && !extension && expected.closed { found = found.push(Problem.violation(Pointer.at(path, pair[0]), Details.UNKNOWN_MEMBER)) }
+    if let Some(rule) = List.lookup(&expected.rules, pair[0]) { found = found.concat(checkRule(&rule, &pair[1], Pointer.at(path, pair[0]))) }
+  }
+
+  found
+}
+
+fn checkRule(rule: &Rule, value: &Json.Json, path: Str) -> Array[Problem.Violation] {
+  let held = match rule {
+    case IsIdentifier => textHolds(value, |text: Str| Identifier.isIdentifier(text))
+    case IsName => textHolds(value, |text: Str| Identifier.isName(text))
+    case IsKind => textHolds(value, |text: Str| Identifier.isKind(text))
+    case IsVersion => textHolds(value, |text: Str| isVersion(text))
+    case IsText(longest) => textHolds(value, |text: Str| !text.isEmpty() && text.length() <= longest)
+    case IsWhole(lowest, highest) => Option.holds(&Json.asInt(value), |number: Int| number >= lowest && number <= highest)
+    case IsAtLeast(lowest) => Option.holds(&Json.asInt(value), |number: Int| number >= lowest)
+    case IsOneOf(values) => textHolds(value, |text: Str| values.contains(text))
+    case IsIdentifiers(most) => textsHold(value, most, |text: Str| Identifier.isIdentifier(text))
+    case IsNames(most) => textsHold(value, most, |text: Str| Identifier.isName(text))
+    case IsKinds => textsHold(value, Limits.ABILITIES, |text: Str| Identifier.isKind(text))
+    case IsAbilities => textsHold(value, Limits.ABILITIES, |text: Str| Vocabulary.ABILITIES.contains(text))
+    case IsPayload(largest) => Json.encode(value).length() <= largest
+    case IsShape(_) => true
+    case IsShapes(_, most) => Option.holds(&Json.asList(value), |items: Array[Json.Json]| items.length() <= most)
+  }
+
+  if !held { return [Problem.violation(path, Details.WRONG_VALUE)] }
+
+  match rule {
+    case IsShape(name) => check(name, value, path)
+    case IsShapes(name, _) => nested(name, &Option.unwrapOr(Json.asList(value), []), path)
+    case _ => []
+  }
+}
+
+fn nested(name: Str, items: &Array[Json.Json], path: Str) -> Array[Problem.Violation] {
+  var found: Array[Problem.Violation] = []
+  var index = 0
+
+  for item in *items {
+    found = found.concat(check(name, &item, Pointer.item(path, index)))
+    index = index + 1
+  }
+
+  found
+}
+
+fn textHolds(value: &Json.Json, holds: fn(Str) -> Bool) -> Bool { Option.holds(&Json.asText(value), holds) }
+
+fn textsHold(value: &Json.Json, most: Int, holds: fn(Str) -> Bool) -> Bool {
+  match Json.asList(value) {
+    case Some(items) => items.length() <= most && List.all(&items, |item: Json.Json| textHolds(&item, holds))
+    case None => false
+  }
+}
+
+fn isVersion(text: Str) -> Bool {
+  let parts = text.split(Text.DOT)
+
+  parts.length() == 2 && List.all(&parts, |part: Str| Option.isSome(&part.toInt()))
+}

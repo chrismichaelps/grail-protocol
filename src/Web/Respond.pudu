@@ -1,0 +1,41 @@
+/** @Web.Respond.Answers — JSON answers and problem documents */
+module Web.Respond
+
+import Std.App.Problem as Document
+import Std.Http as Http
+import Std.Http.Server.Reply as Reply
+import Std.Json as Json
+import Constants.Http as Names
+import Constants.Text as Text
+import Contract.Version as Version
+import Domain.Problem as Problem
+
+/// A problem as an `application/problem+json` answer whose type, status, and title come from the contract's registry.
+export fn problem(refused: &Problem.Problem) -> Http.Response { Document.respond(&documentOf(refused)) }
+
+/// A problem as JSON, for bindings that frame it themselves.
+export fn problemJson(refused: &Problem.Problem) -> Json.Json { Document.toJson(&documentOf(refused)) }
+
+/// The status a problem is answered with.
+export fn statusOf(refused: &Problem.Problem) -> Int { Problem.entryOf(refused).status }
+
+/// A result rendered as JSON with a status, or its problem.
+export fn answer[T](status: Int, outcome: Result[T, Problem.Problem], render: fn(T) -> Json.Json) -> Http.Response {
+  match outcome {
+    case Ok(found) => Reply.jsonValue(status, render(found))
+    case Err(refused) => problem(&refused)
+  }
+}
+
+fn documentOf(refused: &Problem.Problem) -> Document.Problem {
+  let entry = Problem.entryOf(refused)
+  let suffix = entry.code.drop(entry.code.indexOf(Text.DOT) + Text.DOT.length())
+  let base = Document.Problem{..Document.typed(Version.PROBLEM_PREFIX + suffix, entry.status, entry.title), detail: refused.detail}
+  var built = Document.withExtension(&base, Names.CODE_MEMBER, Json.Text(entry.code))
+
+  for extra in refused.extras {
+    built = Document.withExtension(&built, extra[0], extra[1])
+  }
+
+  built
+}

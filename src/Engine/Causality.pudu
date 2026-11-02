@@ -1,0 +1,47 @@
+/** @Engine.Causality.Ancestry — the causal ancestors of an envelope */
+module Engine.Causality
+
+import Constants.Events as Events
+import Contract.Limits as Limits
+import Domain.Ledger as Ledger
+import Domain.Scope as Scope
+import Engine.Kinds as Kinds
+
+/// Every ancestor of the given parents, each once, in ledger order, up to the contract's bound; a gate that finds no result within the bound refuses, so the bound fails closed.
+export fn ancestors(state: &Scope.State, parents: &Array[Str]) -> Array[Ledger.Record] {
+  var seen: Set[Str] = setOf([])
+  var found: Array[Ledger.Record] = []
+  var pending = *parents
+
+  while !pending.isEmpty() && found.length() < Limits.ANCESTRY_MAX {
+    let next = pending[pending.length() - 1]
+    pending = pending.pop()
+
+    if !seen.contains(next) {
+      seen = seen.insert(next)
+
+      match state.records.get(next) {
+        case Some(record) => {
+          found = found.push(record)
+          pending = pending.concat(record.envelope.parents)
+        }
+        case None => {}
+      }
+    }
+  }
+
+  found.sortBy(|left: Ledger.Record, right: Ledger.Record| left.entry.sequence < right.entry.sequence)
+}
+
+/// The participants of a graph that produced a result among the ancestors of the given parents.
+export fn producers(state: &Scope.State, parents: &Array[Str], graph: Str) -> Set[Str] {
+  var found: Set[Str] = setOf([])
+
+  for record in ancestors(state, parents) {
+    let behavior = Kinds.behaviorOf(record.envelope.kind, &record.envelope.payload)
+
+    if record.envelope.graph == graph && behavior.effect == Kinds.Moves(Events.COMPLETE) { found = found.insert(record.envelope.source) }
+  }
+
+  found
+}

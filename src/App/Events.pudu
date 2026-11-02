@@ -1,0 +1,54 @@
+/** @App.Events.Notifications — what the fabric announces after a change, and who listens */
+module App.Events
+
+import Constants.Logging as Names
+import Domain.Graph as Graph
+import Domain.Problem as Problem
+import Domain.Request as Request
+import Domain.Transfer as Transfer
+import PuduLangLog.Logger as Logger
+import PuduLangLog.Value as Value
+import PuduLangMediator.Context as Context
+import PuduLangMediator.Notification as Notification
+import PuduLangMediator.Registration as Registration
+
+/** @App.Events.Kinds — every notification, made once and shared */
+export type Kinds = {
+  accepted: Notification.Kind[Transfer.Receipt, Problem.Problem],
+  changed: Notification.Kind[Graph.Graph, Problem.Problem],
+  delegated: Notification.Kind[Request.Granted, Problem.Problem],
+  revoked: Notification.Kind[Str, Problem.Problem],
+  erased: Notification.Kind[Request.Erased, Problem.Problem]
+}
+
+/// Every notification kind.
+export fn kinds() -> Kinds {
+  Kinds{accepted: Notification.kind(Names.EVENT_ACCEPTED), changed: Notification.kind(Names.EVENT_CHANGED), delegated: Notification.kind(Names.EVENT_DELEGATED), revoked: Notification.kind(Names.EVENT_REVOKED), erased: Notification.kind(Names.EVENT_ERASED)}
+}
+
+/// The listeners: each notification is written to the server log.
+export fn registrations(events: &Kinds, server: &Logger.Logger) -> Array[Registration.Registration] {
+  let log = *server
+  [
+    Registration.notificationHandler(&events.accepted, Names.RECORDER, |receipt: Transfer.Receipt, _context: Context.Context| {
+        log.information(Names.ACCEPTED, [Value.text(receipt.id), Value.int(receipt.sequence), Value.int(receipt.recipients.length())])
+        Ok(())
+      }),
+    Registration.notificationHandler(&events.changed, Names.RECORDER, |graph: Graph.Graph, _context: Context.Context| {
+        log.information(Names.CHANGED, [Value.text(graph.id), Value.int(graph.revision)])
+        Ok(())
+      }),
+    Registration.notificationHandler(&events.delegated, Names.RECORDER, |granted: Request.Granted, _context: Context.Context| {
+        log.information(Names.DELEGATED, [Value.int(granted.expires)])
+        Ok(())
+      }),
+    Registration.notificationHandler(&events.revoked, Names.RECORDER, |token: Str, _context: Context.Context| {
+        log.information(Names.REVOKED, [Value.text(token)])
+        Ok(())
+      }),
+    Registration.notificationHandler(&events.erased, Names.RECORDER, |erased: Request.Erased, _context: Context.Context| {
+        log.information(Names.ERASED, [Value.text(erased.id), Value.int(erased.sequence)])
+        Ok(())
+      })
+  ]
+}

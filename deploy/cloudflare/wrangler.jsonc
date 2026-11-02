@@ -1,0 +1,12 @@
+// The documentation site: the paper, the specification, the decision records, and the HTTP API
+// reference rendered from the contract, served by Cloudflare as static assets.
+// Assemble and build it first: pudu run tools/Site.pudu, then the documentation builder.
+{
+  "name": "grail-protocol",
+  "compatibility_date": "2026-11-02",
+  "assets": {
+    "directory": "../../build/site/_site",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  }
+}

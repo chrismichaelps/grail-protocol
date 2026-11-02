@@ -1,0 +1,19 @@
+/** @Api.Bridge.Inspection — admits only well-formed JSON-RPC 2.0 messages into the bridge */
+module Api.Bridge
+
+import Std.Json as Json
+import Std.Result as Result
+import Constants.Details as Details
+import Constants.Text as Text
+import Contract.Problems as Codes
+import Domain.Problem as Problem
+import PuduLangMcp.Domain.Rpc.Message as Message
+import PuduLangMcp.Errors.RpcError as RpcError
+
+/// The message, when it is one JSON-RPC 2.0 request, notification, or response.
+export fn inspect(text: Str) -> Result[Json.Json, Problem.Problem] {
+  match Message.parse(text) {
+    case Message.Refused(_, problem) => Err(Problem.invalid(&[Problem.violation("", Details.NOT_RPC + Text.LABEL_JOIN + RpcError.message(&problem))]))
+    case _ => Result.mapErr(Json.decode(text), |_e: Json.JsonError| Problem.of(Codes.INVALID, Details.NOT_JSON))
+  }
+}

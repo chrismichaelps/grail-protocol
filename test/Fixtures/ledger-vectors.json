@@ -1,0 +1,56 @@
+{
+  "description": "Envelopes with their canonical form, digest, and ledger link, computed independently of the reference implementation.",
+  "vectors": [
+    {
+      "envelope": {
+        "grail": "1.0",
+        "id": "t1",
+        "scope": "demo",
+        "graph": "team",
+        "source": "planner",
+        "target": {
+          "role": "author"
+        },
+        "kind": "task",
+        "payload": {
+          "topic": "draft",
+          "weights": [
+            3,
+            1,
+            2
+          ],
+          "nested": {
+            "z": true,
+            "a": null
+          }
+        }
+      },
+      "canonical": "{\"grail\":\"1.0\",\"graph\":\"team\",\"id\":\"t1\",\"kind\":\"task\",\"payload\":{\"nested\":{\"a\":null,\"z\":true},\"topic\":\"draft\",\"weights\":[3,1,2]},\"scope\":\"demo\",\"source\":\"planner\",\"target\":{\"role\":\"author\"}}",
+      "digest": "sha256:1767482e715669cbfd994b06bc171707f78ee1367331e818a41aaefd4e639acb",
+      "link": "063f59e2fa07e727277e9119d3a2c9e306a39912be09bb6d907d1db01233a7bd"
+    },
+    {
+      "envelope": {
+        "grail": "1.0",
+        "id": "r1",
+        "scope": "demo",
+        "graph": "team",
+        "source": "writer",
+        "target": {
+          "participant": "planner"
+        },
+        "kind": "result",
+        "parents": [
+          "t1"
+        ],
+        "payload": {
+          "text": "done"
+        },
+        "priority": 7
+      },
+      "canonical": "{\"grail\":\"1.0\",\"graph\":\"team\",\"id\":\"r1\",\"kind\":\"result\",\"parents\":[\"t1\"],\"payload\":{\"text\":\"done\"},\"priority\":7,\"scope\":\"demo\",\"source\":\"writer\",\"target\":{\"participant\":\"planner\"}}",
+      "digest": "sha256:d4952d26abc370a2dff89834428cae79c3660b3ed5691629c872e9ca277b9b84",
+      "link": "4b206bb8574fb8850a9c105e199295463cb85f65097050505734046aac9accf9"
+    }
+  ]
+}

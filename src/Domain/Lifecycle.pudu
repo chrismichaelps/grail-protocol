@@ -1,0 +1,13 @@
+/** @Domain.Lifecycle.Task — where a task stands */
+module Domain.Lifecycle
+
+import Domain.Envelope as Envelope
+
+/** @Domain.Lifecycle.Lifecycle — a task's state, who sent it, and who may answer it */
+export type Lifecycle = {
+  taskId: Str,
+  state: Str,
+  source: Envelope.Address,
+  recipients: Array[Envelope.Address],
+  deadline: Option[Int]
+}

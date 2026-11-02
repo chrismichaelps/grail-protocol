@@ -1,0 +1,25 @@
+/** @Engine.Bridge.Correlation — which bridged request a JSON-RPC response answers */
+module Engine.Bridge
+
+import Std.Json as Json
+import Std.List as List
+import Std.Map as Map
+import Std.Option as Option
+import Constants.Rpc as Rpc
+import Contract.Vocabulary as Vocabulary
+import Domain.Envelope as Envelope
+import Domain.Ledger as Ledger
+import Domain.Lifecycle as Lifecycle
+import Domain.Scope as Scope
+import Engine.Lifecycle as Machine
+
+/// The most recent open bridged request addressed to `responder` whose JSON-RPC id is `id`.
+export fn requestFor(state: &Scope.State, responder: &Envelope.Address, id: &Json.Json) -> Option[Str] {
+  let open = Map.values(&state.lifecycles).filter(|lifecycle: Lifecycle.Lifecycle| !Machine.isFinal(lifecycle.state) && lifecycle.recipients.contains(*responder))
+  let matching = Option.present(&open.map(|lifecycle: Lifecycle.Lifecycle| state.records.get(lifecycle.taskId))).filter(|record: Ledger.Record| record.envelope.kind == Vocabulary.KIND_BRIDGE_RPC && Option.holds(&record.envelope.payload, |message: Json.Json| Json.field(&message, Rpc.ID) == Some(*id)))
+  let latest = List.maximumBy(&matching, |left: Ledger.Record, right: Ledger.Record| left.entry.sequence < right.entry.sequence)
+  Option.map(latest, |record: Ledger.Record| record.entry.id)
+}
+
+/// Whether a JSON-RPC message answers a request rather than asking one.
+export fn isResponse(message: &Json.Json) -> Bool { Option.isNone(&Json.field(message, Rpc.METHOD)) }

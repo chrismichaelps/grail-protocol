@@ -1,0 +1,72 @@
+---
+type: tool
+path: "@root/tools/Constants/Siege.pudu"
+grammar: "[[grammar/pudu]]"
+tags: [tool]
+---
+
+# Constants.Siege
+
+> @Tools.Constants.Siege — how hard the siege presses a live fabric, and what it must survive
+
+## Purpose
+
+How hard the siege presses a live fabric, and what it must survive.
+
+## Interface
+
+### Signatures
+
+```pudu
+/// The fabric pressed when none is named.
+export const FABRIC_DEFAULT: Str = "http://127.0.0.1:7420"
+/// Requests sent in the flood.
+export const FLOOD_REQUESTS: Int = 1200
+/// Requests sent at once during the flood.
+export const FLOOD_WORKERS: Int = 24
+/// Pulls held open at once during the exhaustion phase.
+export const WAITERS: Int = 48
+/// Milliseconds each held pull waits.
+export const WAIT_MILLIS: Int = 6000
+/// Milliseconds to let the held pulls settle before probing.
+export const SETTLE_MILLIS: Int = 1000
+/// Milliseconds the probe may take while pulls are held for the fabric to pass.
+export const PROBE_MILLIS_MAX: Int = 2000
+/// Milliseconds any single request may take before the siege gives up on it.
+export const REQUEST_DEADLINE_MILLIS: Int = 30000
+/// The liveness path.
+export const HEALTH_PATH: Str = "/v1/health"
+/// The discovery path.
+export const DISCOVERY_PATH: Str = "/.well-known/grail"
+/// The status of a refused flood request.
+export const TOO_MANY: Int = 429
+/// The held pull, with its scope, graph, and participant filled in and its wait appended.
+export const PULL_TEMPLATE: Str = "/v1/scopes/\{scope\}/graphs/\{graph\}/participants/\{participant\}/deliveries?after=999999999&wait="
+/// The scope pulled from when none is named.
+export const SCOPE_DEFAULT: Str = "siege"
+/// The graph the siege creates and pulls from.
+export const GRAPH_DEFAULT: Str = "siege-graph"
+/// The participant the siege pulls for.
+export const PARTICIPANT_DEFAULT: Str = "p"
+/// The header a token travels in.
+export const AUTHORIZATION: Str = "authorization"
+/// The scheme of a token.
+export const BEARER: Str = "Bearer "
+/// The path of a graph in a scope, the graph's id appended.
+export const GRAPH_TEMPLATE: Str = "/v1/scopes/\{scope\}/graphs/"
+/// The graph the siege creates: one participant to pull for.
+export const GRAPH_BODY: Str
+/// The header a body's type travels in.
+export const CONTENT_TYPE: Str = "content-type"
+/// The type of a JSON body.
+export const JSON: Str = "application/json"
+```
+
+### Linkage
+
+- **Requires:** nothing inside the fabric
+- **Consumed by:** the runner
+
+## Referenced by
+
+[[tools/Constants/_MOC]]

@@ -1,0 +1,74 @@
+/** @Engine.Delivery.Pages — deliveries, ledger ranges, and traces read after a cursor */
+module Engine.Delivery
+
+import Std.Map as Map
+import Std.Math as Math
+import Std.Option as Option
+import Constants.Security as Security
+import Constants.Text as Text
+import Contract.Limits as Limits
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Domain.Envelope as Envelope
+import Domain.Ledger as Ledger
+import Domain.Scope as Scope
+import Domain.Transfer as Transfer
+import Engine.Causality as Causality
+
+/// The page size a request asked for, bounded by the contract.
+export fn pageSize(asked: Option[Int]) -> Int { Math.max(1, Math.min(Option.unwrapOr(asked, Limits.PAGE_DEFAULT), Limits.PAGE_MAX)) }
+
+/// The deliveries for an address after a cursor, and the scope with its delivery mark moved. Passing a cursor acknowledges everything up to it.
+export fn pull(state: &Scope.State, address: &Envelope.Address, after: Int, limit: Int, now: Int) -> (Transfer.Page, Scope.State) {
+  let mark = address.graph + Text.MARK_SEPARATOR + address.participant
+  let served = Map.getOr(&state.served, mark, 0)
+  var records: Array[Ledger.Record] = []
+  var position = after + 1
+
+  while position <= Scope.length(state) && records.length() < limit {
+    if let Some(record) = Scope.recordAt(state, position) {
+      let addressed = record.recipients.contains(*address)
+      let live = !Option.holds(&record.envelope.deadline, |deadline: Int| deadline <= now)
+      let once = record.envelope.delivery.mode == Vocabulary.DELIVERY_AT_MOST_ONCE
+
+      if addressed && live && !(once && position <= served) { records = records.push(record) }
+    }
+
+    position = position + 1
+  }
+
+  let cursor = if records.isEmpty() { after } else { records[records.length() - 1].entry.sequence }
+  let marked = Scope.State{..*state, served: Map.insert(&state.served, mark, Math.max(served, cursor))}
+  (Transfer.Page{records: records, cursor: cursor}, marked)
+}
+
+/// The ledger after a cursor.
+export fn ledger(state: &Scope.State, after: Int, limit: Int) -> Transfer.Page {
+  var records: Array[Ledger.Record] = []
+  var position = after + 1
+
+  while position <= Scope.length(state) && records.length() < limit {
+    if let Some(record) = Scope.recordAt(state, position) { records = records.push(record) }
+
+    position = position + 1
+  }
+
+  let cursor = if records.isEmpty() { after } else { records[records.length() - 1].entry.sequence }
+  Transfer.Page{records: records, cursor: cursor}
+}
+
+/// The causal ancestry of a record, with entries the authority may not read marked hidden.
+export fn trace(state: &Scope.State, record: &Ledger.Record, authority: &Capability.Authority) -> Array[Transfer.TraceEntry] {
+  Causality.ancestors(state, &record.envelope.parents).map(|found: Ledger.Record| Transfer.TraceEntry{record: found, hidden: !visible(&found, authority)})
+}
+
+/// Whether an authority may read a record's content: the owner always; `scope` envelopes by any reader of the scope; `graph` envelopes by readers not bound to another graph; `recipients` envelopes only by their source and recipients.
+export fn visible(record: &Ledger.Record, authority: &Capability.Authority) -> Bool {
+  let visibility = record.envelope.visibility
+  let involved = record.envelope.source == authority.audience || record.recipients.map(|address: Envelope.Address| address.participant).contains(authority.audience)
+
+  if authority.audience == Security.OWNER || visibility == Vocabulary.VISIBILITY_SCOPE { return true }
+  if visibility == Vocabulary.VISIBILITY_GRAPH { return Option.isNone(&authority.graph) || authority.graph == Some(record.envelope.graph) }
+
+  involved
+}

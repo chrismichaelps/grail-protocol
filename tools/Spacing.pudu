@@ -1,0 +1,47 @@
+/** @Tools.Spacing.Gate — judges every source file against the statement spacing rules */
+module Spacing
+
+import Std.Env as Env
+import Std.Io as Io
+import Std.Result as Result
+import Constants.Spacing as Style
+import Spacing.Rules as Rules
+
+/// Prints each finding as `file:line  reason` and answers 0 only when there are none.
+fn main() -> Int {
+  let roots = if Env.count() > 0 { Env.all() } else { Style.ROOTS }
+  var files = 0
+  var count = 0
+
+  for root in roots {
+    for path in sources(root) {
+      files = files + 1
+
+      for finding in Rules.check(Result.unwrapOr(Io.read(path), "")) {
+        count = count + 1
+
+        let _said = Io.writeLine(path + ":" + show(finding.line) + "  " + finding.reason)
+      }
+    }
+  }
+
+  let _summary = Io.writeLine("spacing " + (if count == 0 { "passed" } else { "failed" }) + ": " + show(files) + " files, " + show(count) + " findings")
+
+  if count == 0 { 0 } else { 1 }
+}
+
+fn sources(directory: Str) -> Array[Str] {
+  var found: Array[Str] = []
+
+  if directory.endsWith(Style.SOURCE_EXTENSION) { return [directory] }
+
+  for path in Result.unwrapOr(Io.listPaths(directory), []).sortBy(|left: Str, right: Str| left < right) {
+    if path.endsWith(Style.SOURCE_EXTENSION) {
+      found = found.push(path)
+    } else if !path.contains(".") && !Style.EXCLUDED.contains(path) {
+      found = found.concat(sources(path))
+    }
+  }
+
+  found
+}

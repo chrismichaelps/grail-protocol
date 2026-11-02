@@ -1,0 +1,50 @@
+/** @Web.Lines.Binding — one JSON request per input line, dispatched through the HTTP router */
+module Web.Lines
+
+import Std.Http as Http
+import Std.Http.Server.Route as Route
+import Std.Json as Json
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import Constants.Http as Names
+import Constants.Security as Security
+import Contract.Problems as Codes
+import Contract.Version as Version
+import Domain.Problem as Problem
+import Engine.Paths as Paths
+import Utils.JsonRead as JsonRead
+import Web.Respond as Respond
+
+/// The answer line to one request line.
+export fn answer(router: &Route.Router, line: Str) -> Str {
+  let request = match Json.decode(line) {
+    case Ok(found) => found
+    case Err(_) => { return refusal(&Problem.of(Codes.INVALID, Names.UNKNOWN_OPERATION)) }
+  }
+  let named = Option.unwrapOr(JsonRead.text(&request, Names.LINE_OPERATION), "")
+  let operation = match Paths.operationOf(named) {
+    case Some(found) => found
+    case None => { return refusal(&Problem.of(Codes.INVALID, Names.UNKNOWN_OPERATION)) }
+  }
+  let params = Option.unwrapOr(Json.field(&request, Names.LINE_PARAMS), Json.Null)
+  let path = Paths.path(&operation, &params)
+  let query = Paths.query(&operation, &params)
+  let token = Option.unwrapOr(JsonRead.text(&request, Names.LINE_TOKEN), "")
+  let body = Option.map(Json.field(&request, Names.LINE_BODY), |given: Json.Json| Json.encode(&given))
+  let message = Http.Request {
+    method: Http.methodFrom(operation.method),
+    target: path,
+    headers: [(Version.HEADER_AUTHORIZATION, Security.BEARER_PREFIX + token), (Names.CONTENT_TYPE, Version.MEDIA_TYPE)],
+    body: Option.unwrapOr(body, ""),
+    binaryBody: None
+  }
+  let response = Route.dispatch(router, Route.Request{message: message, path: path, params: Map.empty(), query: Map.fromPairs(&query), peer: Names.LINE_PEER})
+  let decoded = Option.unwrapOr(Result.toOption(Json.decode(response.body)), Json.Null)
+  let member = if response.status.code >= 400 { Names.LINE_PROBLEM } else { Names.LINE_BODY }
+  Json.encode(&Json.object(&[(Names.LINE_STATUS, Json.Number(response.status.code)), (member, decoded)]))
+}
+
+fn refusal(refused: &Problem.Problem) -> Str {
+  Json.encode(&Json.object(&[(Names.LINE_STATUS, Json.Number(Respond.statusOf(refused))), (Names.LINE_PROBLEM, Respond.problemJson(refused))]))
+}

@@ -1,0 +1,135 @@
+/** @Cli.Commands.Executable — the commands of the grail executable other than serving HTTP */
+module Cli.Commands
+
+import Std.Env as Env
+import Std.Io as Io
+import Std.Json as Json
+import Std.Option as Option
+import Std.Result as Result
+import Api.Peer as Peer
+import App.Assembly as Assembly
+import Config.Settings as Settings
+import Constants.Cli as Names
+import Constants.Fabric as Fabric
+import Constants.Security as Security
+import Constants.Text as Text
+import Contract.Document as Document
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Engine.Authority as Authority
+import Engine.Paths as Paths
+import Web.Lines as Lines
+import Web.Router as Router
+
+/// The status of a command that needs no running fabric, or `None` when the command needs one.
+export fn offline(arguments: &Array[Str]) -> Option[Int] {
+  let command = Option.unwrapOr(Option.fromArray(arguments), Names.SERVE)
+
+  if command == Names.VERSION { return Some(said(Fabric.EXECUTABLE + Text.WORD_JOIN + Fabric.VERSION)) }
+  if command == Names.CONTRACT { return Some(said(Document.TEXT)) }
+  if command == Names.HELP { return Some(said(Names.USAGE.join(Text.LINE_JOIN))) }
+  if command == Names.CALL { return Some(call(arguments)) }
+
+  None
+}
+
+/// Runs a command that needs the fabric's settings or a running fabric.
+export fn run(app: &Assembly.App, arguments: &Array[Str]) -> Int {
+  let command = Option.unwrapOr(Option.fromArray(arguments), Names.SERVE)
+
+  if command == Names.TOKEN { return token(&app.runtime.settings) }
+  if command == Names.LINES { return lines(app) }
+
+  failed(Names.UNKNOWN_COMMAND + command)
+}
+
+fn token(settings: &Settings.Settings) -> Int {
+  let scopeId = match Env.option(Names.SCOPE_OPTION) {
+    case Some(found) => found
+    case None => { return failed(Names.MISSING_OPTION + Names.SCOPE_OPTION) }
+  }
+  let id = match Env.option(Names.ID_OPTION) {
+    case Some(found) => found
+    case None => { return failed(Names.MISSING_OPTION + Names.ID_OPTION) }
+  }
+  let days = Option.unwrapOr(Option.andThen(Env.option(Names.DAYS_OPTION), |given: Str| given.toInt()), Names.DAYS_DEFAULT)
+  let abilities = Option.unwrapOr(Option.map(Env.option(Names.ABILITIES_OPTION), |given: Str| given.split(Names.LIST_SEPARATOR).map(|ability: Str| ability.trim())), [Vocabulary.ABILITY_ALL])
+  let now = Assembly.now()
+  let claims = Capability.Token {
+    id: id,
+    scopeId: scopeId,
+    graph: Env.option(Names.GRAPH_OPTION),
+    issuer: Security.OWNER,
+    audience: Option.unwrapOr(Env.option(Names.AUDIENCE_OPTION), Security.OWNER),
+    abilities: abilities,
+    notBefore: now,
+    expires: now + days * Names.DAY_MILLIS,
+    parent: None,
+    chain: []
+  }
+
+  said(Authority.issue(&claims, Settings.secretOf(settings)))
+}
+
+fn lines(app: &Assembly.App) -> Int {
+  let router = match Router.router(app) {
+    case Ok(found) => found
+    case Err(reason) => { return failed(reason) }
+  }
+
+  loop {
+    match Io.readLineOrEnd() {
+      case Ok(Some(line)) => {
+        if Io.writeLine(Lines.answer(&router, line)) != Ok(()) { return 1 }
+      }
+      case Ok(None) => { return 0 }
+      case Err(reason) => { return failed(reason) }
+    }
+  }
+}
+
+fn call(arguments: &Array[Str]) -> Int {
+  let named = if arguments.length() > 1 { arguments[1] } else { "" }
+  let operation = match Paths.operationOf(named) {
+    case Some(found) => found
+    case None => { return failed(Names.UNKNOWN_OPERATION + named) }
+  }
+  let params = match parsed(Names.PARAMS_OPTION) {
+    case Ok(found) => Option.unwrapOr(found, Json.Null)
+    case Err(reason) => { return failed(reason) }
+  }
+  let body = match parsed(Names.BODY_OPTION) {
+    case Ok(found) => found
+    case Err(reason) => { return failed(reason) }
+  }
+  let peer = match Peer.connect(Option.unwrapOr(Env.option(Names.FABRIC_OPTION), Names.FABRIC_DEFAULT), Option.unwrapOr(Env.option(Names.TOKEN_OPTION), "")) {
+    case Ok(found) => found
+    case Err(reason) => { return failed(reason) }
+  }
+
+  match Peer.call(&peer, operation.method, Paths.target(&operation, &params), &body) {
+    case Ok(answer) => {
+      let _said = said(Json.encodePretty(&answer.body))
+
+      if answer.status < 400 { 0 } else { 1 }
+    }
+    case Err(reason) => failed(reason)
+  }
+}
+
+fn parsed(option: Str) -> Result[Option[Json.Json], Str] {
+  match Env.option(option) {
+    case Some(text) => Result.map(Result.mapErr(Json.decode(text), |_e: Json.JsonError| option + Names.NOT_JSON), |value: Json.Json| Some(value))
+    case None => Ok(None)
+  }
+}
+
+fn said(text: Str) -> Int {
+  let _written = Io.writeLine(text)
+  0
+}
+
+fn failed(reason: Str) -> Int {
+  let _written = Io.writeErrorLine(Fabric.EXECUTABLE + Text.LABEL_JOIN + reason)
+  1
+}

@@ -1,0 +1,52 @@
+/** @Test.Engine.Ledger.Suite — canonical form, digests, and links match vectors computed elsewhere */
+module Engine.LedgerTest
+
+import Std.Io as Io
+import Std.Json as Json
+import Std.Option as Option
+import Std.Result as Result
+import Std.Test as Test
+import Domain.Envelope as Envelope
+import Domain.Ledger as Ledger
+import Engine.Codec.Envelope as EnvelopeCodec
+import Engine.Ledger as Chain
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+import Utils.Canonical as Canonical
+import Utils.JsonRead as JsonRead
+
+fn main() -> Int {
+  let document = Result.unwrapOr(Result.andThen(Io.read(Fixtures.VECTORS), |text: Str| Result.mapErr(Json.decode(text), |e: Json.JsonError| Json.explain(&e))), Json.Null)
+  let vectors = Option.unwrapOr(JsonRead.list(&document, "vectors"), [])
+  var checks: Array[Test.Check] = [Test.equals("both vectors are read", &vectors.length(), &2)]
+  var entries: Array[Ledger.Entry] = []
+  var previous = ""
+  var sequence = 0
+
+  for vector in vectors {
+    sequence = sequence + 1
+
+    let envelope = Option.unwrapOr(Json.field(&vector, "envelope"), Json.Null)
+    let digest = Chain.digestOf(&envelope)
+    let link = Chain.linkAfter(previous, digest)
+    let stamped = EnvelopeCodec.stamped(&envelope, &Envelope.Stamp{sequence: sequence, digest: digest, accepted: 1})
+    checks = checks.concat([
+        Test.equals("canonical form of vector " + show(sequence), &Canonical.text(&envelope), &Option.unwrapOr(JsonRead.text(&vector, "canonical"), "")),
+        Test.equals("digest of vector " + show(sequence), &digest, &Option.unwrapOr(JsonRead.text(&vector, "digest"), "")),
+        Test.equals("link of vector " + show(sequence), &link, &Option.unwrapOr(JsonRead.text(&vector, "link"), "")),
+        Test.equals("stamped members do not change the digest of vector " + show(sequence), &Chain.digestOf(&stamped), &digest)
+      ])
+    entries = entries.push(Ledger.Entry{sequence: sequence, id: show(sequence), digest: digest, link: link})
+    previous = link
+  }
+
+  let broken = entries.map(|entry: Ledger.Entry| if entry.sequence == 2 { Ledger.Entry{..entry, digest: Chain.digestOf(&Json.Null)} } else { entry })
+  let reordered = Json.object(&[("b", Json.Number(1)), ("a", Json.object(&[("d", Json.Null), ("c", Json.Boolean(true))]))])
+  let suite = Test.suite("Ledger", &checks.concat([
+        Test.absent("an intact chain verifies", &Chain.firstBroken(&entries)),
+        Test.equals("a changed digest breaks the chain where it changed", &Chain.firstBroken(&broken), &Some(2)),
+        Test.equals("members are sorted at every depth", &Canonical.text(&reordered), &"\{\"a\":\{\"c\":true,\"d\":null\},\"b\":1\}")
+      ]))
+
+  Runner.finish(&suite)
+}

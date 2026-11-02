@@ -1,0 +1,54 @@
+/** @Domain.Scope.State — everything one scope holds, and nothing of any other */
+module Domain.Scope
+
+import Std.Map as Map
+import Domain.Graph as Graph
+import Domain.Ledger as Ledger
+import Domain.Lifecycle as Lifecycle
+
+/** @Domain.Scope.Keyed — the envelope an effectively-once key was first used for */
+export type Keyed = { id: Str, digest: Str, accepted: Int }
+
+/** @Domain.Scope.State — graphs, ledger, lifecycles, delivery keys, streams, tokens with their issuers, and delivery marks of one scope */
+export type State = {
+  id: Str,
+  graphs: Map[Str, Graph.Graph],
+  records: Map[Str, Ledger.Record],
+  sequence: Array[Str],
+  link: Str,
+  lifecycles: Map[Str, Lifecycle.Lifecycle],
+  keys: Map[Str, Keyed],
+  closedStreams: Set[Str],
+  tokens: Set[Str],
+  revoked: Set[Str],
+  issuers: Map[Str, Str],
+  served: Map[Str, Int]
+}
+
+/// A scope with nothing in it.
+export fn empty(id: Str) -> State {
+  State {
+    id: id,
+    graphs: Map.empty(),
+    records: Map.empty(),
+    sequence: [],
+    link: "",
+    lifecycles: Map.empty(),
+    keys: Map.empty(),
+    closedStreams: setOf([]),
+    tokens: setOf([]),
+    revoked: setOf([]),
+    issuers: Map.empty(),
+    served: Map.empty()
+  }
+}
+
+/// The number of entries in the scope's ledger.
+export fn length(state: &State) -> Int { state.sequence.length() }
+
+/// The record at a ledger position, starting at 1.
+export fn recordAt(state: &State, position: Int) -> Option[Ledger.Record] {
+  if position < 1 || position > state.sequence.length() { return None }
+
+  state.records.get(state.sequence[position - 1])
+}

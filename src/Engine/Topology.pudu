@@ -1,0 +1,79 @@
+/** @Engine.Topology.Acyclic — cycles and depth of dependency and containment graphs, in linear time */
+module Engine.Topology
+
+import Std.Graph as Digraph
+import Std.List as List
+import Std.Map as Map
+import Std.Math as Math
+import Std.Option as Option
+import Std.Set as Set
+
+/// One cycle of a directed graph as its members in order, ending where it starts, or `None` when it has none.
+export fn cycleOf(edges: &Array[(Str, Str)]) -> Option[Array[Str]] {
+  for pair in *edges {
+    if pair[0] == pair[1] { return Some([pair[0], pair[0]]) }
+  }
+
+  let graph = Digraph.fromEdges(edges)
+
+  if Option.isSome(&Digraph.topologicalOrder(&graph)) { return None }
+
+  Some(cycleAmong(&graph, &leftovers(&graph)))
+}
+
+/// The number of edges on the longest path of an acyclic graph.
+export fn depthOf(edges: &Array[(Str, Str)]) -> Int {
+  let graph = Digraph.fromEdges(edges)
+  var depth: Map[Str, Int] = Map.empty()
+
+  for node in List.reversed(&Option.unwrapOr(Digraph.topologicalOrder(&graph), [])) {
+    let below = Digraph.neighbours(&graph, node).map(|next: Str| Map.getOr(&depth, next, 0) + 1)
+    depth = Map.insert(&depth, node, List.fold(&below, |best: Int, each: Int| Math.max(best, each), 0))
+  }
+
+  List.fold(&Map.values(&depth), |best: Int, each: Int| Math.max(best, each), 0)
+}
+
+/// The nodes that never become free when nodes without incoming edges are removed one by one; each has a predecessor among them.
+fn leftovers(graph: &Digraph.Graph[Str]) -> Set[Str] {
+  var incoming: Map[Str, Int] = Map.empty()
+
+  for node in Digraph.nodes(graph) {
+    for next in Digraph.neighbours(graph, node) { incoming = Map.insert(&incoming, next, Map.getOr(&incoming, next, 0) + 1) }
+  }
+
+  var ready = Digraph.nodes(graph).filter(|node: Str| Map.getOr(&incoming, node, 0) == 0)
+  var removed: Set[Str] = setOf([])
+
+  while !ready.isEmpty() {
+    let node = ready[ready.length() - 1]
+    ready = ready.pop()
+    removed = removed.insert(node)
+
+    for next in Digraph.neighbours(graph, node) {
+      let left = Map.getOr(&incoming, next, 0) - 1
+      incoming = Map.insert(&incoming, next, left)
+
+      if left == 0 { ready = ready.push(next) }
+    }
+  }
+
+  setOf(Digraph.nodes(graph).filter(|node: Str| !removed.contains(node)))
+}
+
+/// A cycle among leftover nodes, found by walking predecessors until one repeats.
+fn cycleAmong(graph: &Digraph.Graph[Str], remaining: &Set[Str]) -> Array[Str] {
+  let backwards = Digraph.reversed(graph)
+  var walk: Array[Str] = []
+  var seen: Map[Str, Int] = Map.empty()
+  var node = Option.unwrapOr(Set.least(remaining), "")
+
+  while !Map.containsKey(&seen, node) && !node.isEmpty() {
+    seen = Map.insert(&seen, node, walk.length())
+    walk = walk.push(node)
+    node = Option.unwrapOr(List.find(&Digraph.neighbours(&backwards, node), |previous: Str| remaining.contains(previous)), "")
+  }
+
+  let circuit = walk.slice(Map.getOr(&seen, node, 0), walk.length()).reverse()
+  circuit.push(circuit[0])
+}

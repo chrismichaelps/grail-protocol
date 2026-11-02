@@ -1,0 +1,66 @@
+/** @Engine.Codec.Token — token claims to and from JSON */
+module Engine.Codec.Token
+
+import Std.Json as Json
+import Std.Option as Option
+import Contract.Members as Members
+import Contract.Schemas as Schemas
+import Domain.Capability as Capability
+import Domain.Problem as Problem
+import Engine.Codec.Shapes as Shapes
+import Utils.JsonRead as JsonRead
+
+/// The claims as a JSON object.
+export fn toJson(token: &Capability.Token) -> Json.Json {
+  JsonRead.objectOf(&[
+      (Members.TOKEN_ID, Some(Json.Text(token.id))),
+      (Members.TOKEN_SCOPE, Some(Json.Text(token.scopeId))),
+      (Members.TOKEN_GRAPH, Option.map(token.graph, |name: Str| Json.Text(name))),
+      (Members.TOKEN_ISSUER, Some(Json.Text(token.issuer))),
+      (Members.TOKEN_AUDIENCE, Some(Json.Text(token.audience))),
+      (Members.TOKEN_ABILITIES, Some(JsonRead.textList(&token.abilities))),
+      (Members.TOKEN_NOT_BEFORE, Some(Json.Number(token.notBefore))),
+      (Members.TOKEN_EXPIRES, Some(Json.Number(token.expires))),
+      (Members.TOKEN_PARENT, Option.map(token.parent, |name: Str| Json.Text(name))),
+      (Members.TOKEN_CHAIN, if token.chain.isEmpty() { None } else { Some(JsonRead.textList(&token.chain)) })
+    ])
+}
+
+/// The claims of a JSON object, when every required member is present and well typed.
+export fn fromJson(value: &Json.Json) -> Option[Capability.Token] {
+  let id = JsonRead.text(value, Members.TOKEN_ID) ?
+  let scopeId = JsonRead.text(value, Members.TOKEN_SCOPE) ?
+  let issuer = JsonRead.text(value, Members.TOKEN_ISSUER) ?
+  let audience = JsonRead.text(value, Members.TOKEN_AUDIENCE) ?
+  let abilities = JsonRead.texts(value, Members.TOKEN_ABILITIES) ?
+  let notBefore = JsonRead.whole(value, Members.TOKEN_NOT_BEFORE) ?
+  let expires = JsonRead.whole(value, Members.TOKEN_EXPIRES) ?
+  Some(Capability.Token {
+      id: id,
+      scopeId: scopeId,
+      graph: JsonRead.text(value, Members.TOKEN_GRAPH),
+      issuer: issuer,
+      audience: audience,
+      abilities: abilities,
+      notBefore: notBefore,
+      expires: expires,
+      parent: JsonRead.text(value, Members.TOKEN_PARENT),
+      chain: Option.unwrapOr(JsonRead.texts(value, Members.TOKEN_CHAIN), [])
+    })
+}
+
+/// The delegation a body asks for, or how it departs from the contract; a missing start means now.
+export fn decodeRequest(body: &Json.Json, now: Int) -> Result[Capability.Request, Problem.Problem] {
+  let violations = Shapes.check(Schemas.DELEGATION, body, "")
+
+  if !violations.isEmpty() { return Err(Problem.invalid(&violations)) }
+
+  Ok(Capability.Request {
+      id: Option.unwrapOr(JsonRead.text(body, Members.DELEGATION_ID), ""),
+      audience: Option.unwrapOr(JsonRead.text(body, Members.DELEGATION_AUDIENCE), ""),
+      graph: JsonRead.text(body, Members.DELEGATION_GRAPH),
+      abilities: Option.unwrapOr(JsonRead.texts(body, Members.DELEGATION_ABILITIES), []),
+      notBefore: Option.unwrapOr(JsonRead.whole(body, Members.DELEGATION_NOT_BEFORE), now),
+      expires: Option.unwrapOr(JsonRead.whole(body, Members.DELEGATION_EXPIRES), 0)
+    })
+}

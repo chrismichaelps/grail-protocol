@@ -1,0 +1,8 @@
+/** @Constants.Graphs.Roles — the roles that carry meaning inside nested graphs */
+module Constants.Graphs
+
+/// The role whose holders receive what enters a nested graph.
+export const ENTRY_ROLE: Str = "entry"
+
+/// The prefix of extension kinds, members, and abilities.
+export const EXTENSION_PREFIX: Str = "x-"

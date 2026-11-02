@@ -1,0 +1,99 @@
+/** @Engine.Mutations.Steps — applies mutation steps chosen once by operation, then checks the whole graph */
+module Engine.Mutations
+
+import Std.Json as Json
+import Std.List as List
+import Std.Map as Map
+import Constants.Details as Details
+import Constants.Extras as Extras
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Graph as Graph
+import Domain.Mutation as Mutation
+import Domain.Problem as Problem
+import Engine.Topology as Topology
+import Utils.JsonRead as JsonRead
+
+/** @Engine.Mutations.Apply — one step's effect on a graph */
+export type Apply = fn(Graph.Graph) -> Result[Graph.Graph, Problem.Problem]
+
+/// The effect of one step.
+export fn stepOf(step: &Mutation.Step) -> Apply {
+  match step {
+    case Mutation.AddParticipant(member) => |graph: Graph.Graph| if Graph.hasParticipant(&graph, member.id) { Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_MEMBER)) } else { Ok(Graph.Graph{..graph, participants: graph.participants.push(member)}) }
+    case Mutation.RemoveParticipant(id) => |graph: Graph.Graph| if Graph.hasParticipant(&graph, id) { Ok(withoutParticipant(&graph, id)) } else { Err(Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) }
+    case Mutation.AddEdge(edge) => |graph: Graph.Graph| if Graph.hasEdge(&graph, edge.id) { Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_MEMBER)) } else { Ok(Graph.Graph{..graph, edges: graph.edges.push(edge)}) }
+    case Mutation.RemoveEdge(id) => |graph: Graph.Graph| if Graph.hasEdge(&graph, id) { Ok(Graph.Graph{..graph, edges: graph.edges.filter(|edge: Graph.Edge| edge.id != id)}) } else { Err(Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) }
+  }
+}
+
+/// The graph after a mutation, checked against every other graph of its scope; the revision grows by one.
+export fn apply(graph: &Graph.Graph, mutation: &Mutation.Mutation, others: &Map[Str, Graph.Graph]) -> Result[Graph.Graph, Problem.Problem] {
+  if mutation.expectedRevision != graph.revision { return Err(Problem.withMember(&Problem.of(Codes.REVISION_CONFLICT, Details.REVISION_CONFLICT), Extras.REVISION, Json.Number(graph.revision))) }
+  if mutation.steps.length() > Limits.OPERATIONS { return Err(exceeded(Limits.OPERATIONS)) }
+
+  var changed = *graph
+
+  for step in mutation.steps {
+    changed = stepOf(&step)(changed) ?
+  }
+
+  let next = Graph.Graph{..changed, revision: graph.revision + 1}
+  let _checked = check(&next, others) ?
+  Ok(next)
+}
+
+/// A new graph from a draft, checked the same way a mutation is.
+export fn create(id: Str, scopeId: Str, draft: &Mutation.Draft, others: &Map[Str, Graph.Graph]) -> Result[Graph.Graph, Problem.Problem] {
+  if Map.containsKey(others, id) { return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_GRAPH)) }
+
+  let graph = Graph.Graph{id: id, scopeId: scopeId, revision: 1, participants: draft.participants, edges: draft.edges}
+  let _checked = check(&graph, others) ?
+  Ok(graph)
+}
+
+/// Whether a graph is well formed within its scope: unique ids, existing endpoints, limits, acyclic dependencies, and acyclic, shallow containment.
+export fn check(graph: &Graph.Graph, others: &Map[Str, Graph.Graph]) -> Result[(), Problem.Problem] {
+  let ids = graph.participants.map(|member: Graph.Participant| member.id)
+  let edgeIds = graph.edges.map(|edge: Graph.Edge| edge.id)
+
+  if graph.participants.length() > Limits.PARTICIPANTS { return Err(exceeded(Limits.PARTICIPANTS)) }
+  if graph.edges.length() > Limits.EDGES { return Err(exceeded(Limits.EDGES)) }
+  if setOf(ids).size() != ids.length() || setOf(edgeIds).size() != edgeIds.length() { return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_MEMBER)) }
+
+  let known = setOf(ids)
+
+  for edge in graph.edges {
+    if !known.contains(edge.from) || !known.contains(edge.to) { return Err(Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) }
+  }
+
+  let dependencies = Graph.edgesOf(graph, Vocabulary.RELATION_DEPENDENCY).map(|edge: Graph.Edge| (edge.from, edge.to))
+
+  if let Some(cycle) = Topology.cycleOf(&dependencies) { return Err(cyclic(&cycle)) }
+
+  let graphs = Map.insert(others, graph.id, *graph)
+
+  for name in Graph.contained(graph) {
+    if !Map.containsKey(&graphs, name) { return Err(Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) }
+  }
+
+  let containment = List.flatMap(&Map.values(&graphs), |each: Graph.Graph| Graph.contained(&each).map(|inner: Str| (each.id, inner)))
+
+  if let Some(cycle) = Topology.cycleOf(&containment) { return Err(cyclic(&cycle)) }
+  if Topology.depthOf(&containment) > Limits.CONTAINMENT_DEPTH { return Err(exceeded(Limits.CONTAINMENT_DEPTH)) }
+
+  Ok(())
+}
+
+fn withoutParticipant(graph: &Graph.Graph, id: Str) -> Graph.Graph {
+  Graph.Graph{..*graph, participants: graph.participants.filter(|member: Graph.Participant| member.id != id), edges: graph.edges.filter(|edge: Graph.Edge| edge.from != id && edge.to != id)}
+}
+
+fn cyclic(members: &Array[Str]) -> Problem.Problem {
+  Problem.withMember(&Problem.of(Codes.CYCLE, Details.CYCLE), Extras.CYCLE, JsonRead.textList(members))
+}
+
+fn exceeded(limit: Int) -> Problem.Problem {
+  Problem.withMember(&Problem.of(Codes.LIMIT_EXCEEDED, Details.LIMIT_EXCEEDED), Extras.LIMIT, Json.Number(limit))
+}

@@ -1,0 +1,82 @@
+/** @Test.Engine.Mutations.Suite — graphs change atomically, by revision, and never into a cycle */
+module Engine.MutationsTest
+
+import Std.Json as Json
+import Std.List as List
+import Std.Map as Map
+import Std.Result as Result
+import Std.Test as Test
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Graph as Graph
+import Domain.Mutation as Mutation
+import Domain.Problem as Problem
+import Engine.Mutations as Mutations
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+
+fn graphOf(outcome: &Result[Graph.Graph, Problem.Problem]) -> Graph.Graph {
+  Result.unwrapOr(*outcome, Graph.Graph{id: "", scopeId: "", revision: 0, participants: [], edges: []})
+}
+
+fn main() -> Int {
+  let none: Map[Str, Graph.Graph] = Map.empty()
+  let team = graphOf(&Mutations.create(Fixtures.GRAPH, Fixtures.SCOPE, &Fixtures.team(), &none))
+  let others = Map.insert(&none, team.id, team)
+  let closing = Mutation.Mutation{expectedRevision: 1, steps: [Mutation.AddEdge(Fixtures.edge("d2", "reviewer", "writer", Vocabulary.RELATION_DEPENDENCY))]}
+  let cycle = Mutations.apply(&team, &closing, &others)
+  let looping = Mutation.Mutation{expectedRevision: 1, steps: [Mutation.AddEdge(Fixtures.edge("f9", "reviewer", "planner", Vocabulary.RELATION_FLOW))]}
+  let stale = Mutations.apply(&team, &Mutation.Mutation{expectedRevision: 3, steps: [Mutation.RemoveEdge("e1")]}, &others)
+  let partial = Mutations.apply(&team, &Mutation.Mutation{expectedRevision: 1, steps: [Mutation.RemoveEdge("e1"), Mutation.RemoveEdge("missing")]}, &others)
+  let removed = graphOf(&Mutations.apply(&team, &Mutation.Mutation{expectedRevision: 1, steps: [Mutation.RemoveParticipant("writer")]}, &others))
+  let duplicate = Mutations.apply(&team, &Mutation.Mutation{expectedRevision: 1, steps: [Mutation.AddParticipant(Fixtures.member("writer", &[], &[]))]}, &others)
+  let dangling = Mutations.apply(&team, &Mutation.Mutation{expectedRevision: 1, steps: [Mutation.AddEdge(Fixtures.edge("x", "planner", "ghost", Vocabulary.RELATION_FLOW))]}, &others)
+  let nested = Graph.Participant{id: "inner", kind: Vocabulary.PARTICIPANT_GRAPH, roles: [], abilities: [], graph: Some(Fixtures.GRAPH)}
+  let selfContained = Mutations.apply(&team, &Mutation.Mutation{expectedRevision: 1, steps: [Mutation.AddParticipant(nested)]}, &others)
+  let foreign = Mutations.create("outer", Fixtures.SCOPE, &Mutation.Draft{participants: [Graph.Participant{..nested, graph: Some("nowhere")}], edges: []}, &others)
+  let outer = Mutations.create("outer", Fixtures.SCOPE, &Mutation.Draft{participants: [nested], edges: []}, &others)
+  let manySteps = List.range(0, Limits.OPERATIONS).map(|n: Int| Mutation.AddParticipant(Fixtures.member("m" + show(n), &[], &[])))
+  let atLimit = Mutations.apply(&team, &Mutation.Mutation{expectedRevision: 1, steps: manySteps}, &others)
+  let overLimit = Mutations.apply(&team, &Mutation.Mutation{expectedRevision: 1, steps: manySteps.push(Mutation.RemoveEdge("e1"))}, &others)
+  let crowd = List.range(0, Limits.PARTICIPANTS).map(|n: Int| Fixtures.member("c" + show(n), &[], &[]))
+  let full = Mutations.create("full", Fixtures.SCOPE, &Mutation.Draft{participants: crowd, edges: []}, &none)
+  let overfull = Mutations.create("overfull", Fixtures.SCOPE, &Mutation.Draft{participants: crowd.push(Fixtures.member("one-more", &[], &[])), edges: []}, &none)
+  let twinEdges = Mutations.create("twins", Fixtures.SCOPE, &Mutation.Draft{participants: [Fixtures.member("a", &[], &[]), Fixtures.member("b", &[], &[])], edges: [Fixtures.edge("same", "a", "b", Vocabulary.RELATION_FLOW), Fixtures.edge("same", "b", "a", Vocabulary.RELATION_FLOW)]}, &none)
+  var nesting = Map.insert(&none, "n0", Graph.Graph{id: "n0", scopeId: Fixtures.SCOPE, revision: 1, participants: [], edges: []})
+  var level = 1
+
+  while level <= Limits.CONTAINMENT_DEPTH {
+    let inner = "n" + show(level - 1)
+    nesting = Map.insert(&nesting, "n" + show(level), Graph.Graph{id: "n" + show(level), scopeId: Fixtures.SCOPE, revision: 1, participants: [Graph.Participant{id: "in", kind: Vocabulary.PARTICIPANT_GRAPH, roles: [], abilities: [], graph: Some(inner)}], edges: []})
+    level = level + 1
+  }
+
+  let deepest = Mutations.create("deeper", Fixtures.SCOPE, &Mutation.Draft{participants: [Graph.Participant{id: "in", kind: Vocabulary.PARTICIPANT_GRAPH, roles: [], abilities: [], graph: Some("n" + show(Limits.CONTAINMENT_DEPTH - 1))}], edges: []}, &nesting)
+  let tooDeep = Mutations.create("deeper", Fixtures.SCOPE, &Mutation.Draft{participants: [Graph.Participant{id: "in", kind: Vocabulary.PARTICIPANT_GRAPH, roles: [], abilities: [], graph: Some("n" + show(Limits.CONTAINMENT_DEPTH))}], edges: []}, &nesting)
+  let checks = Test.suite("Mutations", &[
+      Test.succeeded("a mutation of exactly the operation limit applies", &atLimit),
+      Test.equals("one operation more is refused", &Fixtures.code(&overLimit), &Codes.LIMIT_EXCEEDED),
+      Test.succeeded("a graph of exactly the participant limit is created", &full),
+      Test.equals("one participant more is refused", &Fixtures.code(&overfull), &Codes.LIMIT_EXCEEDED),
+      Test.equals("two edges with one id are refused", &Fixtures.code(&twinEdges), &Codes.DUPLICATE),
+      Test.succeeded("containment exactly at the depth limit is allowed", &deepest),
+      Test.equals("one level deeper is refused", &Fixtures.code(&tooDeep), &Codes.LIMIT_EXCEEDED),
+      Test.equals("removing one edge keeps the others", &Result.map(Mutations.apply(&team, &Mutation.Mutation{expectedRevision: 1, steps: [Mutation.RemoveEdge("e1")]}, &others), |g: Graph.Graph| g.edges.map(|e: Graph.Edge| e.id)), &Ok(["e2", "d1"])),
+      Test.equals("a new graph starts at revision 1", &team.revision, &1),
+      Test.equals("closing a dependency cycle is refused", &Fixtures.code(&cycle), &Codes.CYCLE),
+      Test.equals("the refusal names the cycle in order, ending where it starts", &Result.mapErr(cycle, |p: Problem.Problem| Json.encode(&p.extras[0][1])), &Err("[\"writer\",\"reviewer\",\"writer\"]")),
+      Test.equals("a cycle of flow edges is allowed and moves the revision by one", &Result.map(Mutations.apply(&team, &looping, &others), |g: Graph.Graph| g.revision), &Ok(2)),
+      Test.equals("a stale revision is refused", &Fixtures.code(&stale), &Codes.REVISION_CONFLICT),
+      Test.equals("a mutation with one failing step applies none", &Fixtures.code(&partial), &Codes.NOT_FOUND),
+      Test.equals("removing a participant removes its edges", &removed.edges.map(|e: Graph.Edge| e.id), &["e2"]),
+      Test.equals("a repeated participant id is refused", &Fixtures.code(&duplicate), &Codes.DUPLICATE),
+      Test.equals("an edge to nobody is refused", &Fixtures.code(&dangling), &Codes.NOT_FOUND),
+      Test.equals("a graph cannot contain itself", &Fixtures.code(&selfContained), &Codes.CYCLE),
+      Test.equals("a graph participant must name a graph of the scope", &Fixtures.code(&foreign), &Codes.NOT_FOUND),
+      Test.succeeded("a graph may contain another graph", &outer),
+      Test.equals("creating an existing graph is refused", &Fixtures.code(&Mutations.create(Fixtures.GRAPH, Fixtures.SCOPE, &Fixtures.team(), &others)), &Codes.DUPLICATE)
+    ])
+
+  Runner.finish(&checks)
+}

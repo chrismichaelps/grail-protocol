@@ -1,0 +1,17 @@
+/** @Validation.Envelope.Rules — what an envelope must hold beyond its shape */
+module Validation.Envelope
+
+import Std.Option as Option
+import Constants.Details as Details
+import Contract.Members as Members
+import Contract.Vocabulary as Vocabulary
+import Domain.Envelope as Envelope
+import PuduLangValidator.Rule as Rule
+import PuduLangValidator.Validator as Validator
+
+/// Rules every envelope meets before admission.
+export fn rules() -> Validator.Validator[Envelope.Envelope] {
+  let keyed = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.ENVELOPE_DELIVERY, |e: Envelope.Envelope| e.delivery), |delivery: Envelope.Delivery| delivery.mode != Vocabulary.DELIVERY_EFFECTIVELY_ONCE || Option.isSome(&delivery.key)), Details.KEY_REQUIRED))
+  let sealed = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.ENVELOPE_ENCRYPTION, |e: Envelope.Envelope| e.encryption), |held: Option[Envelope.Encryption]| Option.fold(held, |found: Envelope.Encryption| !found.recipients.isEmpty(), true)), Details.SEALED_FOR_NOBODY))
+  Validator.add(Validator.add(Validator.create(), keyed), sealed)
+}

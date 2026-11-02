@@ -1,0 +1,23 @@
+/** @Constants.Events.Lifecycle — the events that move a task lifecycle */
+module Constants.Events
+
+/// The recipient reports progress.
+export const PROGRESS: Str = "progress"
+
+/// The recipient needs more input.
+export const INPUT: Str = "input"
+
+/// The task finished with a result.
+export const COMPLETE: Str = "complete"
+
+/// The task finished with an error.
+export const FAIL: Str = "fail"
+
+/// The task's source withdrew it.
+export const CANCEL: Str = "cancel"
+
+/// The task's deadline passed.
+export const EXPIRE: Str = "expire"
+
+/// What separates a state from an event in a transition key.
+export const ON: Str = ">"

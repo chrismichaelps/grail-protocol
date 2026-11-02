@@ -1,0 +1,35 @@
+/** @Engine.Ledger.Chain — digests of envelopes and links of the scope ledger */
+module Engine.Ledger
+
+import Std.Crypto as Crypto
+import Std.Json as Json
+import Constants.Ledger as Hashing
+import Contract.Members as Members
+import Domain.Ledger as Ledger
+import Utils.Canonical as Canonical
+
+/// The members the fabric writes, which the digest never covers.
+const STAMPED: Array[Str] = [Members.ACCEPTED_SEQUENCE, Members.ACCEPTED_DIGEST, Members.ACCEPTED_ACCEPTED]
+
+/// The digest of an envelope body: the hash of its canonical form without the members the fabric adds.
+export fn digestOf(body: &Json.Json) -> Str {
+  Hashing.DIGEST_PREFIX + Crypto.sha256Hex(Canonical.text(&Canonical.without(body, &STAMPED)))
+}
+
+/// The link that follows `previous` for a digest; an empty `previous` starts the chain.
+export fn linkAfter(previous: Str, digest: Str) -> Str {
+  if previous.isEmpty() { Crypto.sha256Hex(Hashing.LINK_SEED + digest) } else { Crypto.sha256Hex(previous + Hashing.LINK_SEPARATOR + digest) }
+}
+
+/// The first position whose link does not recompute, or `None` when the whole chain holds.
+export fn firstBroken(entries: &Array[Ledger.Entry]) -> Option[Int] {
+  var previous = ""
+
+  for entry in *entries {
+    if linkAfter(previous, entry.digest) != entry.link { return Some(entry.sequence) }
+
+    previous = entry.link
+  }
+
+  None
+}

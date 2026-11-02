@@ -1,0 +1,17 @@
+/** @Constants.Security.Authority — names and labels of the token scheme */
+module Constants.Security
+
+/// The issuer and audience that stand for the scope owner.
+export const OWNER: Str = "owner"
+
+/// The label mixed into every scope key.
+export const SCOPE_KEY_LABEL: Str = "grail-scope:"
+
+/// What separates a token's body from its signature.
+export const TOKEN_SEPARATOR: Str = "."
+
+/// The scheme of the authorization header.
+export const BEARER_PREFIX: Str = "Bearer "
+
+/// The fewest characters a fabric secret may have.
+export const SECRET_LENGTH_MIN: Int = 32

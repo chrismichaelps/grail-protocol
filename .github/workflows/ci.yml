@@ -1,0 +1,74 @@
+name: ci
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+env:
+  PUDU_VERSION: "0.1.3"
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Pudu from its published archive
+        run: |
+          set -euo pipefail
+          archive="pudu-${PUDU_VERSION}-linux-amd64.tar.gz"
+          base="https://github.com/chrismichaelps/pudu-lang/releases/download/v${PUDU_VERSION}"
+          cd "$RUNNER_TEMP"
+          curl -fsSLO "$base/$archive"
+          curl -fsSLO "$base/$archive.sha256"
+          sha256sum -c "$archive.sha256"
+          tar -xzf "$archive"
+          echo "$RUNNER_TEMP/pudu-${PUDU_VERSION}-linux-amd64/bin" >> "$GITHUB_PATH"
+      - run: pudu version
+      - name: Install dependencies
+        run: pudu install --locked
+      - name: Contract projection is current
+        run: pudu run tools/Contract.pudu --check
+      - name: Check
+        run: pudu check $(find src test tools -name '*.pudu')
+      - name: Format
+        run: pudu fmt --check src test tools
+      - name: Lint
+        run: pudu lint src test tools
+      - name: Statement spacing
+        run: pudu run tools/Spacing.pudu
+      - name: Dependency layers
+        run: pudu run tools/Layers.pudu
+      - name: Tool suites
+        run: |
+          set -euo pipefail
+          pudu run tools/LayersTest.pudu
+          pudu run tools/SpacingTest.pudu
+          pudu run tools/ContractTest.pudu
+      - name: Test
+        run: pudu test test
+      - name: Build
+        run: pudu build src/Main.pudu -o "$RUNNER_TEMP/grail"
+      - name: Smoke the executable
+        env:
+          GRAIL_SECRET: ci-only-secret-0123456789abcdef-0123
+          GRAIL_PORT: "17420"
+        run: |
+          set -euo pipefail
+          grail="$RUNNER_TEMP/grail"
+          "$grail" version
+          token="$("$grail" token --scope ci --id root)"
+          "$grail" serve &
+          for attempt in $(seq 1 60); do curl -fsS http://127.0.0.1:17420/v1/health && break; sleep 1; done
+          curl -fsS http://127.0.0.1:17420/.well-known/grail > /dev/null
+          curl -fsS -X PUT -H "Authorization: Bearer $token" -H 'content-type: application/json' \
+            -d '{"participants":[{"id":"a","kind":"agent"},{"id":"b","kind":"tool"}],"edges":[{"id":"e","from":"a","to":"b","relation":"flow"}]}' \
+            http://127.0.0.1:17420/v1/scopes/ci/graphs/g > /dev/null
+          siege="$("$grail" token --scope siege --id root)"
+          pudu run tools/Siege.pudu --fabric http://127.0.0.1:17420 --token "$siege"
+          kill %1

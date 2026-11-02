@@ -1,0 +1,216 @@
+/** @Services.Fabric.UseCases — every operation of the protocol over one scope at a time */
+module Services.Fabric
+
+import Std.Concurrent as Concurrent
+import Std.Math as Math
+import Std.Option as Option
+import Std.Result as Result
+import Constants.Details as Details
+import Constants.Security as Security
+import Constants.Server as Capacity
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Domain.Envelope as Envelope
+import Domain.Graph as Graph
+import Domain.Ledger as Ledger
+import Domain.Lifecycle as Lifecycle
+import Domain.Mutation as Mutation
+import Domain.Problem as Problem
+import Domain.Request as Request
+import Domain.Scope as Scope
+import Domain.Transfer as Transfer
+import Engine.Admission as Admission
+import Engine.Authority as Authority
+import Engine.Delivery as Delivery
+import Engine.Erasure as Erasure
+import Engine.Journal as Journal
+import Engine.Mutations as Mutations
+import Services.Runtime as Runtime
+import Services.Store as Store
+
+/// Creates a graph and records its creation.
+export fn createGraph(runtime: &Runtime.Runtime, call: &Request.Call[Request.Creation]) -> Result[Graph.Graph, Problem.Problem] {
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = authorized(&state, &asked, secret, now) ?
+      let _allowed = Authority.require(&authority, Vocabulary.ABILITY_GRAPH_WRITE, Some(asked.input.graph)) ?
+      let graph = Mutations.create(asked.input.graph, asked.scopeId, &asked.input.draft, &state.graphs) ?
+      let creation = Mutation.Mutation{expectedRevision: 0, steps: graph.participants.map(|member: Graph.Participant| Mutation.AddParticipant(member)).concat(graph.edges.map(|edge: Graph.Edge| Mutation.AddEdge(edge)))}
+      Ok((graph, Journal.recorded(&state, &graph, &creation, authority.audience, now)))
+    })
+}
+
+/// Reads a graph.
+export fn readGraph(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Graph.Graph, Problem.Problem] {
+  let state = Store.read(&runtime.store, call.scopeId) ?
+  let authority = authorized(&state, call, runtime.secret, Runtime.now()) ?
+  let _allowed = Authority.require(&authority, Vocabulary.ABILITY_GRAPH_READ, Some(call.input)) ?
+  Option.okOr(state.graphs.get(call.input), notFound())
+}
+
+/// Applies a mutation and records it.
+export fn mutateGraph(runtime: &Runtime.Runtime, call: &Request.Call[Request.Change]) -> Result[Graph.Graph, Problem.Problem] {
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = authorized(&state, &asked, secret, now) ?
+      let _allowed = Authority.require(&authority, Vocabulary.ABILITY_GRAPH_WRITE, Some(asked.input.graph)) ?
+      let current = Option.okOr(state.graphs.get(asked.input.graph), notFound()) ?
+      let changed = Mutations.apply(&current, &asked.input.mutation, &state.graphs) ?
+      Ok((changed, Journal.recorded(&state, &changed, &asked.input.mutation, authority.audience, now)))
+    })
+}
+
+/// Admits an envelope, or answers the original receipt of a repeated delivery key.
+export fn send(runtime: &Runtime.Runtime, call: &Request.Call[Request.Sending]) -> Result[Transfer.Receipt, Problem.Problem] {
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = authorized(&state, &asked, secret, now) ?
+
+      match Admission.admit(&state, &asked.input.envelope, &asked.input.body, &authority, now) ? {
+        case Admission.Fresh(admitted) => {
+          let next = Admission.commit(&state, &admitted)
+          Ok((receiptOf(&next, &admitted.record, false), next))
+        }
+        case Admission.Repeated(original) => Ok((receiptOf(&state, &original, true), state))
+      }
+    })
+}
+
+/// Reads an envelope and where its lifecycle stands.
+export fn readTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Transfer.View, Problem.Problem] {
+  let state = Store.read(&runtime.store, call.scopeId) ?
+  let now = Runtime.now()
+  let authority = authorized(&state, call, runtime.secret, now) ?
+  let _allowed = Authority.require(&authority, Vocabulary.ABILITY_TRANSFER_READ, None) ?
+  let record = Option.okOr(state.records.get(call.input), notFound()) ?
+
+  if !Delivery.visible(&record, &authority) { return Err(notFound()) }
+
+  Ok(Transfer.View{record: record, state: Option.map(state.lifecycles.get(call.input), |found: Lifecycle.Lifecycle| Admission.stateAt(&found, now))})
+}
+
+/// Reads the causal ancestry of an envelope.
+export fn traceTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Request.Traced, Problem.Problem] {
+  let state = Store.read(&runtime.store, call.scopeId) ?
+  let authority = authorized(&state, call, runtime.secret, Runtime.now()) ?
+  let _allowed = Authority.require(&authority, Vocabulary.ABILITY_LEDGER_READ, None) ?
+  let record = Option.okOr(state.records.get(call.input), notFound()) ?
+
+  if !Delivery.visible(&record, &authority) { return Err(notFound()) }
+
+  Ok(Request.Traced{of: call.input, entries: Delivery.trace(&state, &record, &authority)})
+}
+
+/// Reads deliveries for the participant the token acts for, acknowledging everything up to the cursor; with a wait, looks again until one arrives or the wait runs out.
+export fn pullDeliveries(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem] {
+  let until = Runtime.now() + Math.min(Math.max(call.input.wait, 0), Limits.WAIT_MAX)
+  let page = pullOnce(runtime, call) ?
+
+  if !page.records.isEmpty() || Runtime.now() >= until || !Runtime.claimWait(runtime) { return Ok(page) }
+
+  var waited = Ok(page)
+
+  while Result.holds(&waited, |found: Transfer.Page| found.records.isEmpty()) && Runtime.now() < until {
+    let _paused = Concurrent.sleep(Capacity.POLL_MILLIS)
+    waited = pullOnce(runtime, call)
+  }
+
+  Runtime.releaseWait(runtime)
+  waited
+}
+
+fn pullOnce(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem] {
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = authorized(&state, &asked, secret, now) ?
+      let _allowed = Authority.require(&authority, Vocabulary.ABILITY_TRANSFER_RECEIVE, Some(asked.input.graph)) ?
+
+      if authority.audience != Security.OWNER && authority.audience != asked.input.participant { return Err(Problem.of(Codes.FORBIDDEN, Details.NOT_YOUR_DELIVERIES)) }
+
+      let address = Envelope.Address{graph: asked.input.graph, participant: asked.input.participant}
+      Ok(Delivery.pull(&state, &address, asked.input.after, Delivery.pageSize(asked.input.limit), now))
+    })
+}
+
+/// Reads a range of the ledger.
+export fn readLedger(runtime: &Runtime.Runtime, call: &Request.Call[Request.Paging]) -> Result[Transfer.Page, Problem.Problem] {
+  let state = Store.read(&runtime.store, call.scopeId) ?
+  let authority = authorized(&state, call, runtime.secret, Runtime.now()) ?
+  let _allowed = Authority.require(&authority, Vocabulary.ABILITY_LEDGER_READ, None) ?
+  Ok(Delivery.ledger(&state, call.input.after, Delivery.pageSize(call.input.limit)))
+}
+
+/// Issues a narrower token to another participant.
+export fn delegateToken(runtime: &Runtime.Runtime, call: &Request.Call[Capability.Request]) -> Result[Request.Granted, Problem.Problem] {
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = authorized(&state, &asked, secret, now) ?
+
+      if state.tokens.contains(asked.input.id) { return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_TOKEN)) }
+
+      let token = Authority.delegate(&authority, &asked.input, secret) ?
+      Ok((Request.Granted{token: token, expires: asked.input.expires}, Scope.State{..state, tokens: state.tokens.insert(asked.input.id), issuers: state.issuers.insert(asked.input.id, authority.audience)}))
+    })
+}
+
+/// Describes the presented token and how deep in its delegation chain it sits.
+export fn inspectToken(runtime: &Runtime.Runtime, call: &Request.Call[()]) -> Result[(Capability.Token, Int), Problem.Problem] {
+  let state = Store.read(&runtime.store, call.scopeId) ?
+  let authority = authorized(&state, call, runtime.secret, Runtime.now()) ?
+  Ok((authority.chain[authority.chain.length() - 1], authority.chain.length()))
+}
+
+/// Revokes a token the caller issued, or any token when the caller is the owner; every token delegated from it falls with it.
+export fn revokeToken(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Str, Problem.Problem] {
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = authorized(&state, &asked, secret, now) ?
+
+      if authority.audience != Security.OWNER {
+        let _allowed = Authority.require(&authority, Vocabulary.ABILITY_TOKEN_DELEGATE, None) ?
+        let issuer = Option.okOr(state.issuers.get(asked.input), notFound()) ?
+
+        if issuer != authority.audience { return Err(Problem.of(Codes.FORBIDDEN, Details.NOT_ISSUER)) }
+      }
+
+      Ok((asked.input, Scope.State{..state, revoked: state.revoked.insert(asked.input)}))
+    })
+}
+
+/// Erases an envelope's payload; its digest and link stay so the chain still verifies.
+export fn eraseTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Request.Erased, Problem.Problem] {
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = authorized(&state, &asked, secret, now) ?
+      let _allowed = Authority.require(&authority, Vocabulary.ABILITY_LEDGER_ERASE, None) ?
+      let erased = Erasure.erase(&state, asked.input) ?
+      Ok((Request.Erased{id: erased[0].entry.id, sequence: erased[0].entry.sequence, digest: erased[0].entry.digest}, erased[1]))
+    })
+}
+
+/// The authority a call's token grants over the scope it names.
+export fn authorized[T](state: &Scope.State, call: &Request.Call[T], secret: Str, now: Int) -> Result[Capability.Authority, Problem.Problem] {
+  Authority.authorize(call.token, call.scopeId, secret, now, &state.revoked)
+}
+
+fn receiptOf(state: &Scope.State, record: &Ledger.Record, duplicate: Bool) -> Transfer.Receipt {
+  Transfer.Receipt{id: record.entry.id, sequence: record.entry.sequence, digest: record.entry.digest, recipients: record.recipients, state: Option.map(state.lifecycles.get(record.entry.id), |found: Lifecycle.Lifecycle| found.state), duplicate: duplicate}
+}
+
+fn notFound() -> Problem.Problem { Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND) }

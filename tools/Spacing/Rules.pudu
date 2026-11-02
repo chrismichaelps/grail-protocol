@@ -1,0 +1,131 @@
+/** @Tools.Spacing.Rules — finds statements spaced against the code style */
+module Spacing.Rules
+
+import Constants.Spacing as Style
+
+/** @Tools.Spacing.Finding — one line that breaks a spacing rule */
+export type Finding = { line: Int, reason: Str }
+
+/** @Tools.Spacing.Shape — what one line holds, as far as spacing is concerned */
+type Shape = { blank: Bool, declares: Bool, guards: Bool, depthBefore: Int, depthAfter: Int }
+
+/// Every spacing finding in one file's text.
+export fn check(text: Str) -> Array[Finding] {
+  let shapes = shapesOf(text)
+  let ends = declarationEnds(&shapes)
+  var findings: Array[Finding] = []
+  var index = 0
+
+  for shape in shapes {
+    if shape.guards && index > 0 && ends[index - 1] {
+      findings = findings.push(Finding{line: index + 1, reason: Style.NEEDS_BREAK})
+    }
+    if shape.declares && index > 1 && shapes[index - 1].blank && singleDeclaration(&shapes[index - 2]) && shapes[index - 2].depthBefore == shape.depthBefore {
+      findings = findings.push(Finding{line: index, reason: Style.SPLIT_DECLARATIONS})
+    }
+
+    index = index + 1
+  }
+
+  if shapes.length() > Style.LINES_MAX { findings = findings.push(Finding{line: Style.LINES_MAX + 1, reason: Style.TOO_LONG}) }
+
+  findings
+}
+
+/// For each line, whether a declaration statement ends on it at the depth it started.
+fn declarationEnds(shapes: &Array[Shape]) -> Array[Bool] {
+  var ends: Array[Bool] = []
+  var open: Array[Int] = []
+
+  for shape in *shapes {
+    if shape.declares { open = open.push(shape.depthBefore) }
+
+    var ended = false
+
+    while !open.isEmpty() && open[open.length() - 1] >= shape.depthAfter && !shape.blank {
+      ended = ended || open[open.length() - 1] == shape.depthAfter
+      open = open.pop()
+    }
+
+    ends = ends.push(ended)
+  }
+
+  ends
+}
+
+fn singleDeclaration(shape: &Shape) -> Bool { shape.declares && shape.depthBefore == shape.depthAfter }
+
+fn shapesOf(text: Str) -> Array[Shape] {
+  var shapes: Array[Shape] = []
+  var depth = 0
+  var commented = false
+
+  for line in text.split("\n") {
+    let trimmed = line.trim()
+    let counted = depthChange(line, commented)
+    let before = depth
+    depth = depth + counted[0]
+    commented = counted[1]
+    shapes = shapes.push(Shape{blank: trimmed.isEmpty(), declares: startsWithAny(trimmed, &Style.DECLARATIONS), guards: startsWithAny(trimmed, &Style.GUARDED), depthBefore: before, depthAfter: depth})
+  }
+
+  shapes
+}
+
+fn startsWithAny(text: Str, prefixes: &Array[Str]) -> Bool {
+  for prefix in *prefixes {
+    if text.startsWith(prefix) { return true }
+  }
+
+  false
+}
+
+/// How much one line opens or closes brackets outside strings, characters, and comments, and whether a block comment is still open after it.
+fn depthChange(line: Str, commentedBefore: Bool) -> (Int, Bool) {
+  let characters = line.chars()
+  var change = 0
+  var commented = commentedBefore
+  var inString = false
+  var inCharacter = false
+  var escaped = false
+  var index = 0
+
+  while index < characters.length() {
+    let character = characters[index]
+    let next = if index + 1 < characters.length() { characters[index + 1] } else { ' ' }
+
+    if commented {
+      if character == '*' && next == '/' {
+        commented = false
+        index = index + 1
+      }
+    } else if inString || inCharacter {
+      if escaped {
+        escaped = false
+      } else if character == '\\' {
+        escaped = true
+      } else if inString && character == '"' {
+        inString = false
+      } else if inCharacter && character == '\'' {
+        inCharacter = false
+      }
+    } else if character == '/' && next == '/' {
+      index = characters.length()
+    } else if character == '/' && next == '*' {
+      commented = true
+      index = index + 1
+    } else if character == '"' {
+      inString = true
+    } else if character == '\'' {
+      inCharacter = true
+    } else if character == '(' || character == '[' || character == '\{' {
+      change = change + 1
+    } else if character == ')' || character == ']' || character == '\}' {
+      change = change - 1
+    }
+
+    index = index + 1
+  }
+
+  (change, commented)
+}

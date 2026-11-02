@@ -1,0 +1,54 @@
+/** @Web.Caller.Reading — what a request presents: its token, parameters, and body */
+module Web.Caller
+
+import Std.Http.Server.Route as Route
+import Std.Json as Json
+import Std.Option as Option
+import Std.Result as Result
+import Constants.Details as Details
+import Constants.Extras as Extras
+import Constants.Fabric as Fabric
+import Constants.Http as Names
+import Constants.Security as Security
+import Constants.Text as Text
+import Contract.Parameters as Parameters
+import Contract.Problems as Codes
+import Contract.Version as Version
+import Domain.Problem as Problem
+import Domain.Request as Request
+import Utils.JsonRead as JsonRead
+
+/// The bearer token a request presents, or empty text when it presents none.
+export fn token(request: &Route.Request) -> Str {
+  match Route.header(request, Version.HEADER_AUTHORIZATION) {
+    case Some(value) => if value.startsWith(Security.BEARER_PREFIX) { value.drop(Security.BEARER_PREFIX.length()).trim() } else { "" }
+    case None => ""
+  }
+}
+
+/// A call carrying the request's token, the scope its path names, and an input.
+export fn call[T](request: &Route.Request, input: T) -> Request.Call[T] { Request.Call{token: token(request), scopeId: parameter(request, Parameters.SCOPE), input: input} }
+
+/// A path parameter, or empty text.
+export fn parameter(request: &Route.Request, name: Str) -> Str { Option.unwrapOr(Route.param(request, name), "") }
+
+/// A whole-number query parameter, absent when not given.
+export fn whole(request: &Route.Request, name: Str) -> Result[Option[Int], Problem.Problem] {
+  match Route.queryParam(request, name) {
+    case Some(text) => Option.okOr(Option.map(text.toInt(), |number: Int| Some(number)), Problem.invalid(&[Problem.violation(Text.QUERY_POINTER + name, Names.NOT_WHOLE)]))
+    case None => Ok(None)
+  }
+}
+
+/// The request body as JSON.
+export fn body(request: &Route.Request) -> Result[Json.Json, Problem.Problem] {
+  Result.mapErr(Json.decode(Route.body(request)), |_e: Json.JsonError| Problem.invalid(&[Problem.violation("", Details.NOT_JSON)]))
+}
+
+/// Nothing when the request asks for a protocol version this fabric speaks, or for none.
+export fn version(request: &Route.Request) -> Result[(), Problem.Problem] {
+  match Route.header(request, Version.HEADER_VERSION) {
+    case Some(asked) => if Fabric.PROTOCOLS.contains(asked.trim()) { Ok(()) } else { Err(Problem.withMember(&Problem.of(Codes.UNSUPPORTED_VERSION, Details.UNSUPPORTED_VERSION), Extras.SUPPORTED, JsonRead.textList(&Fabric.PROTOCOLS))) }
+    case None => Ok(())
+  }
+}

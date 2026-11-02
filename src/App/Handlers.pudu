@@ -1,0 +1,32 @@
+/** @App.Handlers.Registrations — each message kind bound to its use case */
+module App.Handlers
+
+import App.Messages as Messages
+import Domain.Capability as Capability
+import Domain.Request as Request
+import PuduLangMediator.Context as Context
+import PuduLangMediator as Messaging
+import PuduLangMediator.Registration as Registration
+import Services.Bridge as Bridge
+import Services.Fabric as Fabric
+import Services.Runtime as Runtime
+
+/// The handler of every kind.
+export fn registrations(kinds: &Messages.Kinds, runtime: &Runtime.Runtime) -> Array[Registration.Registration] {
+  let held = *runtime
+  [
+    Registration.handler(&kinds.createGraph, |asked: Request.Call[Request.Creation], _context: Context.Context| Messaging.lift(Fabric.createGraph(&held, &asked))),
+    Registration.handler(&kinds.readGraph, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Fabric.readGraph(&held, &asked))),
+    Registration.handler(&kinds.mutateGraph, |asked: Request.Call[Request.Change], _context: Context.Context| Messaging.lift(Fabric.mutateGraph(&held, &asked))),
+    Registration.handler(&kinds.sendEnvelope, |asked: Request.Call[Request.Sending], _context: Context.Context| Messaging.lift(Fabric.send(&held, &asked))),
+    Registration.handler(&kinds.readTransfer, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Fabric.readTransfer(&held, &asked))),
+    Registration.handler(&kinds.traceTransfer, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Fabric.traceTransfer(&held, &asked))),
+    Registration.handler(&kinds.pullDeliveries, |asked: Request.Call[Request.Pulling], _context: Context.Context| Messaging.lift(Fabric.pullDeliveries(&held, &asked))),
+    Registration.handler(&kinds.readLedger, |asked: Request.Call[Request.Paging], _context: Context.Context| Messaging.lift(Fabric.readLedger(&held, &asked))),
+    Registration.handler(&kinds.delegateToken, |asked: Request.Call[Capability.Request], _context: Context.Context| Messaging.lift(Fabric.delegateToken(&held, &asked))),
+    Registration.handler(&kinds.bridgeRpc, |asked: Request.Call[Request.Bridging], _context: Context.Context| Messaging.lift(Bridge.carry(&held, &asked))),
+    Registration.handler(&kinds.inspectToken, |asked: Request.Call[()], _context: Context.Context| Messaging.lift(Fabric.inspectToken(&held, &asked))),
+    Registration.handler(&kinds.revokeToken, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Fabric.revokeToken(&held, &asked))),
+    Registration.handler(&kinds.eraseTransfer, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Fabric.eraseTransfer(&held, &asked)))
+  ]
+}

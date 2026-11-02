@@ -1,0 +1,45 @@
+/** @Services.Store.Memory — every scope's state, changed one scope at a time under a lock */
+module Services.Store
+
+import Std.Map as Map
+import Std.Result as Result
+import Std.Sync as Sync
+import Constants.Details as Details
+import Contract.Problems as Codes
+import Domain.Problem as Problem
+import Domain.Scope as Scope
+
+/** @Services.Store.Store — the lock and the cell holding every scope */
+export type Store = { lock: Sync.Mutex, scopes: Sync.Cell[Map[Str, Scope.State]] }
+
+/// An empty store.
+export fn create() -> Store { Store{lock: Sync.mutex(), scopes: Sync.cell(Map.empty())} }
+
+/// A scope's state as it stands; a scope nobody has written to is empty.
+export fn read(store: &Store, scopeId: Str) -> Result[Scope.State, Problem.Problem] {
+  let scopes = Result.mapErr(Sync.get(&store.scopes), |_e: Sync.SyncError| unavailable()) ?
+  Ok(Map.getOr(&scopes, scopeId, Scope.empty(scopeId)))
+}
+
+/// Applies a change to one scope atomically: the new state is kept only when the change succeeds.
+export fn change[T](store: &Store, scopeId: Str, action: fn(Scope.State) -> Result[(T, Scope.State), Problem.Problem]) -> Result[T, Problem.Problem] {
+  let held = *store
+  let outcome = Sync.withLock(&store.lock, || {
+      match Sync.get(&held.scopes) {
+        case Ok(scopes) => {
+          match action(Map.getOr(&scopes, scopeId, Scope.empty(scopeId))) {
+            case Ok(changed) => {
+              let _kept = Sync.set(&held.scopes, Map.insert(&scopes, scopeId, changed[1]))
+              Ok(changed[0])
+            }
+            case Err(problem) => Err(problem)
+          }
+        }
+        case Err(_) => Err(unavailable())
+      }
+    })
+
+  Result.unwrapOr(outcome, Err(unavailable()))
+}
+
+fn unavailable() -> Problem.Problem { Problem.of(Codes.UNAVAILABLE, Details.STORE_UNAVAILABLE) }

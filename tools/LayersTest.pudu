@@ -1,0 +1,53 @@
+/** @Tools.Layers.Suite — the gate refuses upward edges, cycles, impurity, and strangers */
+module LayersTest
+
+import Std.Io as Io
+import Std.Test as Test
+import Layers.Catalog as Catalog
+import Layers.Graph as Graph
+
+fn unit(name: Str, imports: &Array[Str]) -> Graph.Unit { Graph.Unit{name: name, imports: *imports} }
+
+fn main() -> Int {
+  let clean = Graph.analyze(&[
+      unit("Contract.Members", &[]),
+      unit("Domain.Envelope", &["Std.Json", "Contract.Members"]),
+      unit("Engine.Admission", &["Domain.Envelope", "Std.Http.Server.Route"]),
+      unit("Api.Peer", &["Engine.Admission", "PuduLangHttpClient.Client", "PuduLangResilience.Pipeline"]),
+      unit("Main", &["Api.Peer", "PuduLangMediator"])
+    ], Catalog.judge)
+  let upward = Graph.analyze(&[unit("Domain.Graph", &["Engine.Routing"]), unit("Engine.Routing", &[])], Catalog.judge)
+  let contractReaching = Graph.analyze(&[unit("Contract.Members", &["Domain.Graph"]), unit("Domain.Graph", &[])], Catalog.judge)
+  let skipping = Graph.analyze(&[unit("Web.Router", &["Services.Fabric"]), unit("Services.Fabric", &[])], Catalog.judge)
+  let impure = Graph.analyze(&[unit("Engine.Admission", &["Std.Time", "Std.Json"])], Catalog.judge)
+  let stranger = Graph.analyze(&[unit("Domain.Graph", &["PuduLangMediator"]), unit("Plugins.Thing", &[])], Catalog.judge)
+  let missing = Graph.analyze(&[unit("Domain.Graph", &["Domain.Gone"])], Catalog.judge)
+  let cyclic = Graph.analyze(&[unit("Engine.A", &["Engine.B"]), unit("Engine.B", &["Engine.A"]), unit("Engine.C", &["Engine.A"])], Catalog.judge)
+  let parsed = Graph.parse("/** @X — y */\nmodule Domain.Graph\n\nimport Std.Json as Json\n// import Api.Hidden\nimport Domain.Problem \{x\}\n/* import Api.Also\n*/\nfn f() -> Int \{ 1 \}\n")
+  let depthOfMain = clean.depths.filter(|pair: (Str, Int)| pair[0] == "Main")
+  let checks = Test.suite("Layers", &[
+      Test.that("a lawful graph passes", Graph.passed(&clean)),
+      Test.equals("internal edges are counted", &clean.edges, &4),
+      Test.equals("depth is measured over the condensed graph", &depthOfMain[0][1], &4),
+      Test.equals("an upward import is refused", &upward.violations.map(|v: Graph.Violation| v.reason), &["Domain may not import Engine"]),
+      Test.equals("the generated contract imports nothing of the program", &contractReaching.violations.length(), &1),
+      Test.equals("an interface may not reach a service", &skipping.violations.length(), &1),
+      Test.equals("a pure layer may not read the clock", &impure.violations.map(|v: Graph.Violation| v.target), &["Std.Time"]),
+      Test.equals("an unlisted package and an uncatalogued folder are refused", &stranger.violations.length(), &1),
+      Test.equals("an uncatalogued folder is refused on its own imports", &Catalog.judge("Plugins.Thing", "Std.Json", &setOf([])), &Some("uncatalogued folder Plugins")),
+      Test.equals("a missing module is refused", &missing.violations.map(|v: Graph.Violation| v.reason), &["missing module"]),
+      Test.equals("a cycle is one component", &cyclic.cycles, &[["Engine.A", "Engine.B"]]),
+      Test.not("a cyclic graph fails", Graph.passed(&cyclic)),
+      Test.equals("comments hide imports", &parsed, &Some(unit("Domain.Graph", &["Std.Json", "Domain.Problem"]))),
+      Test.absent("a file without a module line is unreadable", &Graph.parse("import Std.Json"))
+    ])
+  let report = Test.run(&checks)
+
+  for failure in Test.failuresOf(&report) {
+    let _said = Io.writeErrorLine("  failed: " + failure)
+  }
+
+  let _summary = Io.writeLine(Test.summary(&report))
+
+  if Test.passed(&report) { 0 } else { 1 }
+}

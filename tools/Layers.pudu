@@ -1,0 +1,62 @@
+/** @Tools.Layers.Gate — judges the source tree against the layer catalog */
+module Layers
+
+import Std.Env as Env
+import Std.Io as Io
+import Constants.Layers as Table
+import Layers.Catalog as Catalog
+import Layers.Graph as Graph
+
+/// Walks the source tree, prints the report, and answers whether the layers held.
+fn main() -> Int {
+  let root = match Env.at(0) {
+    case Some(given) => given
+    case None => Table.SOURCE_ROOT
+  }
+  let files = sources(root)
+  var units: Array[Graph.Unit] = []
+  var unreadable: Array[Str] = []
+
+  for path in files {
+    match Io.read(path) {
+      case Ok(text) => {
+        match Graph.parse(text) {
+          case Some(unit) => { units = units.push(unit) }
+          case None => { unreadable = unreadable.push(path) }
+        }
+      }
+      case Err(_) => { unreadable = unreadable.push(path) }
+    }
+  }
+
+  let report = Graph.analyze(&units, Catalog.judge)
+
+  for line in Graph.render(&report) {
+    let _written = Io.writeLine(line)
+  }
+
+  for path in unreadable {
+    let _written = Io.writeErrorLine("unreadable module: " + path)
+  }
+
+  if Graph.passed(&report) && unreadable.isEmpty() { 0 } else { 1 }
+}
+
+fn sources(directory: Str) -> Array[Str] {
+  var found: Array[Str] = []
+
+  match Io.listPaths(directory) {
+    case Ok(paths) => {
+      for path in paths.sortBy(|left: Str, right: Str| left < right) {
+        if path.endsWith(Table.SOURCE_EXTENSION) {
+          found = found.push(path)
+        } else if !path.contains(".") {
+          for nested in sources(path) { found = found.push(nested) }
+        }
+      }
+    }
+    case Err(_) => {}
+  }
+
+  found
+}

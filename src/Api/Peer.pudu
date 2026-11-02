@@ -1,0 +1,46 @@
+/** @Api.Peer.Client — calls a remote fabric's operations through a resilient HTTP client */
+module Api.Peer
+
+import Std.Http as Http
+import Std.Json as Json
+import Std.Option as Option
+import Std.Result as Result
+import Constants.Fabric as Fabric
+import Constants.Security as Security
+import Contract.Version as Version
+import PuduLangHttpClient.Client as Client
+import PuduLangHttpClient.Content as Content
+import PuduLangHttpClient.Factory.Builder as Builder
+import PuduLangHttpClient.Factory as Factory
+import PuduLangHttpClient.Handlers.Resilience as Resilience
+import PuduLangHttpClient as Outbound
+import PuduLangHttpClient.Request as Request
+import PuduLangHttpClient.Response as Response
+import PuduLangResilience.Pipeline as Pipeline
+
+/** @Api.Peer.Peer — a client bound to one fabric and one token */
+export type Peer = { client: Client.Client }
+
+/** @Api.Peer.Answer — a status and the JSON it carried */
+export type Answer = { status: Int, body: Json.Json }
+
+/// A peer at a base address, presenting a token, with retries, a circuit breaker, and timeouts.
+export fn connect(base: Str, token: Str) -> Result[Peer, Str] {
+  let guarding = Result.mapErr(Resilience.standard(), |invalid: Pipeline.Invalid| Pipeline.explain(&invalid)) ?
+  let builder = Builder.named(Fabric.PEER_CLIENT)
+    .withBaseAddress(base)
+    .withDefaultHeader(Version.HEADER_AUTHORIZATION, Security.BEARER_PREFIX + token)
+    .withDefaultHeader(Version.HEADER_VERSION, Fabric.PROTOCOLS[0])
+    .withTimeout(Fabric.PEER_TIMEOUT_MILLIS)
+    .withHandler(Resilience.handler(guarding))
+  let factory = Result.mapErr(Factory.build([builder]), |invalid: Factory.Invalid| Factory.explain(&invalid)) ?
+  Ok(Peer{client: Factory.createClient(&factory, Fabric.PEER_CLIENT)})
+}
+
+/// One operation's answer: the method, the request target, and an optional JSON body.
+export fn call(peer: &Peer, method: Str, target: Str, body: &Option[Json.Json]) -> Result[Answer, Str] {
+  let request = Request.Request{..Client.build(&peer.client, Http.methodFrom(method), target), content: Option.map(*body, |value: Json.Json| Content.json(&value))}
+  let response = Result.mapErr(Client.send(&peer.client, request), |failure: Outbound.Failure| Outbound.describe(&failure)) ?
+  let text = Result.mapErr(Response.text(&response), |failure: Outbound.Failure| Outbound.describe(&failure)) ?
+  Ok(Answer{status: response.status.code, body: Result.unwrapOr(Json.decode(text), Json.Text(text))})
+}

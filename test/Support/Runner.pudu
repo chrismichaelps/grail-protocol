@@ -1,0 +1,16 @@
+/** @Test.Support.Runner — runs a suite and names every check that did not hold */
+module Support.Runner
+
+import Std.Io as Io
+import Std.Test as Test
+
+/// The suite's result for the runner, with each failure written to standard error.
+export fn finish(suite: &Test.Suite) -> Int {
+  let report = Test.run(suite)
+
+  for failure in Test.failuresOf(&report) {
+    let _said = Io.writeErrorLine("  failed: " + failure)
+  }
+
+  Test.report(&report)
+}

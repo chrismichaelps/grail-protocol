@@ -1,0 +1,42 @@
+/** @Domain.Graph.Topology — participants, edges, and their lookups */
+module Domain.Graph
+
+import Std.List as List
+import Std.Option as Option
+import Contract.Vocabulary as Vocabulary
+
+/** @Domain.Graph.Participant — anything that sends or receives envelopes */
+export type Participant = { id: Str, kind: Str, roles: Array[Str], abilities: Array[Str], graph: Option[Str] }
+
+/** @Domain.Graph.Edge — a directed link that authorizes flow or declares a dependency */
+export type Edge = { id: Str, from: Str, to: Str, relation: Str, kinds: Array[Str] }
+
+/** @Domain.Graph.Graph — a versioned set of participants and edges inside one scope */
+export type Graph = { id: Str, scopeId: Str, revision: Int, participants: Array[Participant], edges: Array[Edge] }
+
+/// The participant with an id.
+export fn participant(graph: &Graph, id: Str) -> Option[Participant] {
+  Option.fromArray(&graph.participants.filter(|candidate: Participant| candidate.id == id))
+}
+
+/// Whether the graph has a participant with an id.
+export fn hasParticipant(graph: &Graph, id: Str) -> Bool { Option.isSome(&participant(graph, id)) }
+
+/// Whether the graph has an edge with an id.
+export fn hasEdge(graph: &Graph, id: Str) -> Bool { List.any(&graph.edges, |edge: Edge| edge.id == id) }
+
+/// The edges of one relation.
+export fn edgesOf(graph: &Graph, relation: Str) -> Array[Edge] { graph.edges.filter(|edge: Edge| edge.relation == relation) }
+
+/// The participants a dependency edge says `to` waits on.
+export fn dependenciesOf(graph: &Graph, to: Str) -> Array[Str] {
+  edgesOf(graph, Vocabulary.RELATION_DEPENDENCY).filter(|edge: Edge| edge.to == to).map(|edge: Edge| edge.from)
+}
+
+/// Whether a flow edge from one participant to another carries a kind.
+export fn carries(graph: &Graph, from: Str, to: Str, kind: Str) -> Bool {
+  List.any(&edgesOf(graph, Vocabulary.RELATION_FLOW), |edge: Edge| edge.from == from && edge.to == to && (edge.kinds.isEmpty() || edge.kinds.contains(kind)))
+}
+
+/// The graphs this graph's graph participants stand for.
+export fn contained(graph: &Graph) -> Array[Str] { Option.present(&graph.participants.map(|member: Participant| member.graph)) }

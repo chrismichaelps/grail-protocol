@@ -1,0 +1,124 @@
+/** @Engine.Authority.Tokens — signs, verifies, delegates, and checks capability tokens */
+module Engine.Authority
+
+import Std.Bytes as ByteSeq
+import Std.Crypto as Crypto
+import Std.Json as Json
+import Std.List as List
+import Std.Option as Option
+import Std.Result as Result
+import Constants.Details as Details
+import Constants.Extras as Extras
+import Constants.Security as Security
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Domain.Problem as Problem
+import Engine.Codec.Token as TokenCodec
+import Utils.Canonical as Canonical
+
+/// The signing key of one scope, derived from the fabric secret.
+export fn scopeKey(secret: Str, scopeId: Str) -> Bytes { Crypto.hmacSha256Text(secret, Security.SCOPE_KEY_LABEL + scopeId) }
+
+/// A token's wire form: its encoded claims, a dot, and its encoded signature.
+export fn encode(token: &Capability.Token, key: &Bytes) -> Str {
+  let body = ByteSeq.encodeBase64Url(&ByteSeq.fromText(Canonical.text(&TokenCodec.toJson(token))))
+  body + Security.TOKEN_SEPARATOR + ByteSeq.encodeBase64Url(&Crypto.hmacSha256(key, &ByteSeq.fromText(body)))
+}
+
+/// The claims of a token whose signature verifies under a key.
+export fn verify(text: Str, key: &Bytes) -> Result[Capability.Token, Problem.Problem] {
+  let parts = text.split(Security.TOKEN_SEPARATOR)
+
+  if parts.length() != 2 { return Err(unauthorized()) }
+
+  let signature = Result.mapErr(ByteSeq.decodeBase64Url(parts[1]), |_e: ByteSeq.BytesError| unauthorized()) ?
+  let expected = Crypto.hmacSha256(key, &ByteSeq.fromText(parts[0]))
+
+  if !Crypto.bytesMatch(&signature, &expected) { return Err(unauthorized()) }
+
+  let claims = Result.mapErr(ByteSeq.decodeBase64Url(parts[0]), |_e: ByteSeq.BytesError| unauthorized()) ?
+  let decoded = Result.mapErr(ByteSeq.toText(&claims), |_e: ByteSeq.BytesError| unauthorized()) ?
+  let value = Result.mapErr(Json.decode(decoded), |_e: Json.JsonError| unauthorized()) ?
+  Option.okOr(TokenCodec.fromJson(&value), unauthorized())
+}
+
+/// What a presented token lets its holder do in a scope, or why it lets them do nothing.
+export fn authorize(text: Str, scopeId: Str, secret: Str, now: Int, revoked: &Set[Str]) -> Result[Capability.Authority, Problem.Problem] {
+  let key = scopeKey(secret, scopeId)
+  let token = verify(text, &key) ?
+  var chain: Array[Capability.Token] = []
+
+  for link in token.chain {
+    chain = chain.push(verify(link, &key) ?)
+  }
+
+  let full = chain.push(token)
+
+  if full.length() > Limits.DELEGATION_DEPTH { return Err(unauthorized()) }
+  if full[0].issuer != Security.OWNER || Option.isSome(&full[0].parent) { return Err(unauthorized()) }
+
+  var index = 0
+
+  for link in full {
+    if link.scopeId != scopeId || revoked.contains(link.id) || now < link.notBefore || now >= link.expires { return Err(unauthorized()) }
+    if index > 0 && !narrows(&full[index - 1], &link) { return Err(unauthorized()) }
+
+    index = index + 1
+  }
+
+  Ok(Capability.Authority{scopeId: scopeId, graph: token.graph, audience: token.audience, abilities: token.abilities, token: text, chain: full})
+}
+
+/// Whether an authority holds an ability.
+export fn permits(authority: &Capability.Authority, ability: Str) -> Bool {
+  authority.abilities.contains(ability) || authority.abilities.contains(Vocabulary.ABILITY_ALL)
+}
+
+/// Nothing, when an authority holds an ability over a graph; otherwise the refusal.
+export fn require(authority: &Capability.Authority, ability: Str, graph: Option[Str]) -> Result[(), Problem.Problem] {
+  if !permits(authority, ability) { return Err(Problem.withMember(&Problem.of(Codes.FORBIDDEN, Details.FORBIDDEN), Extras.ABILITY, Json.Text(ability))) }
+
+  match (authority.graph, graph) {
+    case (Some(granted), Some(asked)) => if granted == asked { Ok(()) } else { Err(Problem.of(Codes.FORBIDDEN, Details.FORBIDDEN)) }
+    case _ => Ok(())
+  }
+}
+
+/// A narrower token for another participant, issued by the authority's holder.
+export fn delegate(authority: &Capability.Authority, request: &Capability.Request, secret: Str) -> Result[Str, Problem.Problem] {
+  let _allowed = require(authority, Vocabulary.ABILITY_TOKEN_DELEGATE, request.graph) ?
+  let current = authority.chain[authority.chain.length() - 1]
+  let child = Capability.Token {
+    id: request.id,
+    scopeId: authority.scopeId,
+    graph: Option.orElse(request.graph, authority.graph),
+    issuer: authority.audience,
+    audience: request.audience,
+    abilities: request.abilities,
+    notBefore: request.notBefore,
+    expires: request.expires,
+    parent: Some(current.id),
+    chain: current.chain.push(authority.token)
+  }
+
+  if authority.chain.length() + 1 > Limits.DELEGATION_DEPTH { return Err(Problem.withMember(&Problem.of(Codes.LIMIT_EXCEEDED, Details.LIMIT_EXCEEDED), Extras.LIMIT, Json.Number(Limits.DELEGATION_DEPTH))) }
+  if !narrows(&current, &child) { return Err(Problem.of(Codes.FORBIDDEN, Details.WIDENING)) }
+
+  Ok(encode(&child, &scopeKey(secret, authority.scopeId)))
+}
+
+/// A root token issued by the scope owner.
+export fn issue(claims: &Capability.Token, secret: Str) -> Str { encode(claims, &scopeKey(secret, claims.scopeId)) }
+
+/// Whether a child token is a lawful narrowing of its parent.
+export fn narrows(parent: &Capability.Token, child: &Capability.Token) -> Bool {
+  let abilitiesHeld = !child.abilities.contains(Vocabulary.ABILITY_ALL) && List.all(&child.abilities, |ability: Str| parent.abilities.contains(ability) || parent.abilities.contains(Vocabulary.ABILITY_ALL))
+  let graphHeld = parent.graph == None || child.graph == parent.graph
+  let windowHeld = child.notBefore >= parent.notBefore && child.expires <= parent.expires && child.notBefore < child.expires
+
+  child.scopeId == parent.scopeId && child.parent == Some(parent.id) && child.issuer == parent.audience && abilitiesHeld && graphHeld && windowHeld
+}
+
+fn unauthorized() -> Problem.Problem { Problem.of(Codes.UNAUTHORIZED, Details.UNAUTHORIZED) }

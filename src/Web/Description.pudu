@@ -1,0 +1,27 @@
+/** @Web.Description.Contract — the operations described with the standard OpenAPI model, to prove the router serves exactly the contract */
+module Web.Description
+
+import Std.App.OpenApi as OpenApi
+import Std.Http as Http
+import Std.Http.Server.Route as Route
+import Contract.Operations as Operations
+import Contract.Version as Version
+
+/// The contract's operations as a standard API description.
+export fn document() -> OpenApi.Document {
+  var described = OpenApi.document(Version.TITLE, Version.CONTRACT)
+
+  for operation in Operations.ALL {
+    let base = OpenApi.operation(Http.methodFrom(operation.method), operation.pattern, operation.id)
+    let queries = operation.queryParameters.map(|name: Str| OpenApi.parameter(name, OpenApi.InQuery, OpenApi.Whole))
+    described = OpenApi.Document{..described, operations: described.operations.push(OpenApi.Operation{..base, parameters: base.parameters.concat(queries), secured: operation.secured, answers: [OpenApi.answer(operation.status, operation.id, None)]})}
+  }
+
+  described
+}
+
+/// Routes served but not described, and operations described but not served; both empty when the router is the contract.
+export fn gaps(router: &Route.Router) -> (Array[Str], Array[Str]) { OpenApi.undocumented(&document(), router) }
+
+/// Inconsistencies inside the description itself.
+export fn problems() -> Array[Str] { OpenApi.problems(&document()) }

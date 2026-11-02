@@ -1,0 +1,82 @@
+/** @Tools.Constants.Layers — the folders, their ranks, and what each may import */
+module Constants.Layers
+
+/// Each folder's layer.
+export const RANKS: Map[Str, Int] = mapOf([
+    ("Constants", 0),
+    ("Contract", 0),
+    ("Utils", 1),
+    ("Domain", 2),
+    ("Engine", 3),
+    ("Config", 3),
+    ("Validation", 3),
+    ("Api", 4),
+    ("Services", 5),
+    ("App", 6),
+    ("Web", 7),
+    ("Cli", 7),
+    ("Main", 8)
+  ])
+
+/// The folders each folder may import, its own included.
+export const ALLOWED: Map[Str, Set[Str]] = mapOf([
+    ("Constants", #{"Constants"}),
+    ("Contract", #{"Contract"}),
+    ("Utils", #{"Constants", "Utils"}),
+    ("Domain", #{"Constants", "Contract", "Utils", "Domain"}),
+    ("Engine", #{"Constants", "Contract", "Utils", "Domain", "Engine"}),
+    ("Config", #{"Constants", "Config"}),
+    ("Validation", #{"Constants", "Contract", "Utils", "Domain", "Validation"}),
+    ("Api", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Config", "Api"}),
+    ("Services", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Config", "Validation", "Api", "Services"}),
+    ("App", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Config", "Validation", "Services", "App"}),
+    ("Web", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Config", "App", "Web"}),
+    ("Cli", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Config", "App", "Api", "Web", "Cli"})
+  ])
+
+/// The package roots each folder may import.
+export const PACKAGES: Map[Str, Set[Str]] = mapOf([
+    ("Config", #{"PuduLangEnvironment", "PuduLangValidator"}),
+    ("Validation", #{"PuduLangValidator"}),
+    ("Api", #{"PuduLangResilience", "PuduLangHttpClient", "PuduLangLog", "PuduLangMcp"}),
+    ("Services", #{"PuduLangLog"}),
+    ("App", #{"PuduLangMediator", "PuduLangLog", "PuduLangValidator", "PuduLangResilience"}),
+    ("Web", #{"PuduLangMediator", "PuduLangLog"}),
+    ("Cli", #{"PuduLangMediator", "PuduLangLog"})
+  ])
+
+/// Folders that may not import effectful standard modules.
+export const PURE: Set[Str] = #{"Constants", "Contract", "Utils", "Domain", "Engine", "Validation"}
+
+/// Standard module prefixes that reach outside the program.
+export const EFFECTFUL: Array[Str] = [
+  "Std.Db",
+  "Std.Net",
+  "Std.Fs",
+  "Std.Io",
+  "Std.Http.Server",
+  "Std.Http.Client",
+  "Std.Process",
+  "Std.Signal",
+  "Std.Env",
+  "Std.Dotenv",
+  "Std.Concurrent",
+  "Std.Channel",
+  "Std.Sync",
+  "Std.Tls",
+  "Std.Mail",
+  "Std.Random",
+  "Std.Time"
+]
+
+/// Effect-free modules under an effectful prefix.
+export const PURE_EXCEPTIONS: Set[Str] = #{"Std.Http.Server.Route"}
+
+/// The entry folder, which may import anything.
+export const ENTRY: Str = "Main"
+
+/// The folder scanned when no folder is named.
+export const SOURCE_ROOT: Str = "src"
+
+/// The extension of a source file.
+export const SOURCE_EXTENSION: Str = ".pudu"
