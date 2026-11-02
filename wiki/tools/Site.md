@@ -11,7 +11,7 @@ tags: [tool]
 
 ## Purpose
 
-Assembles the documentation site's sources from the paper, the vault, and the contract.
+Assembles the documentation site's sources from the paper, the vault, and the contract into `build/site`. This command neither renders nor serves the site. Rendering requires a compatible docgen CLI with `build build/site --serve`; docgen 0.1.0 needs the `Serve.pudu` compatibility patch described in the repository README before it can run on Pudu 0.1.3.
 
 ## Interface
 

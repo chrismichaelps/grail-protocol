@@ -24,7 +24,8 @@ export type Settings = {
   @env("GRAIL_LOG_LEVEL") @default("information") logLevel: Str,
   @env("GRAIL_WORKERS") @default("64") workers: Int,
   @env("GRAIL_CONNECTIONS") @default("0") connections: Int,
-  @env("GRAIL_ALLOWED_ORIGINS") @default("") allowedOrigins: Str
+  @env("GRAIL_ALLOWED_ORIGINS") @default("") allowedOrigins: Str,
+  @env("GRAIL_CLIENT_IP_HEADER") @default("") clientIpHeader: Str
 } derives Binding.Bind, Binding.Redacted
 
 /// The settings from `.env`, when present, over the process environment, bound and validated.

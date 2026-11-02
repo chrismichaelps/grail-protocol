@@ -13,6 +13,8 @@ tags: [test]
 
 Pages respect their limit, cursors acknowledge, and visibility hides.
 
+Traces preserve causal order and mark recipients-only ancestors hidden for an unrelated reader while exposing them to their recipient.
+
 ## Interface
 
 ### Signatures

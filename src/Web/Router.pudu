@@ -35,7 +35,7 @@ export fn router(app: &Assembly.App) -> Result[Route.Router, Str] {
 /// The hardening every request passes: a request identity, protective headers, sharing with listed origins only, a rate limit, a concurrency bound, and a deadline. Same-site form protection is left out on purpose: every operation is authorized by a bearer token, never by a cookie.
 export fn middleware(settings: &Settings.Settings) -> Array[Route.Middleware] {
   let sharing = Guard.Sharing{origins: Settings.origins(settings), methods: Names.SHARED_METHODS, headers: Names.SHARED_HEADERS, credentials: false}
-  [Guard.identified(), Guard.protectedHeaders(), Guard.shared(&sharing), Peers.byHost()].concat([
+  [Guard.identified(), Guard.protectedHeaders(), Guard.shared(&sharing), Peers.byHost(settings.clientIpHeader)].concat([
       Guard.rateLimited(Capacity.RATE_REQUESTS, Capacity.RATE_WINDOW_SECONDS),
       Guard.boundedConcurrency(Capacity.INFLIGHT_MAX),
       Guard.timeout(Capacity.HANDLER_TIMEOUT_MILLIS)

@@ -1,5 +1,7 @@
 # Changelog
 
+- 2026-11-02 · [[test/Engine/DeliveryTest]] · trace visibility regressions catch an inverted hidden flag for recipients-only ancestors · risk LOW
+
 - 2026-11-02 · [[decisions/ADR-0001-specification-review]] · the draft becomes a normative specification in twelve chapters · risk HIGH
 - 2026-11-02 · [[schema/grail.openapi]] · the contract: thirteen operations, the problem registry, limits, vocabularies · risk HIGH · [[decisions/ADR-0002-schema-first-contract]]
 - 2026-11-02 · [[tools/Contract]] · projection of the contract into nine modules, with a check mode · risk MED
@@ -11,3 +13,8 @@
 - 2026-11-02 · [[architecture/ATTACKS]] · attack and stress campaign; reserved mutation ids, linear cycle detection, host-keyed rate limits, bounded waiting pulls, bounded scopes · risk HIGH · [[decisions/ADR-0007-long-polling-and-bounds]]
 - 2026-11-02 · [[protocol/08-Bindings]] · token inspection, revocation, erasure, and waiting pulls added to the contract · risk MED
 - 2026-11-02 · [[tools/Spacing]] · statement spacing enforced across the repository · risk LOW
+- 2026-11-02 · [[src/Web/Peers]] · opt-in trusted proxy client addresses, connection-host fallback, and regression coverage; environment example matches the worker default · risk HIGH
+- 2026-11-02 · [[test/Engine/MutationsTest]] · edge-count boundary coverage for the inclusive contract limit · risk LOW
+- 2026-11-02 · [[tools/Site]] · distinguish source assembly from rendering and document the docgen compatibility patch · risk LOW
+- 2026-11-02 · [[architecture/ATTACKS]] · tunnel repeat passes all non-timing checks, with 600 of 1200 requests rate limited; sequential timing probe remains inconclusive · risk MED
+- 2026-11-02 · [[architecture/ATTACKS]] · 64 engine mutants attempted; five survivors killed by targeted regression reruns, including a cycle with an acyclic prefix; full suite holds 200 assertions · risk LOW

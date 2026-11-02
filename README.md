@@ -87,7 +87,7 @@ The reference fabric is written in Pudu [12] and organised as thirteen dependenc
 | Envelope ids reserved for the fabric's own records | could be claimed by a sender, corrupting the ledger | refused |
 | Deduplication keys and ledger size per scope | unbounded | bounded and expiring |
 
-Two of these weaknesses were not in Grail's own code. The standard rate-limiting guard keyed its windows by address and port, so every new connection started a fresh window, and the fix was to identify peers by host; the quadratic cost came from computing reachability per node and was replaced by linear-time topological ordering. Scope enumeration by timing was measured directly: the median time to refuse a request for an existing and a non-existent scope differed by less than one millisecond.
+Two of these weaknesses were not in Grail's own code. The standard rate-limiting guard keyed its windows by address and port, so every new connection started a fresh window, and the fix was to identify peers by host; the quadratic cost came from computing reachability per node and was replaced by linear-time topological ordering. Local scope-refusal timings differed by less than one millisecond in the original campaign. A later tunnel repeat passed 44 of 45 checks, including a 1200-request flood with 600 rate-limit refusals; its fixed 20 ms timing threshold failed under internet latency. These timing observations do not establish the absence of a side channel; the method and limitations are recorded in [`wiki/architecture/ATTACKS.md`](wiki/architecture/ATTACKS.md).
 
 ## 9. Limitations and future work
 
@@ -109,10 +109,12 @@ The running fabric describes itself at `http://127.0.0.1:7420/.well-known/grail`
 The documentation is published as a static site built with `pudu-lang-docgen`, which renders Markdown articles and renders the OpenAPI contract as a browsable HTTP API reference with every operation, parameter, schema, and response. The site is assembled from the vault and the contract at build time, so nothing in it is written twice:
 
 ```bash
-pudu run tools/Site.pudu --serve
+pudu run tools/Site.pudu
 ```
 
-This builds the site into `build/site/_site` and serves it at `http://localhost:8080`. The same output is what is deployed to Cloudflare as static assets, which the free plan serves without limit. The fabric itself is a native program and runs anywhere a daemon can, on a server, a container platform, or a workstation; it can be published through Cloudflare Tunnel, which places Cloudflare's network in front of it without opening an inbound port.
+This assembles the Markdown, navigation, configuration, and OpenAPI input into `build/site`; it does not render or serve the site. Rendering requires a compatible `pudu-lang-docgen` CLI, invoked with `build build/site --serve`, which writes `build/site/_site` and serves it at `http://localhost:8080`. The published docgen 0.1.0 has a Pudu 0.1.3 compatibility defect in `Serve.pudu`: `written.concat(&answered.body)` must become `written.concat(answered.body)`. Until a fixed release is available, docgen remains outside this project's pinned dependencies. The deployed site was rendered with that patch.
+
+The rendered output is deployed to Cloudflare as static assets. The fabric itself is a native program and runs anywhere a daemon can, on a server, a container platform, or a workstation; it can be published through Cloudflare Tunnel, which places Cloudflare's network in front of it without opening an inbound port. For a tunnel targeting `127.0.0.1:7420`, keep `GRAIL_HOST=127.0.0.1` and set `GRAIL_CLIENT_IP_HEADER=CF-Connecting-IP` so the fabric counts rate limits per client. Enable this setting only when a trusted proxy overwrites the header and provides the fabric's sole ingress. With the setting empty, forwarded addresses are ignored.
 
 The protocol's own checks, from the contract projection to the dependency layers, the attack suite, and the live stress tool, are described in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
