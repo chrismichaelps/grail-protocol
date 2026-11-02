@@ -1,5 +1,9 @@
 # Changelog
 
+- 2026-11-02 · reference fabric 0.1.2 enforces graph-bound payload erasure; 232 assertions and compiled localhost HTTP checks pass; draft 1.0 wire shapes remain compatible · risk HIGH
+
+- 2026-11-02 · [[src/Services/Fabric]] · payload erasure enforces the token's graph restriction before mutation, including owner-audience tokens; router regressions preserve refused payloads and ledger hashes · risk HIGH
+
 - 2026-11-02 · [[test/Engine/DeliveryTest]] · trace visibility regressions catch an inverted hidden flag for recipients-only ancestors · risk LOW
 
 - 2026-11-02 · [[decisions/ADR-0001-specification-review]] · the draft becomes a normative specification in twelve chapters · risk HIGH

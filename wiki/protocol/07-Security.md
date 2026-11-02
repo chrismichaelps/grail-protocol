@@ -38,6 +38,8 @@ A token is a JSON object, transported as its canonical form encoded with unpadde
 | `parent` | Optional. The id of the token it was delegated from, which MUST be supplied in `chain`. |
 | `chain` | The encoded parent tokens, root first, when `parent` is present. |
 
+Erasure MUST check the graph of the stored envelope against the token's `graph` restriction before changing the payload. A mismatch is `grail.forbidden` and MUST leave the record unchanged. The `owner` audience does not override a graph restriction carried by its token.
+
 The signature is `HMAC-SHA-256(scopeKey, canonical form without the signature)`. A fabric MAY additionally support asymmetric signatures; they are an extension.
 
 ## 7.4 Abilities
