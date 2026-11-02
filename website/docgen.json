@@ -1,14 +1,11 @@
 {
   "build": {
     "content": [{"files": ["**/*.md", "**/*.yml", "rest/*.json"], "src": "docs"}],
-    "resource": [{"files": ["assets/**"]}],
     "output": "_site",
     "template": ["default", "rest.tagpage", "rest.operationpage", "template"],
     "globalMetadata": {
       "_appTitle": "Grail Protocol",
       "_appName": "Grail",
-      "_appLogoPath": "assets/grail.svg",
-      "_appFaviconPath": "assets/grail.svg",
       "_baseUrl": "https://grail-protocol.chrisperezsantiago1.workers.dev",
       "_enableSearch": true,
       "_disableContribution": true,
