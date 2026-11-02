@@ -9,12 +9,15 @@ highlightedContent:
   - title: Run your first fabric
     itemType: quickstart
     url: guides/quick-start.md
+  - title: Run a collaboration
+    itemType: tutorial
+    url: guides/collaboration.md
   - title: Explore the HTTP API
     itemType: reference
     url: rest/grail.openapi.json
-  - title: Read the protocol
+  - title: Understand the model
     itemType: concept
-    url: protocol/01-Overview.md
+    url: concepts/index.md
 conceptualContent:
   title: Find your next step
   items:
@@ -22,24 +25,30 @@ conceptualContent:
     links:
     - text: Install and start Grail
       url: guides/quick-start.md
+    - text: Send work and enforce a review gate
+      url: guides/collaboration.md
     - text: Command-line reference
       url: guides/command-line.md
   - title: Understand the protocol
     links:
-    - text: Participants and edges
-      url: protocol/02-Model.md
-    - text: Causality and provenance
-      url: protocol/05-Causality.md
-    - text: Capabilities and scopes
-      url: protocol/07-Security.md
+    - text: Graphs and teams
+      url: concepts/graphs.md
+    - text: Envelopes and provenance
+      url: concepts/envelopes.md
+    - text: Delegate authority
+      url: guides/capabilities.md
   - title: Implement and extend
     links:
     - text: HTTP operations and schemas
       url: rest/grail.openapi.json
+    - text: Configure your fabric
+      url: guides/configuration.md
     - text: Conformance requirements
       url: protocol/11-Conformance.md
-    - text: Design decisions
-      url: decisions/index.md
+    - text: Troubleshooting
+      url: guides/troubleshooting.md
+    - text: Contribute
+      url: guides/contributing.md
 additionalContent:
   sections:
   - title: A local protocol proposal

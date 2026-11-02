@@ -2,6 +2,8 @@
   href: index.yml
 - name: Guides
   href: guides/
+- name: Concepts
+  href: concepts/
 - name: HTTP API
   href: rest/grail.openapi.json
 - name: Specification

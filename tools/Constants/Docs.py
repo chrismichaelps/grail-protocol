@@ -10,3 +10,7 @@ COMPATIBILITY_FILE = "src/PuduLangDocgen/Serve.pudu"
 COMPATIBILITY_OLD = "written.concat(&answered.body)"
 COMPATIBILITY_NEW = "written.concat(answered.body)"
 PREVIEW_PORT = 8080
+
+GUIDE_TIMEOUT_SECONDS = 30
+GUIDE_START_ATTEMPTS = 80
+GUIDE_START_INTERVAL = 0.1

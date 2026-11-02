@@ -21,6 +21,7 @@ git clone https://github.com/chrismichaelps/grail-protocol.git
 cd grail-protocol
 pudu install --locked
 mkdir -p build
+umask 077
 export GRAIL_SECRET="$(openssl rand -hex 32)"
 pudu run src/Main.pudu token --scope demo --id root > build/owner.token
 pudu run src/Main.pudu serve
@@ -40,6 +41,7 @@ The reference store is in memory. Restarting the server clears its graphs, trans
 | Start here | What it covers |
 | --- | --- |
 | [Quick start](website/docs/guides/quick-start.md) | Start the fabric and create your first graph. |
+| [Collaboration walkthrough](website/docs/guides/collaboration.md) | Send work, return a result, and enforce a review gate. |
 | [Command line](website/docs/guides/command-line.md) | Tokens, operation calls, and the line binding. |
 | [Protocol specification](wiki/protocol/_MOC.md) | The model, routing, causality, security, and conformance. |
 | [OpenAPI contract](schema/grail.openapi.json) | Every HTTP operation, schema, error, and limit. |

@@ -1,4 +1,16 @@
 - name: Run Grail locally
   href: quick-start.md
+- name: Run a collaboration
+  href: collaboration.md
+- name: Delegate authority
+  href: capabilities.md
+- name: Receive work
+  href: deliveries.md
+- name: Configure the fabric
+  href: configuration.md
+- name: Troubleshooting
+  href: troubleshooting.md
 - name: Command line
   href: command-line.md
+- name: Contribute
+  href: contributing.md

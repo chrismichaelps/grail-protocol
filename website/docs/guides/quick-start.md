@@ -14,6 +14,7 @@ git clone https://github.com/chrismichaelps/grail-protocol.git
 cd grail-protocol
 pudu install --locked
 mkdir -p build
+umask 077
 export GRAIL_SECRET="$(openssl rand -hex 32)"
 pudu run src/Main.pudu token --scope demo --id root > build/owner.token
 pudu run src/Main.pudu serve

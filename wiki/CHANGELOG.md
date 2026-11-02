@@ -21,3 +21,4 @@
 - 2026-11-02 · [[decisions/ADR-0008-composable-causal-gates]] · nested teams enforce every entry gate and retain admission-time producer attribution; expansion is bounded and atomic · risk HIGH
 - 2026-11-02 · practical README and local quick-start/CLI guides replace the paper-style introduction; project funding links added · risk LOW
 - 2026-11-02 · [[tools/Site]] · structured docgen landing page, searchable guides and generated API reference; pinned isolated renderer and strict build; documentation-only hosting · risk LOW
+- 2026-11-02 · practical collaboration, capability, delivery, configuration, troubleshooting, contribution, graph, and envelope guides expand the local proposal documentation · risk LOW
