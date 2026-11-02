@@ -1,5 +1,7 @@
 # Changelog
 
+- 2026-11-02 · [[test/Engine/DeliveryTest]] · trace visibility regressions catch an inverted hidden flag for recipients-only ancestors · risk LOW
+
 - 2026-11-02 · [[decisions/ADR-0001-specification-review]] · the draft becomes a normative specification in twelve chapters · risk HIGH
 - 2026-11-02 · [[schema/grail.openapi]] · the contract: thirteen operations, the problem registry, limits, vocabularies · risk HIGH · [[decisions/ADR-0002-schema-first-contract]]
 - 2026-11-02 · [[tools/Contract]] · projection of the contract into nine modules, with a check mode · risk MED
