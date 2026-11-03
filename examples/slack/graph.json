@@ -1,0 +1,51 @@
+{
+  "participants": [
+    {
+      "id": "slack",
+      "kind": "service"
+    },
+    {
+      "id": "codex",
+      "kind": "agent"
+    },
+    {
+      "id": "outsider",
+      "kind": "agent"
+    },
+    {
+      "id": "requests",
+      "kind": "channel"
+    }
+  ],
+  "edges": [
+    {
+      "id": "slack-posts",
+      "from": "slack",
+      "to": "requests",
+      "relation": "flow",
+      "kinds": [
+        "task"
+      ]
+    },
+    {
+      "id": "codex-subscribes",
+      "from": "requests",
+      "to": "codex",
+      "relation": "flow",
+      "kinds": [
+        "task"
+      ]
+    },
+    {
+      "id": "codex-replies",
+      "from": "codex",
+      "to": "slack",
+      "relation": "flow",
+      "kinds": [
+        "progress",
+        "result",
+        "error"
+      ]
+    }
+  ]
+}
