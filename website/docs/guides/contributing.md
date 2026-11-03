@@ -5,7 +5,7 @@ description: Change the proposal, validate the implementation, and build the doc
 
 # Contribute to the proposal
 
-The repository is private for invited testers. Report reproducible behavior with the request, expected result, actual result, and reference fabric version. Follow the repository's security policy for sensitive findings.
+Contribute through the [public GitHub repository](https://github.com/chrismichaelps/grail-protocol). Report reproducible behavior with the request, expected result, actual result, and reference fabric version. Follow the repository's security policy for sensitive findings.
 
 ## Change the right source
 
