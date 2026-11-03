@@ -1,0 +1,101 @@
+/** @Agent.Session.Attached — one participant attached to one fabric: who it acts for, how it reaches the fabric, and where its delivery cursor stands */
+module Agent.Session
+
+import Std.Env as Env
+import Std.Io as Io
+import Std.Json as Json
+import Std.Option as Option
+import Std.Result as Result
+import Std.Sync as Sync
+import Std.Time as Time
+import Api.Peer as Peer
+import Constants.Agent as Names
+import Constants.Cli as Cli
+import Constants.Security as Security
+import Contract.Parameters as Parameters
+import Domain.Capability as Capability
+import Engine.Authority as Authority
+import Engine.Paths as Paths
+
+/** @Agent.Session.Session — the peer, the participant's place in the fabric, its token's claims, and its cursor */
+export type Session = {
+  peer: Peer.Peer,
+  fabric: Str,
+  scopeId: Str,
+  graph: Str,
+  participant: Str,
+  claims: Capability.Token,
+  cursor: Sync.Cell[Int],
+  cursorFile: Option[Str],
+  taskId: Option[Str],
+  journal: Option[Str]
+}
+
+/// A session from the environment: the fabric address, the token or the file holding it, and, when the token does not say, the graph and the participant.
+export fn fromEnvironment() -> Result[Session, Str] {
+  let token = presented() ?
+  let claims = Option.okOr(Authority.claimed(token), Names.BAD_TOKEN) ?
+  let graph = Option.okOr(Option.orElse(claims.graph, Env.variable(Names.GRAPH_VARIABLE)), Names.NO_GRAPH) ?
+  let participant = if claims.audience == Security.OWNER { Option.okOr(Env.variable(Names.PARTICIPANT_VARIABLE), Names.NO_PARTICIPANT) ? } else { claims.audience }
+  let fabric = Env.variableOr(Names.FABRIC_VARIABLE, Cli.FABRIC_DEFAULT)
+  let peer = Peer.connect(fabric, token) ?
+  let cursorFile = Env.variable(Names.CURSOR_FILE_VARIABLE)
+  Ok(Session{peer: peer, fabric: fabric, scopeId: claims.scopeId, graph: graph, participant: participant, claims: claims, cursor: Sync.cell(stored(&cursorFile)), cursorFile: cursorFile, taskId: Env.variable(Names.TASK_ID_VARIABLE), journal: Env.variable(Names.TASK_JOURNAL_VARIABLE)})
+}
+
+/// One operation of the contract, with the session's scope, graph, and participant filled into its parameters unless `params` names them.
+export fn call(session: &Session, id: Str, params: &Array[(Str, Json.Json)], body: &Option[Json.Json]) -> Result[Peer.Answer, Str] {
+  let operation = Option.okOr(Paths.operationOf(id), Cli.UNKNOWN_OPERATION + id) ?
+  let given = params.map(|pair: (Str, Json.Json)| pair[0])
+  let defaults = [(Parameters.SCOPE, Json.Text(session.scopeId)), (Parameters.GRAPH, Json.Text(session.graph)), (Parameters.PARTICIPANT, Json.Text(session.participant))].filter(|pair: (Str, Json.Json)| !given.contains(pair[0]))
+  let filled = Json.object(&params.concat(defaults))
+  Peer.call(&session.peer, operation.method, Paths.target(&operation, &filled), body)
+}
+
+/// Milliseconds since the Unix epoch.
+export fn now() -> Int { Time.toMillis(&Time.currentInstant()) }
+
+/// The last delivery sequence this participant has processed.
+export fn cursorOf(session: &Session) -> Int { Result.unwrapOr(Sync.get(&session.cursor), 0) }
+
+/// Records that every delivery up to a sequence was processed, in the cursor file too when one is kept.
+export fn advance(session: &Session, sequence: Int) -> () {
+  if sequence <= cursorOf(session) { return () }
+
+  let _kept = Sync.set(&session.cursor, sequence)
+
+  if let Some(path) = session.cursorFile { let _written = Io.write(path, show(sequence)) }
+}
+
+/// Records an envelope the participant sent or read while working on a supervised task.
+export fn note(session: &Session, id: Str) -> () {
+  if let Some(path) = session.journal { let _written = Io.appendLine(path, id) }
+}
+
+/// The ids a task journal holds, oldest first, each once.
+export fn noted(path: Str) -> Array[Str] {
+  let lines = Result.unwrapOr(Io.readLines(path), []).map(|line: Str| line.trim()).filter(|line: Str| !line.isEmpty())
+  var kept: Array[Str] = []
+
+  for line in lines {
+    if !kept.contains(line) { kept = kept.push(line) }
+  }
+
+  kept
+}
+
+fn starting() -> Int { Option.unwrapOr(Option.andThen(Env.variable(Names.INBOX_AFTER_VARIABLE), |text: Str| text.trim().toInt()), 0) }
+
+fn presented() -> Result[Str, Str] {
+  match Env.variable(Names.TOKEN_FILE_VARIABLE) {
+    case Some(path) => Result.map(Io.read(path), |text: Str| text.trim())
+    case None => Option.okOr(Option.map(Env.variable(Names.TOKEN_VARIABLE), |text: Str| text.trim()), Names.NO_TOKEN)
+  }
+}
+
+fn stored(path: &Option[Str]) -> Int {
+  match *path {
+    case Some(file) => if Io.exists(file) { Option.unwrapOr(Option.andThen(Result.toOption(Io.read(file)), |text: Str| text.trim().toInt()), 0) } else { starting() }
+    case None => starting()
+  }
+}

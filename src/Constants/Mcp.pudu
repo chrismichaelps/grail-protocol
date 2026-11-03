@@ -1,0 +1,80 @@
+/** @Constants.Mcp.Methods — the tool protocol's methods and members the participant adapter answers */
+module Constants.Mcp
+
+/// The handshake.
+export const INITIALIZE: Str = "initialize"
+
+/// A liveness check.
+export const PING: Str = "ping"
+
+/// Lists the tools.
+export const TOOLS_LIST: Str = "tools/list"
+
+/// Calls a tool.
+export const TOOLS_CALL: Str = "tools/call"
+
+/// The protocol version answered to a client that negotiates per request.
+export const MODERN_VERSION: Str = "2026-07-28"
+
+/// What a complete result is marked with for a client that negotiates per request.
+export const RESULT_COMPLETE: Str = "complete"
+
+/// The member marking a result's type.
+export const RESULT_TYPE_MEMBER: Str = "resultType"
+
+/// The member giving the agreed protocol version.
+export const PROTOCOL_VERSION_MEMBER: Str = "protocolVersion"
+
+/// The member listing what the server offers.
+export const CAPABILITIES_MEMBER: Str = "capabilities"
+
+/// The member describing the server.
+export const SERVER_INFO_MEMBER: Str = "serverInfo"
+
+/// The member telling the client how to use the server.
+export const INSTRUCTIONS_MEMBER: Str = "instructions"
+
+/// The member listing tools.
+export const TOOLS_MEMBER: Str = "tools"
+
+/// The member saying whether the tool list can change.
+export const LIST_CHANGED_MEMBER: Str = "listChanged"
+
+/// The member naming something.
+export const NAME_MEMBER: Str = "name"
+
+/// The member giving a display title.
+export const TITLE_MEMBER: Str = "title"
+
+/// The member giving a version.
+export const VERSION_MEMBER: Str = "version"
+
+/// The member describing a tool.
+export const DESCRIPTION_MEMBER: Str = "description"
+
+/// The member giving a tool's input schema.
+export const INPUT_SCHEMA_MEMBER: Str = "inputSchema"
+
+/// The member holding a tool call's arguments.
+export const ARGUMENTS_MEMBER: Str = "arguments"
+
+/// The member holding a tool result's content blocks.
+export const CONTENT_MEMBER: Str = "content"
+
+/// The member holding a tool result as structured data.
+export const STRUCTURED_MEMBER: Str = "structuredContent"
+
+/// The member saying a tool call failed.
+export const IS_ERROR_MEMBER: Str = "isError"
+
+/// The member giving a content block's type.
+export const TYPE_MEMBER: Str = "type"
+
+/// The type of a text content block.
+export const TEXT_CONTENT: Str = "text"
+
+/// The member holding a content block's text.
+export const TEXT_MEMBER: Str = "text"
+
+/// The member explaining a failure.
+export const DETAIL_MEMBER: Str = "detail"

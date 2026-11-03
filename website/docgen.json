@@ -1,6 +1,7 @@
 {
   "build": {
     "content": [{"files": ["**/*.md", "**/*.yml", "rest/*.json"], "src": "docs"}],
+    "resource": [{"files": ["live/**"], "src": "docs"}],
     "output": "_site",
     "template": ["default", "rest.tagpage", "rest.operationpage", "template"],
     "globalMetadata": {

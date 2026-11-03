@@ -77,8 +77,8 @@ fn main() -> Int {
   let many = Graph.Graph{..outer, participants: [Fixtures.member("orchestrator", &[], &[])].concat(aliases), edges: aliases.map(|member: Graph.Participant| Fixtures.edge(member.id, "orchestrator", member.id, Vocabulary.RELATION_FLOW))}
   let wideInner = Graph.Graph{..inner, participants: List.range(0, Limits.ROUTING_PATHS / 2).map(|n: Int| Fixtures.member("w" + show(n), &["entry"], &[]))}
   let wideGraphs = Map.insert(&start.graphs, "inner", wideInner)
-  let atLimit = Routing.routes(&many, &["team", "team2"], &wideGraphs)
-  let overLimit = Routing.routes(&many, &["team", "team2", "team3"], &wideGraphs)
+  let atLimit = Routing.routes(&many, &["team", "team2"], &wideGraphs, "orchestrator", Vocabulary.KIND_TASK)
+  let overLimit = Routing.routes(&many, &["team", "team2", "team3"], &wideGraphs, "orchestrator", Vocabulary.KIND_TASK)
   let shared = Scope.State{..start, graphs: Map.insert(&start.graphs, "outer", many)}
   let sharedTask = Json.withField(&body("outer", "shared", "orchestrator", "team", Vocabulary.KIND_TASK, &[]), "target", Fixtures.toRole("pool"))
   let sharedSent = after(&shared, &sharedTask)

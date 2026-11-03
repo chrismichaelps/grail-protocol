@@ -2,14 +2,14 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Grail Protocol",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "summary": "Graph routed exchange of envelopes between participants, with causality, provenance, and scope isolation.",
     "license": {
       "name": "Apache-2.0",
       "identifier": "Apache-2.0"
     }
   },
-  "x-grail-version": "1.1",
+  "x-grail-version": "1.2",
   "x-grail-media-type": "application/json",
   "x-grail-problem-media-type": "application/problem+json",
   "x-grail-problem-prefix": "urn:grail:problem:",
@@ -516,6 +516,49 @@
         "responses": {
           "200": {
             "description": "A page of deliveries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/scopes/{scope}/graphs/{graph}/channels/{channel}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Scope"
+        },
+        {
+          "$ref": "#/components/parameters/Graph"
+        },
+        {
+          "$ref": "#/components/parameters/ChannelId"
+        },
+        {
+          "$ref": "#/components/parameters/After"
+        },
+        {
+          "$ref": "#/components/parameters/Limit"
+        },
+        {
+          "$ref": "#/components/parameters/Wait"
+        }
+      ],
+      "get": {
+        "operationId": "readChannel",
+        "tags": ["Deliveries"],
+        "summary": "Reads what was posted to a channel after a cursor without acknowledging anything, waiting up to `wait` milliseconds for a post to arrive. Only the owner and the channel's subscribers may read it.",
+        "x-grail-ability": "transfer.receive",
+        "responses": {
+          "200": {
+            "description": "A page of the channel's posts.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1046,6 +1089,14 @@
           "$ref": "#/components/schemas/Identifier"
         }
       },
+      "ChannelId": {
+        "name": "channel",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Identifier"
+        }
+      },
       "SecretName": {
         "name": "secret",
         "in": "path",
@@ -1137,7 +1188,8 @@
           "memory",
           "human",
           "service",
-          "graph"
+          "graph",
+          "channel"
         ]
       },
       "Relation": {

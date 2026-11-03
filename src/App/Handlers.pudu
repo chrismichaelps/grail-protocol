@@ -26,6 +26,7 @@ export fn registrations(kinds: &Messages.Kinds, runtime: &Runtime.Runtime) -> Ar
     Registration.handler(&kinds.readTransfer, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Fabric.readTransfer(&held, &asked))),
     Registration.handler(&kinds.traceTransfer, |asked: Request.Call[Str], _context: Context.Context| Messaging.lift(Fabric.traceTransfer(&held, &asked))),
     Registration.handler(&kinds.pullDeliveries, |asked: Request.Call[Request.Pulling], _context: Context.Context| Messaging.lift(Fabric.pullDeliveries(&held, &asked))),
+    Registration.handler(&kinds.readChannel, |asked: Request.Call[Request.Pulling], _context: Context.Context| Messaging.lift(Fabric.readChannel(&held, &asked))),
     Registration.handler(&kinds.readLedger, |asked: Request.Call[Request.Paging], _context: Context.Context| Messaging.lift(Fabric.readLedger(&held, &asked))),
     Registration.handler(&kinds.delegateToken, |asked: Request.Call[Capability.Request], _context: Context.Context| Messaging.lift(Fabric.delegateToken(&held, &asked))),
     Registration.handler(&kinds.bridgeRpc, |asked: Request.Call[Request.Bridging], _context: Context.Context| Messaging.lift(Bridge.carry(&held, &asked))),

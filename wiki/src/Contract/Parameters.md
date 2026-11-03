@@ -34,6 +34,8 @@ export const AFTER: Str = "after"
 export const LIMIT: Str = "limit"
 /// The `wait` parameter.
 export const WAIT: Str = "wait"
+/// The `channel` parameter.
+export const CHANNEL: Str = "channel"
 /// The `token` parameter.
 export const TOKEN: Str = "token"
 /// The `handoff` parameter.
@@ -44,8 +46,7 @@ export const SECRET: Str = "secret"
 
 ### Linkage
 
-- **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Cli/Commands]] · [[src/Web/Caller]] · [[src/Web/Handlers]]
+- **Consumed by:** [[src/Agent/Runner]] · [[src/Agent/Session]] · [[src/Agent/Tools]] · [[src/Cli/Commands]] · [[src/Web/Caller]] · [[src/Web/Handlers]]
 
 ## Referenced by
 

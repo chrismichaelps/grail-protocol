@@ -27,7 +27,7 @@ export fn run(app: &Assembly.App, arguments: &Array[Str]) -> Int
 
 ### Linkage
 
-- **Requires:** [[src/Api/Peer]] · [[src/App/Assembly]] · [[src/Config/Settings]] · [[src/Constants/Cli]] · [[src/Constants/Fabric]] · [[src/Constants/Security]] · [[src/Constants/Text]] · [[src/Contract/Document]] · [[src/Contract/Members]] · [[src/Contract/Operations]] · [[src/Contract/Parameters]] · [[src/Contract/Vocabulary]] · [[src/Domain/Capability]] · [[src/Engine/Authority]] · [[src/Engine/Paths]] · [[src/Utils/JsonRead]] · [[src/Web/Lines]] · [[src/Web/Router]]
+- **Requires:** [[src/Agent/Mcp]] · [[src/Agent/Runner]] · [[src/Agent/Session]] · [[src/Api/Peer]] · [[src/App/Assembly]] · [[src/Config/Settings]] · [[src/Constants/Agent]] · [[src/Constants/Cli]] · [[src/Constants/Fabric]] · [[src/Constants/Security]] · [[src/Constants/Text]] · [[src/Contract/Document]] · [[src/Contract/Members]] · [[src/Contract/Operations]] · [[src/Contract/Parameters]] · [[src/Contract/Vocabulary]] · [[src/Domain/Capability]] · [[src/Engine/Authority]] · [[src/Engine/Paths]] · [[src/Utils/JsonRead]] · [[src/Web/Lines]] · [[src/Web/Router]]
 - **Standard library:** `Std.Env`, `Std.Io`, `Std.Json`, `Std.Option`, `Std.Result`
 - **Consumed by:** [[src/Main]]
 

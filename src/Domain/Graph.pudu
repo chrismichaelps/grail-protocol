@@ -38,5 +38,11 @@ export fn carries(graph: &Graph, from: Str, to: Str, kind: Str) -> Bool {
   List.any(&edgesOf(graph, Vocabulary.RELATION_FLOW), |edge: Edge| edge.from == from && edge.to == to && (edge.kinds.isEmpty() || edge.kinds.contains(kind)))
 }
 
+/// Whether any flow edge leads from one participant to another, whatever it carries.
+export fn linked(graph: &Graph, from: Str, to: Str) -> Bool { List.any(&edgesOf(graph, Vocabulary.RELATION_FLOW), |edge: Edge| edge.from == from && edge.to == to) }
+
+/// Whether a participant of the graph is a channel.
+export fn isChannel(graph: &Graph, id: Str) -> Bool { Option.holds(&participant(graph, id), |member: Participant| member.kind == Vocabulary.PARTICIPANT_CHANNEL) }
+
 /// The graphs this graph's graph participants stand for.
 export fn contained(graph: &Graph) -> Array[Str] { Option.present(&graph.participants.map(|member: Participant| member.graph)) }

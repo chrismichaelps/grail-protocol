@@ -28,13 +28,15 @@ export fn apply(graph: &Graph.Graph, mutation: &Mutation.Mutation, others: &Map[
 export fn create(id: Str, scopeId: Str, draft: &Mutation.Draft, others: &Map[Str, Graph.Graph]) -> Result[Graph.Graph, Problem.Problem]
 /// Whether a graph is well formed within its scope: unique ids, existing endpoints, limits, acyclic dependencies, and acyclic, shallow containment.
 export fn check(graph: &Graph.Graph, others: &Map[Str, Graph.Graph]) -> Result[(), Problem.Problem]
+/// Whether an edge respects what a channel is: no channel subscribes to another, and no dependency waits on a channel, which never produces a result.
+export fn channelEdgeHolds(graph: &Graph.Graph, edge: &Graph.Edge) -> Bool
 ```
 
 ### Linkage
 
-- **Requires:** [[src/Constants/Details]] · [[src/Constants/Extras]] · [[src/Contract/Limits]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Graph]] · [[src/Domain/Mutation]] · [[src/Domain/Problem]] · [[src/Engine/Topology]] · [[src/Utils/JsonRead]]
+- **Requires:** [[src/Constants/Details]] · [[src/Constants/Extras]] · [[src/Contract/Limits]] · [[src/Contract/Members]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Graph]] · [[src/Domain/Mutation]] · [[src/Domain/Problem]] · [[src/Engine/Topology]] · [[src/Utils/JsonRead]] · [[src/Utils/Pointer]]
 - **Standard library:** `Std.Json`, `Std.List`, `Std.Map`
-- **Consumed by:** [[src/Services/Fabric]] · [[test/Engine/MutationsTest]] · [[test/Support/Fixtures]]
+- **Consumed by:** [[src/Services/Fabric]]
 
 <!-- authored -->
 ## Algorithm

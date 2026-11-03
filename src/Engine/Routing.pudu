@@ -13,6 +13,9 @@ import Domain.Envelope as Envelope
 import Domain.Graph as Graph
 import Domain.Problem as Problem
 
+/** @Engine.Routing.Sending — who sends and which kind, carried through an expansion so channels can leave the sender out */
+type Sending = { source: Str, kind: Str }
+
 /** @Engine.Routing.Resolve — the participants a sender reaches with a kind */
 export type Resolve = fn(Graph.Graph, Str, Str) -> Array[Str]
 
@@ -25,18 +28,24 @@ export fn resolverOf(selector: &Envelope.Selector) -> Resolve {
   }
 }
 
-/// Resolves every selected branch or refuses the whole expansion; retained paths are witnesses for later nested replies.
-export fn routes(graph: &Graph.Graph, participants: &Array[Str], graphs: &Map[Str, Graph.Graph]) -> Result[Array[Envelope.Route], Problem.Problem] {
+/// Resolves every selected branch or refuses the whole expansion; retained paths are witnesses for later nested replies. A channel stands for its subscribers other than the sender, and one nobody else hears expands to no route at all, which the caller judges.
+export fn routes(graph: &Graph.Graph, participants: &Array[Str], graphs: &Map[Str, Graph.Graph], source: Str, kind: Str) -> Result[Array[Envelope.Route], Problem.Problem] {
+  let sending = Sending{source: source, kind: kind}
   var found: Array[Envelope.Route] = []
 
   if participants.isEmpty() { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) }
 
   for id in *participants {
-    let branch = expanded(graph, id, graphs, 0, Limits.ROUTING_PATHS - found.length(), &[]) ?
+    let branch = expanded(graph, id, graphs, &sending, 0, Limits.ROUTING_PATHS - found.length(), &[]) ?
     found = found.concat(branch)
   }
 
   Ok(found)
+}
+
+/// The participants a channel delivers a kind to: every target of a flow edge from the channel that carries the kind, except the sender.
+export fn subscribers(graph: &Graph.Graph, channel: Str, source: Str, kind: Str) -> Array[Str] {
+  graph.participants.filter(|member: Graph.Participant| member.id != source && member.id != channel && Graph.carries(graph, channel, member.id, kind)).map(|member: Graph.Participant| member.id)
 }
 
 /// The participant a selector names directly, if it names one.
@@ -51,7 +60,7 @@ fn reachable(graph: &Graph.Graph, source: Str, kind: Str, holds: fn(Graph.Partic
   graph.participants.filter(|member: Graph.Participant| member.id != source && holds(member) && Graph.carries(graph, source, member.id, kind)).map(|member: Graph.Participant| member.id)
 }
 
-fn expanded(graph: &Graph.Graph, id: Str, graphs: &Map[Str, Graph.Graph], depth: Int, remaining: Int, prefix: &Array[Envelope.Address]) -> Result[Array[Envelope.Route], Problem.Problem] {
+fn expanded(graph: &Graph.Graph, id: Str, graphs: &Map[Str, Graph.Graph], sending: &Sending, depth: Int, remaining: Int, prefix: &Array[Envelope.Address]) -> Result[Array[Envelope.Route], Problem.Problem] {
   if depth > Limits.CONTAINMENT_DEPTH { return Err(exceeded(Limits.CONTAINMENT_DEPTH)) }
   if remaining < 1 { return Err(exceeded(Limits.ROUTING_PATHS)) }
 
@@ -59,6 +68,7 @@ fn expanded(graph: &Graph.Graph, id: Str, graphs: &Map[Str, Graph.Graph], depth:
   let address = Envelope.Address{graph: graph.id, participant: id}
   let path = prefix.push(address)
 
+  if member.kind == Vocabulary.PARTICIPANT_CHANNEL { return fanned(graph, id, graphs, sending, depth, remaining, &path) }
   if member.kind != Vocabulary.PARTICIPANT_GRAPH { return Ok([Envelope.Route{recipient: address, path: path}]) }
 
   let name = Option.okOr(member.graph, Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) ?
@@ -69,7 +79,19 @@ fn expanded(graph: &Graph.Graph, id: Str, graphs: &Map[Str, Graph.Graph], depth:
   if entries.isEmpty() { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) }
 
   for entry in entries {
-    let branch = expanded(&nested, entry.id, graphs, depth + 1, remaining - found.length(), &path) ?
+    let branch = expanded(&nested, entry.id, graphs, sending, depth + 1, remaining - found.length(), &path) ?
+    found = found.concat(branch)
+  }
+
+  Ok(found)
+}
+
+fn fanned(graph: &Graph.Graph, channel: Str, graphs: &Map[Str, Graph.Graph], sending: &Sending, depth: Int, remaining: Int, path: &Array[Envelope.Address]) -> Result[Array[Envelope.Route], Problem.Problem] {
+  let listening = subscribers(graph, channel, sending.source, sending.kind)
+  var found: Array[Envelope.Route] = []
+
+  for id in listening {
+    let branch = expanded(graph, id, graphs, sending, depth + 1, remaining - found.length(), path) ?
     found = found.concat(branch)
   }
 

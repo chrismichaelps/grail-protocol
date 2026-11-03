@@ -21,9 +21,9 @@ Protocol version, media types, and headers. Projected from the contract by [[too
 
 ```pudu
 /// The protocol version this contract describes.
-export const PROTOCOL: Str = "1.1"
+export const PROTOCOL: Str = "1.2"
 /// The version of the contract document.
-export const CONTRACT: Str = "1.1.0"
+export const CONTRACT: Str = "1.2.0"
 /// The contract's title.
 export const TITLE: Str = "Grail Protocol"
 /// The media type of requests and answers.
@@ -42,7 +42,6 @@ export const HEADER_RETRY_AFTER: Str = "Retry-After"
 
 ### Linkage
 
-- **Requires:** nothing inside the fabric
 - **Consumed by:** [[src/Api/Peer]] · [[src/Engine/Codec/Views]] · [[src/Web/Caller]] · [[src/Web/Description]] · [[src/Web/Lines]] · [[src/Web/Respond]]
 
 ## Referenced by

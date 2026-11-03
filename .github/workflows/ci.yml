@@ -81,3 +81,17 @@ jobs:
           siege="$("$grail" token --scope siege --id root)"
           pudu run tools/Siege.pudu --fabric http://127.0.0.1:17420 --token "$siege"
           kill %1
+      - name: Smoke the agent adapter
+        run: |
+          set -euo pipefail
+          answer="$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | "$RUNNER_TEMP/grail" agent)"
+          echo "$answer" | grep -q '"name":"grail"'
+          echo "$answer" | grep -q '"grail_reply"'
+      - name: Studio showcase end to end
+        env:
+          GRAIL_BIN: ${{ runner.temp }}/grail
+        run: |
+          set -euo pipefail
+          examples/channels/up.sh
+          examples/channels/showcase.sh
+          kill "$(cat build/channels/fabric.pid)"

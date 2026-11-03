@@ -66,3 +66,24 @@ export const SHARED_HEADERS: Array[Str] = ["content-type", "authorization", "gra
 
 /// The scheme of the address the server reports.
 export const SCHEME: Str = "http://"
+
+/// The header a browser names a request's origin in.
+export const ORIGIN_HEADER: Str = "origin"
+
+/// The header a browser's preflight names the method it wants in.
+export const REQUEST_METHOD_HEADER: Str = "access-control-request-method"
+
+/// The status of an answered preflight.
+export const PREFLIGHT_STATUS: Int = 204
+
+/// The header saying how long a browser may keep a preflight's answer.
+export const MAX_AGE_HEADER: Str = "Access-Control-Max-Age"
+
+/// Seconds a browser may keep a preflight's answer.
+export const PREFLIGHT_MAX_AGE_SECONDS: Int = 600
+
+/// The header letting a public page reach a fabric on the visitor's own machine or network, for browsers that ask.
+export const PRIVATE_NETWORK_HEADER: Str = "Access-Control-Allow-Private-Network"
+
+/// The value that allows it.
+export const PRIVATE_NETWORK_ALLOWED: Str = "true"

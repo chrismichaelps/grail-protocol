@@ -1,6 +1,6 @@
 # Security review — reference fabric 0.2.1
 
-This review continued the Claude session “Grail protocol prompt” and tested the custody, capability, graph-write, and handoff paths with synthetic credentials. It found real disclosures; passing the previous test suite had not established these boundaries.
+This review tested the custody, capability, graph-write, and handoff paths with synthetic credentials. It found real disclosures; passing the previous test suite had not established these boundaries.
 
 | Finding | Correction | Regression evidence |
 | --- | --- | --- |

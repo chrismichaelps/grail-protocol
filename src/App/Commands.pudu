@@ -45,6 +45,9 @@ export fn traceTransfer(app: &Assembly.App, call: Request.Call[Str]) -> Result[R
 /// Pulls deliveries.
 export fn pullDeliveries(app: &Assembly.App, call: Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem] { Assembly.send(app, &app.kinds.pullDeliveries, call) }
 
+/// Reads what was posted to a channel.
+export fn readChannel(app: &Assembly.App, call: Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem] { Assembly.send(app, &app.kinds.readChannel, call) }
+
 /// Reads the ledger.
 export fn readLedger(app: &Assembly.App, call: Request.Call[Request.Paging]) -> Result[Transfer.Page, Problem.Problem] { Assembly.send(app, &app.kinds.readLedger, call) }
 

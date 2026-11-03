@@ -24,7 +24,9 @@ export fn draft() -> Validator.Validator[Mutation.Draft]
 /// Rules for a mutation.
 export fn mutation() -> Validator.Validator[Mutation.Mutation]
 /// Whether a participant names a graph exactly when it is a graph participant.
-export fn participantHolds(member: &Graph.Participant) -> Bool { (member.kind == Vocabulary.PARTICIPANT_GRAPH) == Option.isSome(&member.graph) }
+export fn participantHolds(member: &Graph.Participant) -> Bool
+/// Whether a participant that is a channel declares nothing but its id and kind.
+export fn channelHolds(member: &Graph.Participant) -> Bool
 ```
 
 ### Linkage

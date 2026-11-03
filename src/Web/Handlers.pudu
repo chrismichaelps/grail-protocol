@@ -46,6 +46,7 @@ const HANDLERS: Map[Str, Handler] = mapOf([
     (Operations.READ_TRANSFER, readTransfer),
     (Operations.TRACE_TRANSFER, traceTransfer),
     (Operations.PULL_DELIVERIES, pullDeliveries),
+    (Operations.READ_CHANNEL, readChannel),
     (Operations.READ_LEDGER, readLedger),
     (Operations.DELEGATE_TOKEN, delegateToken),
     (Operations.BRIDGE_RPC, bridgeRpc),
@@ -105,6 +106,11 @@ fn traceTransfer(app: Assembly.App, request: Route.Request, status: Int) -> Http
 
 fn pullDeliveries(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
   let outcome = Result.andThen(cursor(&request), |page: (Int, Option[Int])| Result.andThen(Caller.whole(&request, Parameters.WAIT), |wait: Option[Int]| Commands.pullDeliveries(&app, Caller.call(&request, Request.Pulling{graph: Caller.parameter(&request, Parameters.GRAPH), participant: Caller.parameter(&request, Parameters.PARTICIPANT), after: page[0], limit: page[1], wait: Option.unwrapOr(wait, 0)}))))
+  Respond.answer(status, outcome, |found: Transfer.Page| Views.deliveries(&found))
+}
+
+fn readChannel(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let outcome = Result.andThen(cursor(&request), |page: (Int, Option[Int])| Result.andThen(Caller.whole(&request, Parameters.WAIT), |wait: Option[Int]| Commands.readChannel(&app, Caller.call(&request, Request.Pulling{graph: Caller.parameter(&request, Parameters.GRAPH), participant: Caller.parameter(&request, Parameters.CHANNEL), after: page[0], limit: page[1], wait: Option.unwrapOr(wait, 0)}))))
   Respond.answer(status, outcome, |found: Transfer.Page| Views.deliveries(&found))
 }
 

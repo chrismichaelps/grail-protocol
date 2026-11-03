@@ -31,6 +31,7 @@ export fn registrations(kinds: &Messages.Kinds) -> Result[Array[Registration.Reg
       Resilient.register(&kinds.readTransfer, guard() ?),
       Resilient.register(&kinds.traceTransfer, guard() ?),
       Resilient.register(&kinds.pullDeliveries, guardFor(Limits.WAIT_MAX + Capacity.WAIT_GRACE_MILLIS) ?),
+      Resilient.register(&kinds.readChannel, guardFor(Limits.WAIT_MAX + Capacity.WAIT_GRACE_MILLIS) ?),
       Resilient.register(&kinds.readLedger, guard() ?),
       Resilient.register(&kinds.delegateToken, guard() ?),
       Resilient.register(&kinds.bridgeRpc, guard() ?),

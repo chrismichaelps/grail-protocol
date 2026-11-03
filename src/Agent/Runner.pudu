@@ -1,0 +1,192 @@
+/** @Agent.Runner.Supervisor — keeps a participant attached: pulls its deliveries, starts a hosted agent for each task, and makes sure every task it starts ends answered */
+module Agent.Runner
+
+import Std.Bytes as ByteSeq
+import Std.Concurrent as Concurrent
+import Std.Env as Env
+import Std.Io as Io
+import Std.Json as Json
+import Std.Math as Math
+import Std.Option as Option
+import Std.Process as Process
+import Std.Result as Result
+import Std.Sync as Sync
+import Agent.Session as Session
+import Agent.Tools as Tools
+import Agent.Wire as Wire
+import Constants.Agent as Names
+import Contract.Members as Members
+import Contract.Operations as Operations
+import Contract.Parameters as Parameters
+import Contract.Vocabulary as Vocabulary
+import Utils.JsonRead as JsonRead
+
+/** @Agent.Runner.Plan — the command each task starts, how long it may run, and whether to stop after one page */
+export type Plan = { command: Str, timeout: Int, once: Bool }
+
+/** @Agent.Runner.Ran — how a command ended: its status and both streams, or that it ran out of time */
+type Ran
+  = Finished(Process.Finished)
+  | TimedOut
+  | Unstarted(Str)
+
+/// Pulls and handles deliveries until stopped, or after one page when the plan says so; answers the exit status.
+export fn run(session: &Session.Session, plan: &Plan) -> Int {
+  said(Names.RUNNER_STARTED + session.participant + Names.LOG_JOIN + session.graph + Names.LOG_ARROW + session.fabric)
+
+  loop {
+    let params = [(Parameters.AFTER, Json.Number(Session.cursorOf(session))), (Parameters.LIMIT, Json.Number(Names.RUNNER_PAGE)), (Parameters.WAIT, Json.Number(if plan.once { 0 } else { Names.RUNNER_WAIT_MILLIS }))]
+
+    match Tools.answered(Session.call(session, Operations.PULL_DELIVERIES, &params, &None)) {
+      case Ok(page) => {
+        for delivered in Option.unwrapOr(JsonRead.list(&page, Members.DELIVERY_PAGE_DELIVERIES), []) {
+          handle(session, plan, &delivered)
+          Session.advance(session, Option.unwrapOr(JsonRead.whole(&delivered, Members.DELIVERED_SEQUENCE), 0))
+        }
+      }
+      case Err(refused) => {
+        said(Names.RUNNER_UNREACHABLE + Json.encode(&refused))
+
+        if Option.holds(&JsonRead.whole(&refused, Names.STATUS_MEMBER), |status: Int| status == 401 || status == 403) { return 1 }
+
+        let _rested = Concurrent.sleep(Names.RUNNER_BACKOFF_MILLIS)
+      }
+    }
+
+    if plan.once { return 0 }
+  }
+}
+
+/// The prompt a hosted agent receives for a task: who it is, who asked, the task id, and the request.
+export fn prompt(session: &Session.Session, written: &Json.Json) -> Str {
+  let payload = Json.field(written, Members.ENVELOPE_PAYLOAD)
+  let source = Option.unwrapOr(JsonRead.text(written, Members.ENVELOPE_SOURCE), "")
+  let id = Option.unwrapOr(JsonRead.text(written, Members.ENVELOPE_ID), "")
+  [
+    Names.PROMPT_IDENTITY + session.participant + Names.LOG_JOIN + session.graph,
+    Names.PROMPT_TASK + source,
+    Names.PROMPT_TASK_ID + id,
+    Names.PROMPT_REQUEST + Names.PROMPT_JOIN + Wire.proseOf(&payload),
+    Names.PROMPT_GUIDANCE
+  ].join(Names.PROMPT_JOIN)
+}
+
+fn handle(session: &Session.Session, plan: &Plan, delivered: &Json.Json) -> () {
+  let sequence = Option.unwrapOr(JsonRead.whole(delivered, Members.DELIVERED_SEQUENCE), 0)
+  let written = Option.unwrapOr(Json.field(delivered, Members.DELIVERED_ENVELOPE), Json.Null)
+  let kind = Option.unwrapOr(JsonRead.text(&written, Members.ENVELOPE_KIND), "")
+  let id = Option.unwrapOr(JsonRead.text(&written, Members.ENVELOPE_ID), "")
+  let source = Option.unwrapOr(JsonRead.text(&written, Members.ENVELOPE_SOURCE), "")
+
+  if kind != Vocabulary.KIND_TASK {
+    said(Names.RUNNER_HEARD + kind + Names.LOG_JOIN + id + Names.LOG_ARROW + Wire.proseOf(&Json.field(&written, Members.ENVELOPE_PAYLOAD)))
+    return ()
+  }
+
+  if finished(session, id) {
+    said(Names.RUNNER_TAKEN + id)
+    return ()
+  }
+
+  let claim = Tools.answer(session, id, Vocabulary.KIND_PROGRESS, Wire.payloadOf(Some(Names.RUNNER_PROGRESS), None), &[])
+
+  if Result.isErr(&claim) {
+    said(Names.RUNNER_TAKEN + id)
+    return ()
+  }
+
+  said(Names.RUNNER_TASK + id + Names.LOG_JOIN + source)
+
+  let journal = Io.join(Env.temporaryDirectory(), Names.JOURNAL_PREFIX + Wire.freshId(session).replace(Names.ID_SEPARATOR, Names.JOURNAL_SEPARATOR))
+  let launch = Process.launch(Names.SHELL, &[Names.SHELL_COMMAND_FLAG, plan.command])
+    .withVariable(Names.TASK_ID_VARIABLE, id)
+    .withVariable(Names.TASK_SOURCE_VARIABLE, source)
+    .withVariable(Names.TASK_VARIABLE, Json.encode(&written))
+    .withVariable(Names.INBOX_AFTER_VARIABLE, show(sequence))
+    .withVariable(Names.TASK_JOURNAL_VARIABLE, journal)
+  let ended = ran(&launch, prompt(session, &written), plan.timeout)
+  let relied = Session.noted(journal).filter(|parent: Str| parent != id)
+  let parents = relied.slice(Math.max(relied.length() - Names.ANSWER_PARENTS_MAX, 0), relied.length())
+  let _cleared = Io.removeIfPresent(journal)
+
+  if finished(session, id) {
+    said(Names.RUNNER_SELF_ANSWERED + id)
+    return ()
+  }
+
+  let reply = match ended {
+    case Finished(done) => if done.status == 0 { Tools.answer(session, id, Vocabulary.KIND_RESULT, Wire.payloadOf(Some(bounded(done.output.trim(), Names.ANSWER_CHARS_MAX)), None), &parents) } else { Tools.answer(session, id, Vocabulary.KIND_ERROR, Some(problem(tail(if done.errors.trim().isEmpty() { done.output } else { done.errors }, Names.FAILURE_CHARS_MAX).trim(), Some(done.status))), &parents) }
+    case TimedOut => Tools.answer(session, id, Vocabulary.KIND_ERROR, Some(problem(Names.RUNNER_TIMED_OUT, None)), &parents)
+    case Unstarted(reason) => Tools.answer(session, id, Vocabulary.KIND_ERROR, Some(problem(reason, None)), &parents)
+  }
+
+  match reply {
+    case Ok(_) => said(Names.RUNNER_ANSWERED + id + Names.LOG_ARROW + Option.unwrapOr(stateOf(session, id), ""))
+    case Err(refused) => said(Names.RUNNER_FAILED + id + Names.LOG_ARROW + Json.encode(&refused))
+  }
+}
+
+fn finished(session: &Session.Session, id: Str) -> Bool { Option.holds(&stateOf(session, id), |state: Str| Vocabulary.FINAL_STATES.contains(state)) }
+
+fn stateOf(session: &Session.Session, id: Str) -> Option[Str] {
+  match Tools.readTransfer(session, id) {
+    case Ok(view) => JsonRead.text(&view, Members.TRANSFER_STATE)
+    case Err(_) => None
+  }
+}
+
+fn ran(launch: &Process.Launch, input: Str, millis: Int) -> Ran {
+  let running = match Process.begin(launch) {
+    case Ok(started) => started
+    case Err(reason) => { return Unstarted(reason) }
+  }
+  let held = running
+  let output = Sync.cell("")
+  let errors = Sync.cell("")
+  let outputReader = Concurrent.start(|| { let _kept = Sync.set(&output, collected(&held, Process.read)) })
+  let errorReader = Concurrent.start(|| { let _kept = Sync.set(&errors, collected(&held, Process.readErrors)) })
+  let _fed = Process.writeText(&running, input)
+  let _closed = Process.closeInput(&running)
+  let waited = Process.waitWithin(&running, millis)
+
+  if !Result.holds(&waited, |left: Option[Int]| Option.isSome(&left)) { let _stopped = Process.stop(&running) }
+
+  joined(&outputReader)
+  joined(&errorReader)
+
+  match waited {
+    case Ok(Some(status)) => Finished(Process.Finished{status: status, output: Result.unwrapOr(Sync.get(&output), ""), errors: Result.unwrapOr(Sync.get(&errors), "")})
+    case Ok(None) => TimedOut
+    case Err(reason) => Unstarted(reason)
+  }
+}
+
+fn collected(running: &Process.Started, next: fn(&Process.Started) -> Result[Option[Bytes], Str]) -> Str {
+  var gathered: Array[Str] = []
+
+  loop {
+    match next(running) {
+      case Ok(Some(piece)) => { gathered = gathered.push(Result.unwrapOr(ByteSeq.toText(&piece), "")) }
+      case _ => { return gathered.join("") }
+    }
+  }
+}
+
+fn joined(reader: &Result[Concurrent.Task, Concurrent.ConcurrentError]) -> () {
+  if let Ok(worker) = *reader { let _joined = Concurrent.join(&worker) }
+}
+
+fn problem(detail: Str, status: Option[Int]) -> Json.Json {
+  JsonRead.objectOf(&[
+      (Names.PROBLEM_TYPE_MEMBER, Some(Json.Text(Names.RUNNER_PROBLEM_TYPE))),
+      (Names.PROBLEM_TITLE_MEMBER, Some(Json.Text(Names.RUNNER_PROBLEM_TITLE))),
+      (Names.PROBLEM_DETAIL_MEMBER, Some(Json.Text(detail))),
+      (Names.PROBLEM_STATUS_MEMBER, Option.map(status, |code: Int| Json.Number(code)))
+    ])
+}
+
+fn bounded(text: Str, most: Int) -> Str { if text.length() > most { text.take(most) } else { text } }
+
+fn tail(text: Str, most: Int) -> Str { if text.length() > most { text.drop(text.length() - most) } else { text } }
+
+fn said(line: Str) -> () { let _written = Io.writeLine(line) }

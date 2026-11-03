@@ -8,6 +8,7 @@ tags: [moc]
 One page per file, each with its interface and the modules it depends on.
 
 - [[test/Security/AttackTest]] — forgery, escalation, isolation, poisoning, abuse, and exhaustion attempts all fail safely
+- [[test/Security/ChannelTest]] — a channel's history is closed to non-members, held values stay in custody, and observers can watch but never act
 - [[test/Security/CustodyTest]] — an agent uses a key it never sees, and the key never reaches the ledger, a trace, a handoff, or another agent
 - [[test/Security/ErasureTest]] — graph restrictions constrain payload erasure without changing refused records
 - [[test/Security/DelegationTest]] — a participant cannot mint owner authority to steal custody deliveries or revoke the root

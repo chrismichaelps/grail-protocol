@@ -14,18 +14,32 @@ import PuduLangValidator.Validator as Validator
 /// Rules for a graph about to be created.
 export fn draft() -> Validator.Validator[Mutation.Draft] {
   let participants = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.GRAPH_DRAFT_PARTICIPANTS, |d: Mutation.Draft| d.participants), |members: Array[Graph.Participant]| List.all(&members, |member: Graph.Participant| participantHolds(&member))), Details.GRAPH_PARTICIPANT))
+  let channels = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.GRAPH_DRAFT_PARTICIPANTS, |d: Mutation.Draft| d.participants), |members: Array[Graph.Participant]| List.all(&members, |member: Graph.Participant| channelHolds(&member))), Details.CHANNEL_PARTICIPANT))
   let edges = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.GRAPH_DRAFT_EDGES, |d: Mutation.Draft| d.edges), |links: Array[Graph.Edge]| List.all(&links, |edge: Graph.Edge| edge.from != edge.to)), Details.SELF_EDGE))
-  Validator.add(Validator.add(Validator.create(), participants), edges)
+  Validator.add(Validator.add(Validator.add(Validator.create(), participants), channels), edges)
 }
 
 /// Rules for a mutation.
 export fn mutation() -> Validator.Validator[Mutation.Mutation] {
   let steps = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.MUTATION_OPERATIONS, |m: Mutation.Mutation| m.steps), |listed: Array[Mutation.Step]| List.all(&listed, |step: Mutation.Step| stepHolds(&step))), Details.GRAPH_PARTICIPANT))
-  Validator.add(Validator.create(), steps)
+  let channels = Rule.build(Rule.withMessage(Rule.must(Rule.ruleFor(Members.MUTATION_OPERATIONS, |m: Mutation.Mutation| m.steps), |listed: Array[Mutation.Step]| List.all(&listed, |step: Mutation.Step| stepAddsChannel(&step))), Details.CHANNEL_PARTICIPANT))
+  Validator.add(Validator.add(Validator.create(), steps), channels)
 }
 
 /// Whether a participant names a graph exactly when it is a graph participant.
 export fn participantHolds(member: &Graph.Participant) -> Bool { (member.kind == Vocabulary.PARTICIPANT_GRAPH) == Option.isSome(&member.graph) }
+
+/// Whether a participant that is a channel declares nothing but its id and kind.
+export fn channelHolds(member: &Graph.Participant) -> Bool {
+  member.kind != Vocabulary.PARTICIPANT_CHANNEL || (member.roles.isEmpty() && member.abilities.isEmpty() && Option.isNone(&member.graph))
+}
+
+fn stepAddsChannel(step: &Mutation.Step) -> Bool {
+  match step {
+    case Mutation.AddParticipant(member) => channelHolds(&member)
+    case _ => true
+  }
+}
 
 fn stepHolds(step: &Mutation.Step) -> Bool {
   match step {
