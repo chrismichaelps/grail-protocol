@@ -1,5 +1,7 @@
 # Changelog
 
+- 2026-11-03 · reference fabric documentation/example patch 0.3.2: real Slack/Codex recording and public receipt checks; runtime behavior and protocol 1.2 unchanged · risk LOW
+
 - 2026-11-03 · README: a real Slack task reaches a supervised Codex CLI worker through Grail and its answer returns to the original thread; edited recording, public hash-checked receipts, and generated-code checks · risk LOW
 
 - 2026-11-03 · reference fabric 0.3.1: the channel viewer shows every showcase request and answer, traces any message to its first cause, and verifies the recorded ledger in the browser; `showcase.sh` records runs with tokens and the deploy key redacted · risk LOW

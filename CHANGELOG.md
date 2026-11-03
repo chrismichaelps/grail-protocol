@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.2 — 2026-11-03
+
+### Documentation and examples
+
+- README recording: a real Slack task reaches a hosted Codex CLI worker through the local Grail API, and its generated Python returns to the same Slack thread. The 51-second edited walkthrough uses actual Slack desktop captures and CLI output, with a compact GIF preview. No Studio footage is used.
+- Public exchange receipts retain four envelope digests and ledger links, task/result deduplication responses, the source-impersonation refusal, and causal ancestry. CI recomputes the hashes and runs the recorded code’s 12 assertions.
+- A macOS encoder creates MP4/GIF walkthroughs from captured application states with explicit captions and pacing. The Slack gateway in this recording is session-operated; no background listener is included.
+
+Runtime behavior and protocol 1.2 are unchanged. Cloudflare serves static documentation and media; the API stays local.
+
 ## 0.3.1 — 2026-11-03
 
 ### Added
