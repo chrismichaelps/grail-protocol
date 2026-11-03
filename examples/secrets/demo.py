@@ -7,6 +7,7 @@ refused, rotation takes effect on the next call, and deletion stops a call alrea
 """
 
 import base64
+from datetime import datetime
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -84,6 +85,8 @@ def main():
             stage.note(f"the answer holds the value: {key in json.dumps(held)}")
             status, _ = fabric.call(PORT, "GET", f"/v1/scopes/{SCOPE}/secrets/{SECRET}", owner)
             stage.note(f"GET secrets/{SECRET}  HTTP {status}  there is no way to read it back")
+            status, refused = fabric.call(PORT, "PUT", f"/v1/scopes/{SCOPE}/secrets/for-a-model", owner, {"value": secrets.token_urlsafe(KEY_BYTES), "graph": NAME, "audience": ["reviewer"]})
+            stage.refused(f"PUT with an agent as audience  HTTP {status}  {refused['code']}")
 
             stage.heading("The planner learns what exists, not what it is")
             _, listed = fabric.call(PORT, "GET", f"/v1/scopes/{SCOPE}/secrets", planner)
@@ -102,15 +105,21 @@ def main():
             stage.note(f"stored envelope auth = {json.dumps(stored['envelope']['payload']['auth'])}")
             stage.note(f"value in the envelope, the ledger, or the trace: {any(key in json.dumps(found) for found in (stored, ledger, trace))}")
 
-            stage.heading("Every way out is closed")
-            echoed = fabric.envelope(SCOPE, NAME, "echo", "executor", "planner", "tool.result", {"debug": "Authorization: Bearer " + key}, [CALL_ID])
-            status, refused = fabric.call(PORT, "POST", f"/v1/scopes/{SCOPE}/transfers", runner, echoed)
-            stage.refused(f"executor echoes the key          HTTP {status}  {refused['code']}")
-            disguised = fabric.envelope(SCOPE, NAME, "echo-b64", "executor", "planner", "tool.result", {"debug": base64.b64encode(key.encode()).decode()}, [CALL_ID])
-            status, refused = fabric.call(PORT, "POST", f"/v1/scopes/{SCOPE}/transfers", runner, disguised)
-            stage.refused(f"executor sends it in base64      HTTP {status}  {refused['code']}")
+            stage.heading("Every way out is closed, and leaking has a price")
+            careless = stage.delegate(PORT, SCOPE, owner, "careless", "executor", NAME, ["transfer.send"])[1]["token"]
+            attempts = [
+                ("echoes the key", {"debug": "Authorization: Bearer " + key}),
+                ("sends it in base64", {"debug": base64.b64encode(("token=" + key).encode()).decode()}),
+                ("sends half of it", {"debug": key[: len(key) // 2]}),
+            ]
+            for number, (what, payload) in enumerate(attempts, 1):
+                leak = fabric.envelope(SCOPE, NAME, f"leak-{number}", "executor", "planner", "tool.result", payload, [CALL_ID])
+                status, refused = fabric.call(PORT, "POST", f"/v1/scopes/{SCOPE}/transfers", careless, leak)
+                stage.refused(f"a careless executor {what:<19} HTTP {status}  {refused['code']}, strike {refused.get('strikes')}")
+            status, refused = fabric.call(PORT, "GET", f"/v1/scopes/{SCOPE}/tokens/self", careless)
+            stage.refused(f"its token after three strikes          HTTP {status}  {refused['code']}")
             status, refused = ask(planner, "to-reviewer", "reviewer")
-            stage.refused(f"planner aims it at another agent HTTP {status}  {refused['code']}")
+            stage.refused(f"planner aims the key at another agent  HTTP {status}  {refused['code']}")
 
             stage.heading("Rotation and deletion take effect at once")
             key = secrets.token_urlsafe(KEY_BYTES)
@@ -120,6 +129,10 @@ def main():
             worker = executor(runner, SECOND_CALL)
             ask(planner, SECOND_CALL)
             worker.wait(TIMEOUT_SECONDS)
+            _, listed = fabric.call(PORT, "GET", f"/v1/scopes/{SCOPE}/secrets", owner)
+            counted = next(found for found in listed["secrets"] if found["name"] == SECRET)
+            last = datetime.fromtimestamp(counted["revealed"] / 1000).strftime("%H:%M:%S")
+            stage.note(f"custody counted {counted['reveals']} deliveries holding version {counted['version']}, the last at {last}")
             ask(planner, PENDING_CALL)
             status, _ = fabric.call(PORT, "DELETE", f"/v1/scopes/{SCOPE}/secrets/{SECRET}", owner)
             stage.note(f"DELETE secrets/{SECRET}  HTTP {status}  while {PENDING_CALL} waits for the executor")

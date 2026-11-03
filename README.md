@@ -20,7 +20,7 @@ All three recordings were made in Terminal on macOS against a locally built fabr
 
 ![A coordinator, a writer, and a reviewer work through one graph](website/template/public/team-demo.gif)
 
-**An agent using a key it never sees** ([examples/secrets](examples/secrets), [MP4](website/template/public/secrets-demo.mp4)). The owner gives a repository key to custody once. The planner learns that it exists and asks the executor to use it by name. Only the executor's delivery holds the value, which it uses against a local service that checks the bearer token. The stored envelope, the ledger, and the trace hold only a reference. Echoing the key, sending it in base64, or aiming it at another agent is refused. Rotation and deletion take effect on the very next call.
+**An agent using a key it never sees** ([examples/secrets](examples/secrets), [MP4](website/template/public/secrets-demo.mp4)). The owner gives a repository key to custody once. The planner learns that it exists and asks the executor to use it by name. Only the executor's delivery holds the value, which it uses against a local service that checks the bearer token. The stored envelope, the ledger, and the trace hold only a reference. An agent cannot be made an audience. Echoing the key, sending it in base64, or sending half of it is refused, and the third attempt revokes the careless executor's token. Every reveal is counted, and rotation and deletion take effect on the very next call.
 
 ![A planner uses a repository key through the executor without ever holding it](website/template/public/secrets-demo.gif)
 
