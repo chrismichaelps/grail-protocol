@@ -55,6 +55,8 @@ pudu run tools/Mutate.pudu --file src/Engine/Admission.pudu
 
 ## Documentation
 
+Run `python3 tools/TestCustody.py` for custody changes and main promotions. It builds the native fabric, exercises real localhost HTTP authorization and disclosure boundaries with fresh synthetic credentials, verifies that refusals preserve state, and checks that logs contain no tested credential.
+
 Run `python3 tools/TestExecutor.py` after changing the secrets executor. It verifies pinned requests, redirect refusal, proxy isolation, and credential-free results using local HTTP services and synthetic credentials.
 
 Keep the README short. Write task-based guides in `website/docs/`, normative protocol rules in `wiki/protocol/`, and wire changes only in the OpenAPI contract. Exercise the runnable examples with `python3 tools/TestGuides.py`. Build with `python3 tools/BuildDocs.py`; warnings must be fixed before publishing. See `website/README.md` for the source layout and preview command. Cloudflare hosts static documentation only. Keep API validation on localhost.
