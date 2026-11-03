@@ -13,6 +13,7 @@ export const RANKS: Map[Str, Int] = mapOf([
     ("Api", 4),
     ("Services", 5),
     ("App", 6),
+    ("Agent", 6),
     ("Web", 7),
     ("Cli", 7),
     ("Main", 8)
@@ -31,7 +32,8 @@ export const ALLOWED: Map[Str, Set[Str]] = mapOf([
     ("Services", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Config", "Validation", "Api", "Services"}),
     ("App", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Config", "Validation", "Services", "App"}),
     ("Web", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Config", "App", "Web"}),
-    ("Cli", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Config", "App", "Api", "Web", "Cli"})
+    ("Agent", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Api", "Agent"}),
+    ("Cli", #{"Constants", "Contract", "Utils", "Domain", "Engine", "Config", "App", "Api", "Agent", "Web", "Cli"})
   ])
 
 /// The package roots each folder may import.
@@ -41,6 +43,7 @@ export const PACKAGES: Map[Str, Set[Str]] = mapOf([
     ("Api", #{"PuduLangResilience", "PuduLangHttpClient", "PuduLangLog", "PuduLangMcp"}),
     ("Services", #{"PuduLangLog"}),
     ("App", #{"PuduLangMediator", "PuduLangLog", "PuduLangValidator", "PuduLangResilience"}),
+    ("Agent", #{"PuduLangMcp"}),
     ("Web", #{"PuduLangMediator", "PuduLangLog"}),
     ("Cli", #{"PuduLangMediator", "PuduLangLog"})
   ])

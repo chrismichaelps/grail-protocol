@@ -22,11 +22,13 @@ The reserved `owner` audience may be retained only by an owner parent. A non-own
 
 ```pudu
 /// The signing key of one scope, derived from the fabric secret.
-export fn scopeKey(secret: Str, scopeId: Str) -> Bytes { Crypto.hmacSha256Text(secret, Security.SCOPE_KEY_LABEL + scopeId) }
+export fn scopeKey(secret: Str, scopeId: Str) -> Bytes
 /// A token's wire form: its encoded claims, a dot, and its encoded signature.
 export fn encode(token: &Capability.Token, key: &Bytes) -> Str
 /// The claims of a token whose signature verifies under a key.
 export fn verify(text: Str, key: &Bytes) -> Result[Capability.Token, Problem.Problem]
+/// The claims a token states, read without checking its signature. Only for a client deciding which scope and graph to address; the fabric verifies the token on every call.
+export fn claimed(text: Str) -> Option[Capability.Token]
 /// What a presented token lets its holder do in a scope, or why it lets them do nothing.
 export fn authorize(text: Str, scopeId: Str, secret: Str, now: Int, revoked: &Set[Str]) -> Result[Capability.Authority, Problem.Problem]
 /// Whether an authority holds an ability.
@@ -36,7 +38,7 @@ export fn require(authority: &Capability.Authority, ability: Str, graph: Option[
 /// A narrower token for another participant, issued by the authority's holder.
 export fn delegate(authority: &Capability.Authority, request: &Capability.Request, secret: Str) -> Result[Str, Problem.Problem]
 /// A root token issued by the scope owner.
-export fn issue(claims: &Capability.Token, secret: Str) -> Str { encode(claims, &scopeKey(secret, claims.scopeId)) }
+export fn issue(claims: &Capability.Token, secret: Str) -> Str
 /// Whether a child token is a lawful narrowing of its parent.
 export fn narrows(parent: &Capability.Token, child: &Capability.Token) -> Bool
 ```
@@ -45,7 +47,7 @@ export fn narrows(parent: &Capability.Token, child: &Capability.Token) -> Bool
 
 - **Requires:** [[src/Constants/Details]] · [[src/Constants/Extras]] · [[src/Constants/Security]] · [[src/Contract/Limits]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Capability]] · [[src/Domain/Problem]] · [[src/Engine/Codec/Token]] · [[src/Utils/Canonical]]
 - **Standard library:** `Std.Bytes`, `Std.Crypto`, `Std.Json`, `Std.List`, `Std.Option`, `Std.Result`
-- **Consumed by:** [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Engine/AuthorityTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/Agent/Session]] · [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]]
 
 <!-- authored -->
 ## Algorithm

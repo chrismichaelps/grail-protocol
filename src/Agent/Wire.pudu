@@ -1,0 +1,87 @@
+/** @Agent.Wire.Envelopes — the envelopes an attached participant writes, and the compact form a model reads them in */
+module Agent.Wire
+
+import Std.Bytes as ByteSeq
+import Std.Json as Json
+import Std.Option as Option
+import Std.Random as Random
+import Std.Result as Result
+import Agent.Session as Session
+import Constants.Agent as Names
+import Constants.Fabric as Fabric
+import Contract.Members as Members
+import Contract.Vocabulary as Vocabulary
+import Utils.JsonRead as JsonRead
+
+/** @Agent.Wire.Draft — what a participant says, before it becomes an envelope */
+export type Draft = { target: Json.Json, kind: Str, payload: Option[Json.Json], parents: Array[Str], schema: Option[Str], visibility: Option[Str], key: Option[Str], priority: Option[Int], deadline: Option[Int] }
+
+/// A fresh transfer id for this participant: its id, the time, and random bytes, so ids sort roughly by creation and never collide.
+export fn freshId(session: &Session.Session) -> Str {
+  let drawn = Result.unwrapOr(Result.map(Random.secureBytes(Names.ID_ENTROPY_BYTES), |bytes: Bytes| ByteSeq.encodeHex(&bytes)), show(Session.now()))
+  session.participant + Names.ID_SEPARATOR + show(Session.now()) + Names.ID_SEPARATOR + drawn
+}
+
+/// The envelope a draft becomes when this participant sends it under an id.
+export fn envelope(session: &Session.Session, id: Str, draft: &Draft) -> Json.Json {
+  let delivery = Option.map(draft.key, |key: Str| Json.object(&[(Members.DELIVERY_MODE, Json.Text(Vocabulary.DELIVERY_EFFECTIVELY_ONCE)), (Members.DELIVERY_KEY, Json.Text(key))]))
+  JsonRead.objectOf(&[
+      (Members.ENVELOPE_GRAIL, Some(Json.Text(Fabric.PROTOCOLS[0]))),
+      (Members.ENVELOPE_ID, Some(Json.Text(id))),
+      (Members.ENVELOPE_SCOPE, Some(Json.Text(session.scopeId))),
+      (Members.ENVELOPE_GRAPH, Some(Json.Text(session.graph))),
+      (Members.ENVELOPE_SOURCE, Some(Json.Text(session.participant))),
+      (Members.ENVELOPE_TARGET, Some(draft.target)),
+      (Members.ENVELOPE_KIND, Some(Json.Text(draft.kind))),
+      (Members.ENVELOPE_PARENTS, if draft.parents.isEmpty() { None } else { Some(JsonRead.textList(&draft.parents)) }),
+      (Members.ENVELOPE_SCHEMA, Option.map(draft.schema, |named: Str| Json.Text(named))),
+      (Members.ENVELOPE_PAYLOAD, draft.payload),
+      (Members.ENVELOPE_DELIVERY, delivery),
+      (Members.ENVELOPE_PRIORITY, Option.map(draft.priority, |level: Int| Json.Number(level))),
+      (Members.ENVELOPE_DEADLINE, Option.map(draft.deadline, |at: Int| Json.Number(at))),
+      (Members.ENVELOPE_VISIBILITY, Option.map(draft.visibility, |named: Str| Json.Text(named)))
+    ])
+}
+
+/// A selector naming one participant or channel.
+export fn toParticipant(id: Str) -> Json.Json { Json.object(&[(Members.SELECTOR_PARTICIPANT, Json.Text(id))]) }
+
+/// The payload of prose, structured content, or both: the data with the prose added under `text`.
+export fn payloadOf(text: Option[Str], data: Option[Json.Json]) -> Option[Json.Json] {
+  match (text, data) {
+    case (Some(prose), Some(Json.Object(members))) => Some(Json.Object(members.filter(|member: (Str, Json.Json)| member[0] != Names.TEXT_MEMBER).push((Names.TEXT_MEMBER, Json.Text(prose)))))
+    case (Some(prose), _) => Some(Json.object(&[(Names.TEXT_MEMBER, Json.Text(prose))]))
+    case (None, Some(found)) => Some(found)
+    case (None, None) => None
+  }
+}
+
+/// The prose of a payload: its `text` member, or the payload itself written out.
+export fn proseOf(payload: &Option[Json.Json]) -> Str {
+  match *payload {
+    case Some(found) => Option.unwrapOr(JsonRead.text(&found, Names.TEXT_MEMBER), Json.encodePretty(&found))
+    case None => ""
+  }
+}
+
+/// One delivered or posted envelope as a model needs it: where it sits, who sent it, what it is, what it builds on, and, when it reached this participant through a channel, which one.
+export fn compact(session: &Session.Session, sequence: Int, written: &Json.Json) -> Json.Json {
+  let addressed = Option.andThen(Json.field(written, Members.ENVELOPE_TARGET), |target: Json.Json| JsonRead.text(&target, Members.SELECTOR_PARTICIPANT))
+  let via = Option.andThen(addressed, |id: Str| if id == session.participant { None } else { Some(Json.Text(id)) })
+  JsonRead.objectOf(&[
+      (Names.SEQUENCE_MEMBER, Some(Json.Number(sequence))),
+      (Members.ENVELOPE_ID, Json.field(written, Members.ENVELOPE_ID)),
+      (Members.ENVELOPE_KIND, Json.field(written, Members.ENVELOPE_KIND)),
+      (Names.FROM_MEMBER, Json.field(written, Members.ENVELOPE_SOURCE)),
+      (Names.VIA_MEMBER, via),
+      (Members.ENVELOPE_PARENTS, Json.field(written, Members.ENVELOPE_PARENTS)),
+      (Members.ENVELOPE_PAYLOAD, Json.field(written, Members.ENVELOPE_PAYLOAD))
+    ])
+}
+
+/// A page of deliveries or posts in compact form, with the cursor to pass back.
+export fn page(session: &Session.Session, body: &Json.Json) -> Json.Json {
+  let listed = Option.unwrapOr(JsonRead.list(body, Members.DELIVERY_PAGE_DELIVERIES), [])
+  let items = listed.map(|delivered: Json.Json| compact(session, Option.unwrapOr(JsonRead.whole(&delivered, Members.DELIVERED_SEQUENCE), 0), &Option.unwrapOr(Json.field(&delivered, Members.DELIVERED_ENVELOPE), Json.Null)))
+  Json.object(&[(Names.ITEMS_MEMBER, Json.List(items)), (Names.CURSOR_MEMBER, Option.unwrapOr(Json.field(body, Members.DELIVERY_PAGE_CURSOR), Json.Number(0)))])
+}

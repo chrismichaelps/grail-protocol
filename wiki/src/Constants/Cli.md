@@ -29,6 +29,10 @@ export const TOKEN: Str = "token"
 export const CALL: Str = "call"
 /// Carries a participant's context from one fabric to another.
 export const HANDOFF: Str = "handoff"
+/// Serves this participant's tools to a hosted model over standard input and output.
+export const AGENT: Str = "agent"
+/// Keeps this participant attached and starts a hosted agent for each task it receives.
+export const RUN: Str = "run"
 /// Prints the contract.
 export const CONTRACT: Str = "contract"
 /// Prints the version.
@@ -96,7 +100,26 @@ export const DAY_MILLIS: Int = 86400000
 /// The default base address of a remote fabric.
 export const FABRIC_DEFAULT: Str = "http://127.0.0.1:7420"
 /// How to use the executable.
-export const USAGE: Array[Str]
+export const USAGE: Array[Str] = [
+  "usage: grail <command> [options]",
+  "",
+  "  serve                       serve the HTTP binding (the default)",
+  "  lines                       serve the line binding on standard input and output",
+  "  token --scope S --id I      issue a scope owner's token",
+  "        [--audience A] [--abilities a,b] [--graph G] [--days N]",
+  "  call <operation>            call an operation of a remote fabric",
+  "        [--fabric URL] [--token T] [--params JSON] [--body JSON]",
+  "  handoff                     carry a participant's context to another fabric",
+  "        --from URL --from-token T --scope S --graph G --participant P",
+  "        --to URL --to-token T --to-scope S --to-graph G --to-participant P",
+  "        --id I --transfers a,b",
+  "  agent                       serve a participant's tools to a hosted model on standard input and output",
+  "                              reads GRAIL_FABRIC and GRAIL_TOKEN_FILE or GRAIL_TOKEN",
+  "  run --exec CMD              start CMD for each task the participant receives and answer it",
+  "        [--timeout MS] [--once]",
+  "  contract                    print the contract",
+  "  version                     print the version"
+]
 /// A command that needs an option it was not given.
 export const MISSING_OPTION: Str = "missing option "
 /// A command nobody knows.
@@ -109,8 +132,7 @@ export const NOT_JSON: Str = " is not JSON"
 
 ### Linkage
 
-- **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Cli/Commands]] · [[src/Main]]
+- **Consumed by:** [[src/Agent/Session]] · [[src/Cli/Commands]] · [[src/Main]]
 
 ## Referenced by
 
