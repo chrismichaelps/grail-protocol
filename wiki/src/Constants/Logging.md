@@ -46,7 +46,7 @@ export const EVENT_CHANGED: Str = "graph.changed"
 /// The notification of a delegated token.
 export const EVENT_DELEGATED: Str = "token.delegated"
 /// A token was revoked.
-export const REVOKED: Str = "revoked token \{Token\} and every token delegated from it"
+export const REVOKED: Str = "revoked a token and every token delegated from it"
 /// A payload was erased.
 export const ERASED: Str = "erased the payload of \{Transfer\} at \{Sequence\}"
 /// A secret was sealed into custody; the line names it, never its value.

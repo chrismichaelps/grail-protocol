@@ -117,8 +117,9 @@ export fn narrows(parent: &Capability.Token, child: &Capability.Token) -> Bool {
   let abilitiesHeld = !child.abilities.contains(Vocabulary.ABILITY_ALL) && List.all(&child.abilities, |ability: Str| parent.abilities.contains(ability) || parent.abilities.contains(Vocabulary.ABILITY_ALL))
   let graphHeld = parent.graph == None || child.graph == parent.graph
   let windowHeld = child.notBefore >= parent.notBefore && child.expires <= parent.expires && child.notBefore < child.expires
+  let principalHeld = child.audience != Security.OWNER || parent.audience == Security.OWNER
 
-  child.scopeId == parent.scopeId && child.parent == Some(parent.id) && child.issuer == parent.audience && abilitiesHeld && graphHeld && windowHeld
+  child.scopeId == parent.scopeId && child.parent == Some(parent.id) && child.issuer == parent.audience && abilitiesHeld && graphHeld && windowHeld && principalHeld
 }
 
 fn unauthorized() -> Problem.Problem { Problem.of(Codes.UNAUTHORIZED, Details.UNAUTHORIZED) }

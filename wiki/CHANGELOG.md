@@ -1,5 +1,14 @@
 # Changelog
 
+- 2026-11-02 · [[src/App/Events]] · revocation events omit raw caller-controlled identifiers; the native HTTP log regression checks a sensitive identifier canary · risk MED
+- 2026-11-02 · reference fabric 0.2.1 ships the reviewed custody/authorization security fixes, native localhost security CI, and an evidence-based review record; draft wire shapes remain 1.1 · risk HIGH
+
+- 2026-11-02 · [[src/Engine/Custody]] · custody revelation checks every non-owner issuer and the current graph/sender/kind policy; refused batches preserve delivery marks and reveal counts · risk HIGH
+- 2026-11-02 · custody exposure checks cover graph journals, exported handoff metadata, and secret metadata, including the incoming value; refusals preserve state and retain strikes · risk HIGH
+
+- 2026-11-02 · [[src/Engine/Authority]] · non-owner delegation cannot introduce the reserved owner principal; signed-chain and custody-delivery attacks reproduce and prevent escalation · risk HIGH
+- 2026-11-02 · the secrets executor refuses credential-bearing redirects and ignores implicit proxies; local HTTP regression tests cover direct calls, five redirect statuses, and unpinned paths · risk HIGH
+
 - 2026-11-02 · [[protocol/14-Custody]] · custody: secrets used by name, revealed only in deliveries to their audience, refused anywhere else; sealed, write-only storage; handoffs list what they need · risk HIGH · [[decisions/ADR-0010-custody]]
 
 - 2026-11-02 · [[protocol/13-Portability]] · protocol 1.1 and reference fabric 0.2.0: agents move between fabrics as sealed, self-verifying handoffs; two-fabric suite and full mutation kills · risk HIGH · [[decisions/ADR-0009-portable-handoffs]]

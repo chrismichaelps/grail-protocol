@@ -15,6 +15,13 @@ from settings import FABRIC, LINE_WIDTH, RESULT_ID, SERVICE_HOST, SERVICE_PORT, 
 PORT, SCOPE, GRAPH = FABRIC["port"], FABRIC["scope"], FABRIC["graph"]
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Credential-bearing calls stop at the pinned service, including on redirects."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def say(text):
     shown = text if len(text) <= LINE_WIDTH else text[:LINE_WIDTH - 1].rstrip() + "…"
     print(f"{'executor':<10} {shown}", flush=True)
@@ -48,11 +55,13 @@ def executor(token, wanted):
                 return
             request = urllib.request.Request(url, headers={"Authorization": "Bearer " + key})
             try:
-                with urllib.request.urlopen(request, timeout=10) as response:
+                opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+                with opener.open(request, timeout=10) as response:
                     releases = json.load(response)["releases"]
                     say(f"GET {asked['payload']['path']} -> HTTP {response.status}, {len(releases)} releases")
             except urllib.error.HTTPError as refused:
-                say(f"GET {asked['payload']['path']} -> HTTP {refused.code}")
+                with refused:
+                    say(f"GET {asked['payload']['path']} -> HTTP {refused.code}")
                 return
             answer = fabric.envelope(SCOPE, GRAPH, RESULT_ID + "-" + asked["id"], "executor", "planner", "tool.result", {"releases": releases}, [asked["id"]])
             status, receipt = fabric.call(PORT, "POST", f"/v1/scopes/{SCOPE}/transfers", token, answer)

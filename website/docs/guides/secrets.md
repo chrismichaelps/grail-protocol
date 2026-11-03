@@ -5,7 +5,7 @@ description: Let agents use API keys and passwords by name, without any model ev
 
 # Use keys without showing them to agents
 
-An agent that holds a key can be talked into repeating it. With custody, the agent never holds it. You give the key to the fabric once, and agents refer to it by name. The fabric hands the value only to the executor you name, at the moment it pulls its work, and refuses any message that tries to carry the value anywhere else.
+An agent that holds a key can be talked into repeating it. With custody, the agent never holds it. You give the key to the fabric once, and agents refer to it by name. The fabric hands the value only to the executor you name, at the moment it pulls its work, and blocks messages that carry the value in the plaintext and encoded forms covered by the tripwire.
 
 ## Give a key to custody
 
@@ -57,15 +57,23 @@ The ledger, traces, reads, and handoffs keep `{"$secret": "github"}`. When `exec
 
 `DELETE /v1/scopes/demo/secrets/github` destroys the key. Calls already waiting for delivery stop resolving at once.
 
+## Delegate executor access
+
+Issue executor tokens directly from the owner, or from another executor already authorized by that secret's audience. Giving an agent `token.delegate` does not let it acquire a key by minting a child token named after an executor: every non-owner issuer in the chain must also be an authorized executor. Pending calls are checked against the current sender and kind policy when a key rotates.
+
 ## Moving agents between fabrics
 
 A [handoff](handoffs.md) lists the secrets its context `needs` and never carries a value. The receiving owner deposits its own key under the same name.
 
 ## Good practice
 
+Descriptions, names, graph changes, and handoff identifiers are shared metadata. Custody refuses them if they contain a held value, including a new deposit's own value. Keep metadata descriptive rather than copying a credential into it.
+
+- Keep owner and `secret.manage` credentials out of model processes. Participant kinds are configured identities, not proof of which software holds a token.
 - Keep models out of every audience. The audience is for executors that make the external call.
 - Let the executor, not the request, decide where a key goes. Pin the destination host and accept only a plain path; see `pinned` in `examples/secrets/agents.py`.
-- Prefer `uses` and `expires` over long-lived keys, and rotate by putting the name again.
+- Refuse redirects on credential-bearing requests and disable implicit environment proxies. An initial host check alone does not constrain where a redirect or proxy sends the authorization header. The example executor contacts only its pinned local service.
+- Prefer `uses` and `expires` over long-lived keys, and rotate by putting the name again. Revoke the old credential at its provider too; changing the local binding does not revoke a provider credential.
 - Store only high-entropy values. Custody refuses values shorter than 12 characters.
 - Deposit only the secret part of a credential, such as the password rather than the whole connection URL, so shared text like a host name never matches the tripwire.
 - Watch `reveals` in the listing. A count that grows faster than your executor's work is worth a look.

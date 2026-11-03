@@ -14,7 +14,11 @@ tags: [module, services]
 
 Every operation of the protocol over one scope at a time.
 
+Graph creation and mutation apply the custody exposure guard to the submitted change, graph name, and actor before journaling. Refused graph writes persist the existing tripwire strikes but never graph revisions or ledger entries.
+
 Payload erasure requires `ledger.erase` and checks the stored envelope's graph against the token's graph restriction before changing state. An `owner` audience does not bypass a graph restriction. Refusal preserves the payload, erasure mark, digest, and ledger link.
+
+Custody revelation receives the verified caller authority. A batch refused by custody commits neither delivery acknowledgment marks nor reveal counters; a delegated executor identity alone is insufficient when its issuer lacked custody authority.
 
 ## Interface
 
@@ -51,8 +55,8 @@ export fn authorized[T](state: &Scope.State, call: &Request.Call[T], secret: Str
 
 ### Linkage
 
-- **Requires:** [[src/Constants/Details]] · [[src/Constants/Security]] · [[src/Constants/Server]] · [[src/Contract/Limits]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Capability]] · [[src/Domain/Envelope]] · [[src/Domain/Graph]] · [[src/Domain/Ledger]] · [[src/Domain/Lifecycle]] · [[src/Domain/Mutation]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Journal]] · [[src/Engine/Mutations]] · [[src/Services/Runtime]] · [[src/Services/Store]]
-- **Standard library:** `Std.Concurrent`, `Std.Math`, `Std.Option`, `Std.Result`
+- **Requires:** [[src/Constants/Details]] · [[src/Constants/Security]] · [[src/Constants/Server]] · [[src/Contract/Limits]] · [[src/Contract/Members]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Capability]] · [[src/Domain/Envelope]] · [[src/Domain/Graph]] · [[src/Domain/Ledger]] · [[src/Domain/Lifecycle]] · [[src/Domain/Mutation]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Journal]] · [[src/Engine/Mutations]] · [[src/Services/Runtime]] · [[src/Services/Store]]
+- **Standard library:** `Std.Concurrent`, `Std.Json`, `Std.Math`, `Std.Option`, `Std.Result`
 - **Consumed by:** [[src/App/Handlers]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Handoffs]]
 
 ## Referenced by

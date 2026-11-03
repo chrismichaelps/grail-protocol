@@ -38,6 +38,7 @@ Layers 0 through 3 other than `Config/` are pure: they may not read the clock, t
 - [[architecture/LANGUAGE]] — the vocabulary every page uses.
 - [[architecture/LAYERS]] — the dependency layer gate.
 - [[architecture/CONTRACT]] — how one schema file drives the bindings.
+- [[architecture/SECURITY-REVIEW-2026-11-02]] — custody findings, corrections, and operating boundaries.
 - [[architecture/SECURITY]] — threats and the control in each layer.
 - [[architecture/ATTACKS]] — the attack and stress campaign, what broke, and how it was fixed.
 - [[architecture/CODE_STYLE]] — spacing, constants, and comments.
@@ -48,7 +49,7 @@ Layers 0 through 3 other than `Config/` are pure: they may not read the clock, t
 | --- | --- |
 | Modules | 95 in `src/`, 0 refused imports, 0 cycles |
 | Deepest module | [[src/Main]] at structural depth 15 |
-| Suites | 15 suites, 375 assertions; tool suites 29 assertions |
+| Suites | 18 suites, 428 assertions; tool suites 29 assertions |
 | Seams | [[seams/ScopeStore]] EXPLORATORY · [[seams/RpcBridge]] EXPLORATORY · [[seams/PeerTransport]] EXPLORATORY |
 | Conformance | every check of [[protocol/11-Conformance#11.2 Required checks]], Portable and Custody included, has a test |
 

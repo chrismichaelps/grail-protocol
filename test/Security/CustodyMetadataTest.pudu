@@ -1,0 +1,78 @@
+/** @Test.Security.CustodyMetadata.Suite — public metadata and graph journals cannot carry held values */
+module Security.CustodyMetadataTest
+
+import Std.Http as Http
+import Std.Json as Json
+import Std.Option as Option
+import Std.Test as Test
+import App.Assembly as Assembly
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Support.Fabric as Fabric
+import Support.Runner as Runner
+import Utils.JsonRead as JsonRead
+
+const KEY: Str = "synthetic-metadata-canary-92741"
+
+fn deposit(value: Str, description: Str) -> Str {
+  Json.encode(&Json.object(&[("value", Json.Text(value)), ("graph", Json.Text("g")), ("audience", Json.List([Json.Text("executor")])), ("description", Json.Text(description))]))
+}
+
+fn exposes(answer: &Fabric.Answer) -> Bool { Json.encode(&answer.body).contains(KEY) }
+
+fn main() -> Int {
+  let router = match Fabric.start() {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Custody metadata", &[Test.that("the fabric starts: " + reason, false)])) }
+  }
+  let root = Fabric.owner("demo")
+  let base = "/v1/scopes/demo"
+  let draft = "\{\"participants\":[\{\"id\":\"planner\",\"kind\":\"agent\"\},\{\"id\":\"executor\",\"kind\":\"tool\"\}],\"edges\":[\{\"id\":\"flow\",\"from\":\"planner\",\"to\":\"executor\",\"relation\":\"flow\"\}]\}"
+  let graph = Fabric.sent(&router, Http.Put, base + "/graphs/g", root, draft)
+  let held = Fabric.sent(&router, Http.Put, base + "/secrets/key", root, deposit(KEY, "safe purpose"))
+  let writer = Fabric.delegated(&router, root, "writer", "executor", &[Vocabulary.ABILITY_GRAPH_WRITE], "g", Assembly.now() + 600000)
+  let anchored = Fabric.sent(&router, Http.Post, base + "/transfers", root, "\{\"grail\":\"1.1\",\"id\":\"anchor\",\"scope\":\"demo\",\"graph\":\"g\",\"source\":\"planner\",\"target\":\{\"participant\":\"executor\"\},\"kind\":\"memory\"\}")
+  let before = Fabric.sent(&router, Http.Get, base + "/ledger", root, "")
+  let mutation = "\{\"expectedRevision\":1,\"operations\":[\{\"op\":\"add-participant\",\"participant\":\{\"id\":\"leak\",\"kind\":\"agent\",\"roles\":[\"" + KEY + "\"]\}\}]\}"
+  let leaked = Fabric.sent(&router, Http.Post, base + "/graphs/g/mutations", writer, mutation)
+  let second = Fabric.sent(&router, Http.Post, base + "/graphs/g/mutations", writer, mutation)
+  let third = Fabric.sent(&router, Http.Post, base + "/graphs/g/mutations", writer, mutation)
+  let afterStrikes = Fabric.sent(&router, Http.Get, base + "/tokens/self", writer, "")
+  let created = Fabric.sent(&router, Http.Put, base + "/graphs/" + KEY, root, draft)
+  let missing = Fabric.sent(&router, Http.Get, base + "/graphs/" + KEY, root, "")
+  let read = Fabric.sent(&router, Http.Get, base + "/graphs/g", root, "")
+  let exporter = Fabric.delegated(&router, root, "exporter", "executor", &[Vocabulary.ABILITY_HANDOFF_EXPORT], "g", Assembly.now() + 600000)
+  let exported = Fabric.sent(&router, Http.Post, base + "/graphs/g/participants/executor/handoffs", exporter, "\{\"id\":\"" + KEY + "\",\"transfers\":[\"anchor\"]\}")
+  let metadata = Fabric.sent(&router, Http.Put, base + "/secrets/other", root, deposit("different-key-5728193", KEY))
+  let own = Fabric.sent(&router, Http.Put, base + "/secrets/own", root, deposit("own-metadata-key-61937", "own-metadata-key-61937"))
+  let named = Fabric.sent(&router, Http.Put, base + "/secrets/named-key-5192847", root, deposit("named-key-5192847", "safe purpose"))
+  let rotation = Fabric.sent(&router, Http.Put, base + "/secrets/key", root, deposit("replacement-key-1937284", KEY))
+  let list = Fabric.sent(&router, Http.Get, base + "/secrets", root, "")
+  let after = Fabric.sent(&router, Http.Get, base + "/ledger", root, "")
+  let safe = Fabric.sent(&router, Http.Put, base + "/secrets/safe", root, deposit("safe-value-key-6291738", "release access"))
+  let safeChange = Fabric.sent(&router, Http.Post, base + "/graphs/g/mutations", root, "\{\"expectedRevision\":1,\"operations\":[\{\"op\":\"add-participant\",\"participant\":\{\"id\":\"reviewer\",\"kind\":\"agent\"\}\}]\}")
+  let checks = Test.suite("Custody metadata", &[
+      Test.equals("the export anchor is accepted", &anchored.status, &202),
+      Test.equals("the graph and held key exist", &[graph.status, held.status], &[201, 201]),
+      Test.equals("graph metadata cannot carry a held value", &Fabric.code(&leaked), &Codes.SECRET_EXPOSED),
+      Test.equals("each refused graph write is struck", &[JsonRead.whole(&leaked.body, "strikes"), JsonRead.whole(&second.body, "strikes"), JsonRead.whole(&third.body, "strikes")], &[Some(1), Some(2), Some(3)]),
+      Test.equals("the third graph leak revokes its token", &afterStrikes.status, &401),
+      Test.not("a refusal never repeats the submitted value", exposes(&leaked)),
+      Test.equals("refused mutation preserves the revision", &JsonRead.whole(&read.body, "revision"), &Some(1)),
+      Test.not("the graph never holds the value", exposes(&read)),
+      Test.equals("handoff metadata cannot carry a held value", &Fabric.code(&exported), &Codes.SECRET_EXPOSED),
+      Test.not("a refused export never repeats the value", exposes(&exported)),
+      Test.equals("graph creation cannot expose a held value in its name", &Fabric.code(&created), &Codes.SECRET_EXPOSED),
+      Test.equals("the refused graph does not exist", &Fabric.code(&missing), &Codes.NOT_FOUND),
+      Test.equals("a public description cannot carry another held value", &Fabric.code(&metadata), &Codes.SECRET_EXPOSED),
+      Test.equals("a public description cannot carry its own new value", &Fabric.code(&own), &Codes.SECRET_EXPOSED),
+      Test.equals("a secret name cannot be its own value", &Fabric.code(&named), &Codes.SECRET_EXPOSED),
+      Test.equals("rotation checks the old value before replacing it", &Fabric.code(&rotation), &Codes.SECRET_EXPOSED),
+      Test.not("the listing never holds the value", exposes(&list)),
+      Test.equals("refused metadata leaves only the original version", &Option.map(JsonRead.list(&list.body, "secrets"), |values: Array[Json.Json]| values.length()), &Some(1)),
+      Test.equals("refused writes leave the ledger unchanged", &after.body, &before.body),
+      Test.equals("ordinary metadata and graph writes remain available", &[safe.status, safeChange.status], &[201, 200])
+    ])
+
+  Runner.finish(&checks)
+}

@@ -53,6 +53,10 @@ jobs:
           pudu run tools/ContractTest.pudu
       - name: Documented local workflows
         run: python3 tools/TestGuides.py
+      - name: Executor credential boundary
+        run: python3 tools/TestExecutor.py
+      - name: Native localhost custody boundaries
+        run: python3 tools/TestCustody.py
       - name: Documentation
         run: python3 tools/BuildDocs.py
       - name: Test

@@ -1,0 +1,51 @@
+/** @Test.Security.Delegation.Suite — delegation cannot create the reserved owner principal */
+module Security.DelegationTest
+
+import Std.Http as Http
+import Std.Json as Json
+import Std.Option as Option
+import Std.Test as Test
+import App.Assembly as Assembly
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Support.Fabric as Fabric
+import Support.Runner as Runner
+import Utils.JsonRead as JsonRead
+
+fn main() -> Int {
+  let router = match Fabric.start() {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Delegation", &[Test.that("the fabric starts: " + reason, false)])) }
+  }
+  let root = Fabric.owner("demo")
+  let base = "/v1/scopes/demo"
+  let graph = "\{\"participants\":[\{\"id\":\"planner\",\"kind\":\"agent\"\},\{\"id\":\"executor\",\"kind\":\"tool\"\}],\"edges\":[\{\"id\":\"flow\",\"from\":\"planner\",\"to\":\"executor\",\"relation\":\"flow\"\}]\}"
+  let created = Fabric.sent(&router, Http.Put, base + "/graphs/g", root, graph)
+  let abilities = [Vocabulary.ABILITY_TOKEN_DELEGATE, Vocabulary.ABILITY_TRANSFER_RECEIVE]
+  let expiry = Assembly.now() + 600000
+  let planner = Fabric.delegated(&router, root, "planner", "planner", &abilities, "g", expiry)
+  let deposit = Fabric.sent(&router, Http.Put, base + "/secrets/key", root, "\{\"value\":\"synthetic-custody-canary-92741\",\"graph\":\"g\",\"audience\":[\"executor\"]\}")
+  let sent = Fabric.sent(&router, Http.Post, base + "/transfers", root, "\{\"grail\":\"1.1\",\"id\":\"call\",\"scope\":\"demo\",\"graph\":\"g\",\"source\":\"planner\",\"target\":\{\"participant\":\"executor\"\},\"kind\":\"tool.call\",\"payload\":\{\"auth\":\{\"$secret\":\"key\"\}\}\}")
+  let direct = Fabric.sent(&router, Http.Get, base + "/graphs/g/participants/executor/deliveries", planner, "")
+  let asked = Json.encode(&Json.object(&[("id", Json.Text("escalation")), ("audience", Json.Text("owner")), ("graph", Json.Text("g")), ("abilities", JsonRead.textList(&abilities)), ("expires", Json.Number(expiry - 1000))]))
+  let escalated = Fabric.sent(&router, Http.Post, base + "/tokens", planner, asked)
+  let attackToken = Option.unwrapOr(JsonRead.text(&escalated.body, "token"), "")
+  let stolen = Fabric.sent(&router, Http.Get, base + "/graphs/g/participants/executor/deliveries", attackToken, "")
+  let revoked = Fabric.sent(&router, Http.Post, base + "/tokens/root/revocation", attackToken, "")
+  let ordinary = Fabric.delegated(&router, planner, "ordinary", "worker", &[Vocabulary.ABILITY_TRANSFER_RECEIVE], "g", expiry - 1000)
+  let stillRoot = Fabric.sent(&router, Http.Get, base + "/tokens/self", root, "")
+  let checks = Test.suite("Delegation", &[
+      Test.equals("the graph and secret exist", &[created.status, deposit.status], &[201, 201]),
+      Test.that("the planner's delegated token exists", !planner.isEmpty()),
+      Test.equals("the secret-bearing call is accepted", &sent.status, &202),
+      Test.equals("the planner cannot directly pull the executor", &Fabric.code(&direct), &Codes.FORBIDDEN),
+      Test.equals("a non-owner cannot delegate the reserved owner audience", &Fabric.code(&escalated), &Codes.FORBIDDEN),
+      Test.that("refused delegation issues no token", attackToken.isEmpty()),
+      Test.not("delegation cannot retrieve an executor's custody value", Json.encode(&stolen.body).contains("synthetic-custody-canary-92741")),
+      Test.equals("delegation cannot revoke the root token", &revoked.status, &401),
+      Test.equals("the root token remains usable", &stillRoot.status, &200),
+      Test.that("ordinary narrowed delegation still works", !ordinary.isEmpty())
+    ])
+
+  Runner.finish(&checks)
+}
