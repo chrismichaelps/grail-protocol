@@ -7,6 +7,7 @@ import Std.Option as Option
 import Std.Result as Result
 import Constants.Fabric as Fabric
 import Constants.Security as Security
+import Contract.Limits as Limits
 import Contract.Version as Version
 import PuduLangHttpClient.Client as Client
 import PuduLangHttpClient.Content as Content
@@ -17,6 +18,7 @@ import PuduLangHttpClient as Outbound
 import PuduLangHttpClient.Request as Request
 import PuduLangHttpClient.Response as Response
 import PuduLangResilience.Pipeline as Pipeline
+import PuduLangResilience.Timeout as Timeout
 
 /** @Api.Peer.Peer — a client bound to one fabric and one token */
 export type Peer = { client: Client.Client }
@@ -24,14 +26,17 @@ export type Peer = { client: Client.Client }
 /** @Api.Peer.Answer — a status and the JSON it carried */
 export type Answer = { status: Int, body: Json.Json }
 
-/// A peer at a base address, presenting a token, with retries, a circuit breaker, and timeouts.
+/// A peer at a base address, presenting a token, with retries, a circuit breaker, and timeouts. One attempt may last as long as the longest wait a pull or a channel read may ask for, so a long poll is never cut off and retried as if it had failed.
 export fn connect(base: Str, token: Str) -> Result[Peer, Str] {
-  let guarding = Result.mapErr(Resilience.standard(), |invalid: Pipeline.Invalid| Pipeline.explain(&invalid)) ?
+  let standard = Resilience.standardOptions()
+  let attempt = Limits.WAIT_MAX + Fabric.PEER_GRACE_MILLIS
+  let options = Resilience.Standard{..standard, attemptTimeout: Timeout.after(attempt), totalRequestTimeout: Timeout.after(attempt * Fabric.PEER_ATTEMPTS)}
+  let guarding = Result.mapErr(Resilience.standardWith(&options), |invalid: Pipeline.Invalid| Pipeline.explain(&invalid)) ?
   let builder = Builder.named(Fabric.PEER_CLIENT)
     .withBaseAddress(base)
     .withDefaultHeader(Version.HEADER_AUTHORIZATION, Security.BEARER_PREFIX + token)
     .withDefaultHeader(Version.HEADER_VERSION, Fabric.PROTOCOLS[0])
-    .withTimeout(Fabric.PEER_TIMEOUT_MILLIS)
+    .withTimeout(attempt * Fabric.PEER_ATTEMPTS)
     .withHandler(Resilience.handler(guarding))
   let factory = Result.mapErr(Factory.build([builder]), |invalid: Factory.Invalid| Factory.explain(&invalid)) ?
   Ok(Peer{client: Factory.createClient(&factory, Fabric.PEER_CLIENT)})

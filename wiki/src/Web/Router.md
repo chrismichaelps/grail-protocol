@@ -23,6 +23,8 @@ The HTTP routes, built from the contract's operations and nothing else.
 export fn router(app: &Assembly.App) -> Result[Route.Router, Str]
 /// The hardening every request passes: a request identity, protective headers, sharing with listed origins only, a rate limit, a concurrency bound, and a deadline. Same-site form protection is left out on purpose: every operation is authorized by a bearer token, never by a cookie.
 export fn middleware(settings: &Settings.Settings) -> Array[Route.Middleware]
+/// Answers a browser's preflight from a listed origin before any route sees it, so a page on that origin can present a token. The permission headers themselves come from the sharing guard around this step; an unlisted origin falls through and is refused like any other method a path does not offer.
+export fn preflighted(origins: &Array[Str]) -> Route.Middleware
 /// Answers a method a contract path does not offer with a problem document, like every other refusal, in place of the server's plain text.
 export fn refusing() -> Route.Middleware
 ```
@@ -30,8 +32,8 @@ export fn refusing() -> Route.Middleware
 ### Linkage
 
 - **Requires:** [[src/App/Assembly]] · [[src/Config/Settings]] · [[src/Constants/Details]] · [[src/Constants/Http]] · [[src/Constants/Server]] · [[src/Constants/Text]] · [[src/Contract/Operations]] · [[src/Contract/Problems]] · [[src/Domain/Problem]] · [[src/Web/Caller]] · [[src/Web/Handlers]] · [[src/Web/Peers]] · [[src/Web/Respond]]
-- **Standard library:** `Std.Http`, `Std.Http.Server.Guard`, `Std.Http.Server.Route`, `Std.Option`
-- **Consumed by:** [[src/Cli/Commands]] · [[src/Main]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
+- **Standard library:** `Std.Http`, `Std.Http.Server.Guard`, `Std.Http.Server.Reply`, `Std.Http.Server.Route`, `Std.Option`
+- **Consumed by:** [[src/Cli/Commands]] · [[src/Main]]
 
 <!-- authored -->
 ## Algorithm

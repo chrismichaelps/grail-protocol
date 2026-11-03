@@ -3,6 +3,7 @@ module Web.Router
 
 import Std.Http as Http
 import Std.Http.Server.Guard as Guard
+import Std.Http.Server.Reply as Reply
 import Std.Http.Server.Route as Route
 import Std.Option as Option
 import App.Assembly as Assembly
@@ -35,11 +36,26 @@ export fn router(app: &Assembly.App) -> Result[Route.Router, Str] {
 /// The hardening every request passes: a request identity, protective headers, sharing with listed origins only, a rate limit, a concurrency bound, and a deadline. Same-site form protection is left out on purpose: every operation is authorized by a bearer token, never by a cookie.
 export fn middleware(settings: &Settings.Settings) -> Array[Route.Middleware] {
   let sharing = Guard.Sharing{origins: Settings.origins(settings), methods: Names.SHARED_METHODS, headers: Names.SHARED_HEADERS, credentials: false}
-  [Guard.identified(), Guard.protectedHeaders(), Guard.shared(&sharing), Peers.byHost(settings.clientIpHeader), refusing()].concat([
+  [Guard.identified(), Guard.protectedHeaders(), Guard.shared(&sharing), preflighted(&Settings.origins(settings)), Peers.byHost(settings.clientIpHeader), refusing()].concat([
       Guard.rateLimited(Capacity.RATE_REQUESTS, Capacity.RATE_WINDOW_SECONDS),
       Guard.boundedConcurrency(Capacity.INFLIGHT_MAX),
       Guard.timeout(Capacity.HANDLER_TIMEOUT_MILLIS)
     ])
+}
+
+/// Answers a browser's preflight from a listed origin before any route sees it, so a page on that origin can present a token. The permission headers themselves come from the sharing guard around this step; an unlisted origin falls through and is refused like any other method a path does not offer.
+export fn preflighted(origins: &Array[Str]) -> Route.Middleware {
+  let listed = origins.map(|origin: Str| origin.toLower())
+
+  |request: Route.Request, next: Route.Handler| {
+    let origin = Option.map(Route.header(&request, Names.ORIGIN_HEADER), |given: Str| given.trim().toLower())
+    let asking = request.message.method == Http.Options && Option.isSome(&Route.header(&request, Names.REQUEST_METHOD_HEADER))
+
+    if !asking || !Option.holds(&origin, |given: Str| listed.contains(given)) { return next(request) }
+
+    let answered = Reply.empty(Names.PREFLIGHT_STATUS)
+    Http.Response{..answered, headers: answered.headers.concat([(Names.MAX_AGE_HEADER, show(Names.PREFLIGHT_MAX_AGE_SECONDS)), (Names.PRIVATE_NETWORK_HEADER, Names.PRIVATE_NETWORK_ALLOWED)])}
+  }
 }
 
 /// Answers a method a contract path does not offer with a problem document, like every other refusal, in place of the server's plain text.
