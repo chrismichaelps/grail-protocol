@@ -16,7 +16,13 @@ Declare who can exchange information, which results a step depends on, and what 
 
 ## See it run
 
-All three recordings were made in Terminal on macOS against a locally built fabric. Nothing in them is staged; every answer is the fabric's.
+**Slack → Grail → Codex → Grail → Slack** ([full video](https://grail-protocol.chrisperezsantiago1.workers.dev/slack-codex-demo.mp4), [receipts and setup](examples/slack)). A task posted in Slack reaches a real Codex CLI worker through Grail. The worker returns corrected Python to the same Slack thread. The exchange checks retries, source impersonation, causal ancestry, and ledger hashes.
+
+![A Slack task reaches a real Codex worker through Grail and its answer returns to Slack](website/template/public/slack-codex-demo.gif)
+
+This edited walkthrough shows actual Slack desktop captures and live Codex CLI output. The recording session operates the Slack gateway; it is not an always-on Slack bot. The worker uses no MCP connection to Grail.
+
+The three Terminal recordings below were made on macOS against a locally built fabric. Every protocol answer is the fabric's.
 
 **A team inside one fabric** ([examples/team](examples/team), [MP4](website/template/public/team-demo.mp4)). A review asked for too early is refused by a dependency edge. The writer cannot hand a helper more than it holds. A note sent only to the reviewer is invisible to the writer. Revoking the writer also revokes the helper token it issued, and the verdict's trace and ledger links are checked at the end.
 
