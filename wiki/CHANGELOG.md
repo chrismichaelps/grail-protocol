@@ -1,5 +1,7 @@
 # Changelog
 
+- 2026-11-02 · current README, quick-start, and contribution guidance reflect public repository access; prerequisites name Git and OpenSSL alongside Pudu and curl · risk LOW
+
 - 2026-11-02 · [[src/App/Events]] · revocation events omit raw caller-controlled identifiers; the native HTTP log regression checks a sensitive identifier canary · risk MED
 - 2026-11-02 · reference fabric 0.2.1 ships the reviewed custody/authorization security fixes, native localhost security CI, and an evidence-based review record; draft wire shapes remain 1.1 · risk HIGH
 

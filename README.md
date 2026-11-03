@@ -34,7 +34,7 @@ Grail is a draft proposal with a reference fabric written in Pudu. The API runs 
 
 ## Run locally
 
-Invited testers need access to this private repository. Install [Pudu 0.1.3](https://github.com/chrismichaelps/pudu-lang/releases/tag/v0.1.3), then:
+Clone the public repository after installing [Pudu 0.1.3](https://github.com/chrismichaelps/pudu-lang/releases/tag/v0.1.3). Have `git`, `openssl`, and `curl` available in your terminal:
 
 ```bash
 git clone https://github.com/chrismichaelps/grail-protocol.git
