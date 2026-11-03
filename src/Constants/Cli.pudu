@@ -16,6 +16,12 @@ export const CALL: Str = "call"
 /// Carries a participant's context from one fabric to another.
 export const HANDOFF: Str = "handoff"
 
+/// Serves this participant's tools to a hosted model over standard input and output.
+export const AGENT: Str = "agent"
+
+/// Keeps this participant attached and starts a hosted agent for each task it receives.
+export const RUN: Str = "run"
+
 /// Prints the contract.
 export const CONTRACT: Str = "contract"
 
@@ -129,6 +135,10 @@ export const USAGE: Array[Str] = [
   "        --from URL --from-token T --scope S --graph G --participant P",
   "        --to URL --to-token T --to-scope S --to-graph G --to-participant P",
   "        --id I --transfers a,b",
+  "  agent                       serve a participant's tools to a hosted model on standard input and output",
+  "                              reads GRAIL_FABRIC and GRAIL_TOKEN_FILE or GRAIL_TOKEN",
+  "  run --exec CMD              start CMD for each task the participant receives and answer it",
+  "        [--timeout MS] [--once]",
   "  contract                    print the contract",
   "  version                     print the version"
 ]

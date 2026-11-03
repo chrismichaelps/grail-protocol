@@ -13,6 +13,7 @@ The fabric resolves an envelope's `target` against the graph named by `graph`:
 - `{"participant": p}` resolves to `p` when a `flow` edge from `source` to `p` exists whose `kinds` is empty or contains the envelope's kind.
 - `{"role": r}` resolves to every participant holding role `r` that `source` reaches through such an edge.
 - `{"ability": a}` resolves the same way for participants advertising ability `a`.
+- A resolved participant of kind `channel` stands for its subscribers other than the sender ([[protocol/15-Channels#15.2 Posting]]).
 
 If the selector resolves to no participant the envelope is refused with `grail.no-route`. A sender that is not a participant of the graph is refused with `grail.not-found`.
 
@@ -66,7 +67,7 @@ submitted ──► working ──► completed
 | Request and response | `task` to a participant, then `result` naming it as parent. The sender waits on the lifecycle. |
 | Fire and forget | Any recorded kind with `at-most-once`. |
 | Streaming | `stream.open`, any number of `stream.chunk`, `stream.close`, each naming the open as parent. |
-| Publish and subscribe | Role or ability targeting. |
+| Publish and subscribe | Role or ability targeting, or a channel that keeps what was posted readable ([[protocol/15-Channels]]). |
 | Workflow | Dependency edges between participants. |
 | Debate, hierarchy, market | Graph shape: cycles of flow edges, trees of delegation, or many participants sharing an ability. |
 

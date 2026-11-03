@@ -31,7 +31,7 @@ export fn createGraph(runtime: &Runtime.Runtime, call: &Request.Call[Request.Cre
 export fn readGraph(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Graph.Graph, Problem.Problem]
 /// Applies a mutation and records it.
 export fn mutateGraph(runtime: &Runtime.Runtime, call: &Request.Call[Request.Change]) -> Result[Graph.Graph, Problem.Problem]
-/// Admits an envelope, or answers the original receipt of a repeated delivery key. Custody refuses an envelope that holds a secret's value and counts each reference it makes.
+/// Admits an envelope, or answers the original receipt of a repeated delivery key. Custody refuses an envelope that holds a secret's value, strikes the token that sent it, and counts each reference it makes.
 export fn send(runtime: &Runtime.Runtime, call: &Request.Call[Request.Sending]) -> Result[Transfer.Receipt, Problem.Problem]
 /// Reads an envelope and where its lifecycle stands.
 export fn readTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Transfer.View, Problem.Problem]
@@ -39,6 +39,8 @@ export fn readTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> R
 export fn traceTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Request.Traced, Problem.Problem]
 /// Reads deliveries for the participant the token acts for, acknowledging everything up to the cursor; with a wait, looks again until one arrives or the wait runs out. Secret references are revealed here and only here, for recipients in the secret's audience.
 export fn pullDeliveries(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem]
+/// Reads what was posted to a channel for the owner or one of the channel's subscribers, acknowledging nothing; with a wait, looks again until a post arrives or the wait runs out. Anyone else is told the channel does not exist.
+export fn readChannel(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem]
 /// Reads a range of the ledger.
 export fn readLedger(runtime: &Runtime.Runtime, call: &Request.Call[Request.Paging]) -> Result[Transfer.Page, Problem.Problem]
 /// Issues a narrower token to another participant.

@@ -27,11 +27,12 @@ Dependencies point down the table only. A module may import from its own row's f
 | 4 | Api | `Api/` | the JSON-RPC inspection of the bridge; the peer client | mcp, httpclient, resilience, log, Engine and below |
 | 5 | Services | `Services/` | the store, the runtime, the use cases, the bridge carrier | Api, Engine, Validation, Config and below |
 | 6 | App | `App/` | messages, handlers, pipeline, resilience guards, notifications, commands | mediator, log, validator, resilience, Services and below |
+| 6 | Agent | `Agent/` | a participant attached to a fabric as a client: its session, its tools for hosted models, the tool protocol server, the task runner | mcp, Api, Engine and below |
 | 7 | Web | `Web/` | router, handlers, responses, description gate, line binding | App, Engine, Config and below |
-| 7 | Cli | `Cli/` | commands of the `grail` executable | App, Api, Web, Engine, Config and below |
+| 7 | Cli | `Cli/` | commands of the `grail` executable | App, Agent, Api, Web, Engine, Config and below |
 | 8 | Entry | `Main` | process start | everything |
 
-Layers 0 through 3 other than `Config/` are pure: they may not read the clock, the network, files, randomness, or the environment. `Web/` and `Cli/` never reach `Services/`: every action is a message, so authorization, validation, and limits cannot be skipped by an interface.
+Layers 0 through 3 other than `Config/` are pure: they may not read the clock, the network, files, randomness, or the environment. `Web/` and `Cli/` never reach `Services/`: every action is a message, so authorization, validation, and limits cannot be skipped by an interface. `Agent/` never reaches `App/` or `Services/` either: it is a client of a fabric and goes through the HTTP binding like any other program ([[decisions/ADR-0011-channels-and-hosted-agents]]).
 
 ## Pages
 
@@ -47,11 +48,11 @@ Layers 0 through 3 other than `Config/` are pure: they may not read the clock, t
 
 | Measure | Now |
 | --- | --- |
-| Modules | 95 in `src/`, 0 refused imports, 0 cycles |
+| Modules | 102 in `src/`, 0 refused imports, 0 cycles |
 | Deepest module | [[src/Main]] at structural depth 15 |
-| Suites | 18 suites, 428 assertions; tool suites 29 assertions |
+| Suites | 21 suites, 521 assertions; tool suites 29 assertions |
 | Seams | [[seams/ScopeStore]] EXPLORATORY · [[seams/RpcBridge]] EXPLORATORY · [[seams/PeerTransport]] EXPLORATORY |
-| Conformance | every check of [[protocol/11-Conformance#11.2 Required checks]], Portable and Custody included, has a test |
+| Conformance | every check of [[protocol/11-Conformance#11.2 Required checks]], Portable, Custody, and Channels included, has a test |
 
 ## Referenced by
 

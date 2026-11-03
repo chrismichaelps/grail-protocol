@@ -39,6 +39,7 @@ Grail is designed so that:
 | [[domain/Fabric\|Fabric]] | The service that hosts scopes and graphs, routes transfers, keeps the ledger, and enforces isolation. |
 | [[domain/Ledger\|Ledger]] | The append-only, hash-linked record of accepted envelopes in a scope. |
 | [[domain/Capability\|Capability token]] | A signed, expiring grant of abilities over a scope or a graph, which may be delegated with narrower abilities. |
+| [[domain/Channel\|Channel]] | A participant that never acts: it hands each post to its subscribers and keeps every post readable in order. |
 | [[domain/Handoff\|Handoff]] | A sealed, self-verifying document holding a participant's context, carried from one fabric to another. |
 
 ## 1.4 Relationship to tool protocols
@@ -62,6 +63,8 @@ Tool protocols describe a session between one client and one server, and their s
 An owner holds the root token of a scope and rarely uses it directly. It creates a graph, gives an orchestrating agent a token bound to that graph with the abilities to change it and delegate, and steps back. The orchestrator adds participants as it needs them (a researcher, a writer, a reviewer, a tool server reached through the bridge, a person who approves) and gives each a narrower token that can do only its part. Every participant, wherever it runs, pulls its deliveries with a long wait, answers the tasks it receives, and names what it used as parents. When the orchestrator needs the writer to wait for the researcher, it adds a dependency edge instead of writing a scheduler. When it needs a person, it sends `input.request` and the task waits. When anyone asks how a result was produced, the trace answers from the ledger. When a subagent misbehaves, the orchestrator revokes its token and every token it handed on.
 
 When the work has to continue somewhere else (a coding assistant handing a task to a support desk, or a research tool handing findings to a writing app), the orchestrator exports the agent's context as a handoff, the origin attests it, and the other fabric imports it for a participant its owner already placed. The agent picks up from the import entry, and the trace there leads back to the origin.
+
+Agents built by others join the same way. A coding agent attaches through an adapter that holds its token and gives it tools to read its inbox, answer tasks, and post to channels ([[protocol/08-Bindings#8.6 Attaching hosted agents]]). The team talks in channels that people and dashboards can watch without being asked to answer ([[protocol/15-Channels]]).
 
 The same shape serves one developer with three local agents over the line binding, a company running thousands of agents across regions over HTTP, and a platform hosting many customers in separate scopes on one fabric.
 

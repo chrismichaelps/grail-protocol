@@ -1,0 +1,200 @@
+/** @Agent.Tools.Catalog — what an attached participant can do, as tools a hosted model calls, each chosen once by name */
+module Agent.Tools
+
+import Std.Concurrent as Concurrent
+import Std.Json as Json
+import Std.List as List
+import Std.Math as Math
+import Std.Option as Option
+import Std.Result as Result
+import Agent.Session as Session
+import Agent.Wire as Wire
+import Api.Peer as Peer
+import Constants.Agent as Names
+import Contract.Members as Members
+import Contract.Operations as Operations
+import Contract.Parameters as Parameters
+import Contract.Vocabulary as Vocabulary
+import Utils.JsonRead as JsonRead
+
+/** @Agent.Tools.Tool — one tool's name, what it does, and the arguments it takes */
+export type Tool = { name: Str, description: Str, schema: Str }
+
+/** @Agent.Tools.Act — what one tool does with its arguments: an answer, or why there is none */
+export type Act = fn(Session.Session, Json.Json) -> Result[Json.Json, Json.Json]
+
+/// Every tool, in the order a client lists them.
+export const TOOLS: Array[Tool] = [
+  Tool{name: Names.TOOL_WHOAMI, description: Names.WHOAMI_DESCRIPTION, schema: Names.WHOAMI_SCHEMA},
+  Tool{name: Names.TOOL_INBOX, description: Names.INBOX_DESCRIPTION, schema: Names.INBOX_SCHEMA},
+  Tool{name: Names.TOOL_SEND, description: Names.SEND_DESCRIPTION, schema: Names.SEND_SCHEMA},
+  Tool{name: Names.TOOL_REPLY, description: Names.REPLY_DESCRIPTION, schema: Names.REPLY_SCHEMA},
+  Tool{name: Names.TOOL_CHANNEL, description: Names.CHANNEL_DESCRIPTION, schema: Names.CHANNEL_SCHEMA},
+  Tool{name: Names.TOOL_STATUS, description: Names.STATUS_DESCRIPTION, schema: Names.TRANSFER_SCHEMA},
+  Tool{name: Names.TOOL_TRACE, description: Names.TRACE_DESCRIPTION, schema: Names.TRANSFER_SCHEMA}
+]
+
+/// What each tool does, by name. Called only from this module: a function taken out of a constant runs without its module's imports in the pinned runtime.
+const ACTS: Map[Str, Act] = mapOf([
+    (Names.TOOL_WHOAMI, whoami),
+    (Names.TOOL_INBOX, inbox),
+    (Names.TOOL_SEND, send),
+    (Names.TOOL_REPLY, reply),
+    (Names.TOOL_CHANNEL, channel),
+    (Names.TOOL_STATUS, status),
+    (Names.TOOL_TRACE, trace)
+  ])
+
+/// The answer of a tool, or why it has none: the fabric's problem document, or what was wrong with the call.
+export fn call(name: Str, session: &Session.Session, arguments: &Json.Json) -> Result[Json.Json, Json.Json] {
+  match ACTS.get(name) {
+    case Some(act) => act(*session, *arguments)
+    case None => Err(said(Names.UNKNOWN_TOOL + name))
+  }
+}
+
+/// Sends a draft under a fresh id and answers the fabric's receipt.
+export fn sendDraft(session: &Session.Session, draft: &Wire.Draft) -> Result[Json.Json, Json.Json] {
+  let id = Wire.freshId(session)
+  let receipt = answered(Session.call(session, Operations.SEND_ENVELOPE, &[], &Some(Wire.envelope(session, id, draft)))) ?
+  Session.note(session, id)
+  Ok(receipt)
+}
+
+/// Answers a task: reads who sent it, and sends the outcome back to them with the task as its first parent. Final outcomes carry a delivery key, so a retried answer lands once.
+export fn answer(session: &Session.Session, taskId: Str, outcome: Str, payload: Option[Json.Json], parents: &Array[Str]) -> Result[Json.Json, Json.Json] {
+  if !Names.OUTCOMES.contains(outcome) { return Err(said(Names.UNKNOWN_OUTCOME)) }
+
+  let read = answered(Session.call(session, Operations.READ_TRANSFER, &[(Parameters.TRANSFER, Json.Text(taskId))], &None)) ?
+  let source = Option.okOr(Option.andThen(Json.field(&read, Members.TRANSFER_ENVELOPE), |envelope: Json.Json| JsonRead.text(&envelope, Members.ENVELOPE_SOURCE)), said(Names.MISSING_ARGUMENT + Names.TASK_ARGUMENT)) ?
+  let key = if Names.FINAL_OUTCOMES.contains(outcome) { Some(Names.REPLY_KEY_PREFIX + taskId) } else { None }
+  let draft = Wire.Draft{target: Wire.toParticipant(source), kind: outcome, payload: payload, parents: [taskId].concat(parents.filter(|parent: Str| parent != taskId)), schema: None, visibility: None, key: key, priority: None, deadline: None}
+  sendDraft(session, &draft)
+}
+
+/// Reads one transfer.
+export fn readTransfer(session: &Session.Session, id: Str) -> Result[Json.Json, Json.Json] {
+  answered(Session.call(session, Operations.READ_TRANSFER, &[(Parameters.TRANSFER, Json.Text(id))], &None))
+}
+
+/// A refusal in the shape tools answer with: the fabric's problem document with its status, or a reason the call never reached the fabric.
+export fn answered(outcome: Result[Peer.Answer, Str]) -> Result[Json.Json, Json.Json] {
+  match outcome {
+    case Ok(found) => if found.status < 400 { Ok(found.body) } else { Err(Json.withField(&found.body, Names.STATUS_MEMBER, Json.Number(found.status))) }
+    case Err(reason) => Err(said(reason))
+  }
+}
+
+fn whoami(session: Session.Session, _arguments: Json.Json) -> Result[Json.Json, Json.Json] {
+  let identity = [
+    (Names.SCOPE_MEMBER, Json.Text(session.scopeId)),
+    (Names.GRAPH_MEMBER, Json.Text(session.graph)),
+    (Names.PARTICIPANT_MEMBER, Json.Text(session.participant)),
+    (Names.ABILITIES_MEMBER, JsonRead.textList(&session.claims.abilities)),
+    (Names.EXPIRES_MEMBER, Json.Number(session.claims.expires))
+  ]
+
+  match answered(Session.call(&session, Operations.READ_GRAPH, &[], &None)) {
+    case Ok(graph) => Ok(Json.object(&identity.concat(neighbourhood(&session, &graph))))
+    case Err(refused) => Ok(Json.object(&identity.push((Names.GRAPH_HIDDEN_MEMBER, refused))))
+  }
+}
+
+fn inbox(session: Session.Session, arguments: Json.Json) -> Result[Json.Json, Json.Json] {
+  let params = [(Parameters.AFTER, Json.Number(Session.cursorOf(&session))), (Parameters.LIMIT, Json.Number(sized(&arguments))), (Parameters.WAIT, Json.Number(waited(&arguments)))]
+  let body = answered(Session.call(&session, Operations.PULL_DELIVERIES, &params, &None)) ?
+  let shown = Wire.page(&session, &body)
+
+  for item in Option.unwrapOr(JsonRead.list(&shown, Names.ITEMS_MEMBER), []) {
+    if let Some(id) = JsonRead.text(&item, Members.ENVELOPE_ID) { Session.note(&session, id) }
+  }
+
+  Session.advance(&session, Option.unwrapOr(JsonRead.whole(&shown, Names.CURSOR_MEMBER), 0))
+  Ok(shown)
+}
+
+fn send(session: Session.Session, arguments: Json.Json) -> Result[Json.Json, Json.Json] {
+  let addresses = Option.present(&[
+      Option.map(JsonRead.text(&arguments, Names.TO_ARGUMENT), |id: Str| Wire.toParticipant(id)),
+      Option.map(JsonRead.text(&arguments, Names.ROLE_ARGUMENT), |role: Str| Json.object(&[(Members.SELECTOR_ROLE, Json.Text(role))])),
+      Option.map(JsonRead.text(&arguments, Names.ABILITY_ARGUMENT), |ability: Str| Json.object(&[(Members.SELECTOR_ABILITY, Json.Text(ability))]))
+    ])
+
+  if addresses.length() != 1 { return Err(said(Names.ONE_ADDRESS)) }
+
+  let draft = Wire.Draft {
+    target: addresses[0],
+    kind: Option.unwrapOr(JsonRead.text(&arguments, Names.KIND_ARGUMENT), Names.KIND_DEFAULT),
+    payload: Wire.payloadOf(JsonRead.text(&arguments, Names.TEXT_ARGUMENT), Json.field(&arguments, Names.DATA_ARGUMENT)),
+    parents: descended(&session, &Option.unwrapOr(JsonRead.texts(&arguments, Names.PARENTS_ARGUMENT), [])),
+    schema: JsonRead.text(&arguments, Names.SCHEMA_ARGUMENT),
+    visibility: JsonRead.text(&arguments, Names.VISIBILITY_ARGUMENT),
+    key: None,
+    priority: JsonRead.whole(&arguments, Names.PRIORITY_ARGUMENT),
+    deadline: Option.map(JsonRead.whole(&arguments, Names.DEADLINE_ARGUMENT), |seconds: Int| Session.now() + seconds * Names.SECOND_MILLIS)
+  }
+  sendDraft(&session, &draft)
+}
+
+fn reply(session: Session.Session, arguments: Json.Json) -> Result[Json.Json, Json.Json] {
+  let taskId = Option.okOr(JsonRead.text(&arguments, Names.TASK_ARGUMENT), said(Names.MISSING_ARGUMENT + Names.TASK_ARGUMENT)) ?
+  let outcome = Option.okOr(JsonRead.text(&arguments, Names.OUTCOME_ARGUMENT), said(Names.MISSING_ARGUMENT + Names.OUTCOME_ARGUMENT)) ?
+  let payload = Wire.payloadOf(JsonRead.text(&arguments, Names.TEXT_ARGUMENT), Json.field(&arguments, Names.DATA_ARGUMENT))
+  answer(&session, taskId, outcome, payload, &Option.unwrapOr(JsonRead.texts(&arguments, Names.PARENTS_ARGUMENT), []))
+}
+
+fn channel(session: Session.Session, arguments: Json.Json) -> Result[Json.Json, Json.Json] {
+  let id = Option.okOr(JsonRead.text(&arguments, Names.CHANNEL_ARGUMENT), said(Names.MISSING_ARGUMENT + Names.CHANNEL_ARGUMENT)) ?
+  let params = [(Parameters.CHANNEL, Json.Text(id)), (Parameters.AFTER, Json.Number(Math.max(Option.unwrapOr(JsonRead.whole(&arguments, Names.AFTER_ARGUMENT), 0), 0))), (Parameters.LIMIT, Json.Number(sized(&arguments))), (Parameters.WAIT, Json.Number(waited(&arguments)))]
+  let body = answered(Session.call(&session, Operations.READ_CHANNEL, &params, &None)) ?
+  Ok(Wire.page(&session, &body))
+}
+
+fn status(session: Session.Session, arguments: Json.Json) -> Result[Json.Json, Json.Json] {
+  let id = Option.okOr(JsonRead.text(&arguments, Names.TRANSFER_ARGUMENT), said(Names.MISSING_ARGUMENT + Names.TRANSFER_ARGUMENT)) ?
+  let until = Session.now() + waited(&arguments)
+  var view = readTransfer(&session, id) ?
+
+  while open(&view) && Session.now() < until {
+    let _paused = Concurrent.sleep(Names.STATUS_POLL_MILLIS)
+    view = readTransfer(&session, id) ?
+  }
+
+  Ok(view)
+}
+
+fn open(view: &Json.Json) -> Bool { Option.holds(&JsonRead.text(view, Members.TRANSFER_STATE), |state: Str| !Vocabulary.FINAL_STATES.contains(state)) }
+
+fn trace(session: Session.Session, arguments: Json.Json) -> Result[Json.Json, Json.Json] {
+  let id = Option.okOr(JsonRead.text(&arguments, Names.TRANSFER_ARGUMENT), said(Names.MISSING_ARGUMENT + Names.TRANSFER_ARGUMENT)) ?
+  answered(Session.call(&session, Operations.TRACE_TRANSFER, &[(Parameters.TRANSFER, Json.Text(id))], &None))
+}
+
+/// The parents of an envelope sent during a supervised task: the task comes first, so whatever is sent for it descends from it.
+fn descended(session: &Session.Session, given: &Array[Str]) -> Array[Str] {
+  match session.taskId {
+    case Some(asked) => [asked].concat(given.filter(|parent: Str| parent != asked))
+    case None => *given
+  }
+}
+
+fn neighbourhood(session: &Session.Session, graph: &Json.Json) -> Array[(Str, Json.Json)] {
+  let members = Option.unwrapOr(JsonRead.list(graph, Members.GRAPH_PARTICIPANTS), [])
+  let flows = Option.unwrapOr(JsonRead.list(graph, Members.GRAPH_EDGES), []).filter(|edge: Json.Json| JsonRead.text(&edge, Members.EDGE_RELATION) == Some(Vocabulary.RELATION_FLOW))
+  let channels = members.filter(|member: Json.Json| JsonRead.text(&member, Members.PARTICIPANT_KIND) == Some(Vocabulary.PARTICIPANT_CHANNEL)).map(|member: Json.Json| Option.unwrapOr(JsonRead.text(&member, Members.PARTICIPANT_ID), ""))
+  let outgoing = flows.filter(|edge: Json.Json| JsonRead.text(&edge, Members.EDGE_FROM) == Some(session.participant))
+  let targets = List.distinct(&Option.present(&outgoing.map(|edge: Json.Json| JsonRead.text(&edge, Members.EDGE_TO))))
+  let reached = members.filter(|member: Json.Json| Option.holds(&JsonRead.text(&member, Members.PARTICIPANT_ID), |id: Str| targets.contains(id) && !channels.contains(id)))
+  let listening = flows.filter(|edge: Json.Json| JsonRead.text(&edge, Members.EDGE_TO) == Some(session.participant)).map(|edge: Json.Json| Option.unwrapOr(JsonRead.text(&edge, Members.EDGE_FROM), ""))
+  [
+    (Names.REACHES_MEMBER, Json.List(reached)),
+    (Names.POSTS_MEMBER, JsonRead.textList(&targets.filter(|id: Str| channels.contains(id)))),
+    (Names.READS_MEMBER, JsonRead.textList(&List.distinct(&listening.filter(|id: Str| channels.contains(id)))))
+  ]
+}
+
+fn sized(arguments: &Json.Json) -> Int { Math.max(1, Math.min(Option.unwrapOr(JsonRead.whole(arguments, Names.LIMIT_ARGUMENT), Names.PAGE_DEFAULT), Names.PAGE_MAX)) }
+
+fn waited(arguments: &Json.Json) -> Int { Math.max(0, Math.min(Option.unwrapOr(JsonRead.whole(arguments, Names.WAIT_ARGUMENT), 0), Names.WAIT_SECONDS_MAX)) * Names.SECOND_MILLIS }
+
+fn said(reason: Str) -> Json.Json { Json.object(&[(Members.PROBLEM_DETAIL, Json.Text(reason))]) }

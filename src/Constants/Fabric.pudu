@@ -5,16 +5,16 @@ module Constants.Fabric
 export const NAME: Str = "grail-fabric"
 
 /// The release this build is.
-export const VERSION: Str = "0.2.2"
+export const VERSION: Str = "0.3.0"
 
 /// The name of the command-line executable.
 export const EXECUTABLE: Str = "grail"
 
 /// Protocol versions this fabric speaks, newest first.
-export const PROTOCOLS: Array[Str] = ["1.1", "1.0"]
+export const PROTOCOLS: Array[Str] = ["1.2", "1.1", "1.0"]
 
 /// The conformance profiles this fabric claims.
-export const PROFILES: Array[Str] = ["core", "portable"]
+export const PROFILES: Array[Str] = ["core", "portable", "custody", "channels"]
 
 /// The bindings this fabric offers.
 export const BINDINGS: Array[Str] = ["http", "lines"]
@@ -40,5 +40,8 @@ export const CONTRACT_MEMBER: Str = "contract"
 /// The name of the client a peer connection is configured under.
 export const PEER_CLIENT: Str = "grail-peer"
 
-/// Milliseconds a peer request may take.
-export const PEER_TIMEOUT_MILLIS: Int = 30000
+/// Milliseconds a peer attempt may run beyond the longest wait the contract allows.
+export const PEER_GRACE_MILLIS: Int = 5000
+
+/// Attempts a peer call may make before it gives up.
+export const PEER_ATTEMPTS: Int = 3

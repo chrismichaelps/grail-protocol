@@ -9,6 +9,7 @@ The suites, organized by the conformance checks of [[protocol/11-Conformance]], 
 
 ## Folders
 
+- [[test/Agent/_MOC]] — the participant adapter a hosted model talks to, and the prompt its runner writes.
 - [[test/Engine/_MOC]] — authority, admission, mutations, ledger vectors, delivery, shapes.
 - [[test/Web/_MOC]] — the router and the line binding against a real runtime, without sockets.
 - [[test/Support/_MOC]] — fixtures and the runner.

@@ -6,9 +6,13 @@ import Std.Io as Io
 import Std.Json as Json
 import Std.Option as Option
 import Std.Result as Result
+import Agent.Mcp as Mcp
+import Agent.Runner as Runner
+import Agent.Session as Session
 import Api.Peer as Peer
 import App.Assembly as Assembly
 import Config.Settings as Settings
+import Constants.Agent as Agent
 import Constants.Cli as Names
 import Constants.Fabric as Fabric
 import Constants.Security as Security
@@ -34,6 +38,8 @@ export fn offline(arguments: &Array[Str]) -> Option[Int] {
   if command == Names.HELP { return Some(said(Names.USAGE.join(Text.LINE_JOIN))) }
   if command == Names.CALL { return Some(call(arguments)) }
   if command == Names.HANDOFF { return Some(handoff()) }
+  if command == Names.AGENT { return Some(Mcp.serve()) }
+  if command == Names.RUN { return Some(supervise()) }
 
   None
 }
@@ -154,6 +160,19 @@ fn handoff() -> Int {
     }
     case Err(reason) => failed(reason)
   }
+}
+
+fn supervise() -> Int {
+  let command = match Env.option(Agent.EXEC_OPTION) {
+    case Some(found) => found
+    case None => { return failed(Agent.NO_EXEC) }
+  }
+  let session = match Session.fromEnvironment() {
+    case Ok(found) => found
+    case Err(reason) => { return failed(reason) }
+  }
+  let timeout = Option.unwrapOr(Option.andThen(Env.option(Agent.TIMEOUT_OPTION), |given: Str| given.toInt()), Agent.TIMEOUT_DEFAULT_MILLIS)
+  Runner.run(&session, &Runner.Plan{command: command, timeout: timeout, once: Env.hasFlag(Agent.ONCE_FLAG)})
 }
 
 fn step(base: Str, presented: Str, id: Str, params: &Json.Json, body: &Option[Json.Json]) -> Result[Peer.Answer, Str] {

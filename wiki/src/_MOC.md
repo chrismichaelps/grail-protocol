@@ -11,6 +11,7 @@ One page per file, each with its interface and the modules it depends on.
 
 ## Folders
 
+- [[src/Agent/_MOC]]
 - [[src/Api/_MOC]]
 - [[src/App/_MOC]]
 - [[src/Cli/_MOC]]

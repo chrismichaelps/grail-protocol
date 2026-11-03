@@ -1,0 +1,83 @@
+/** @Test.Agent.Adapter.Suite — a hosted model meets the participant's tools: the handshake, the catalog, refusals, payloads, and the prompt a runner writes */
+module Agent.AdapterTest
+
+import Std.Json as Json
+import Std.List as List
+import Std.Option as Option
+import Std.Result as Result
+import Std.Sync as Sync
+import Std.Test as Test
+import Agent.Mcp as Mcp
+import Agent.Runner as Runner
+import Agent.Session as Session
+import Agent.Tools as Tools
+import Agent.Wire as Wire
+import Api.Peer as Peer
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Engine.Authority as Authority
+import PuduLangMcp.Domain.Protocol.Negotiation as Negotiation
+import Support.Fixtures as Fixtures
+import Support.Runner as Suite
+import Utils.JsonRead as JsonRead
+
+fn answered(attached: &Result[Session.Session, Str], line: Str) -> Json.Json {
+  let reply = Mcp.respond(attached, &Negotiation.Legacy("2025-06-18"), line)[1]
+  Option.unwrapOr(Option.andThen(reply, |text: Str| Result.toOption(Json.decode(text))), Json.Null)
+}
+
+fn result(reply: &Json.Json) -> Json.Json { Option.unwrapOr(Json.field(reply, "result"), Json.Null) }
+
+fn session() -> Result[Session.Session, Str] {
+  let peer = Peer.connect("http://127.0.0.1:1", "unused") ?
+  Ok(Session.Session{peer: peer, fabric: "http://127.0.0.1:1", scopeId: "demo", graph: "team", participant: "builder", claims: Fixtures.claims("t", "builder", &[]), cursor: Sync.cell(0), cursorFile: None, taskId: None, journal: None})
+}
+
+fn main() -> Int {
+  let detached: Result[Session.Session, Str] = Err("set GRAIL_TOKEN_FILE or GRAIL_TOKEN to this participant's token")
+  let opened = Mcp.respond(&detached, &Negotiation.Unopened, "\{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":\{\"protocolVersion\":\"2025-06-18\",\"capabilities\":\{\}\}\}")
+  let handshake = Option.unwrapOr(Option.andThen(opened[1], |text: Str| Result.toOption(Json.decode(text))), Json.Null)
+  let listed = answered(&detached, "\{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"\}")
+  let tools = Option.unwrapOr(JsonRead.list(&result(&listed), "tools"), [])
+  let called = result(&answered(&detached, "\{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":\{\"name\":\"grail_inbox\",\"arguments\":\{\}\}\}"))
+  let unknown = answered(&detached, "\{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"resources/list\"\}")
+  let notified = Mcp.respond(&detached, &Negotiation.Legacy("2025-06-18"), "\{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"\}")
+  let garbage = answered(&detached, "not json")
+  let attached = session()
+  let noTool = Result.andThen(attached, |found: Session.Session| Result.mapErr(Tools.call("grail_launch", &found, &Json.object(&[])), |refused: Json.Json| Json.encode(&refused)))
+  let twoAddresses = Result.andThen(attached, |found: Session.Session| Result.mapErr(Tools.call("grail_send", &found, &Json.object(&[("to", Json.Text("a")), ("role", Json.Text("b"))])), |refused: Json.Json| Json.encode(&refused)))
+  let badOutcome = Result.andThen(attached, |found: Session.Session| Result.mapErr(Tools.answer(&found, "t1", "maybe", None, &[]), |refused: Json.Json| Json.encode(&refused)))
+  let unreachable = Result.andThen(attached, |found: Session.Session| Result.mapErr(Tools.call("grail_whoami", &found, &Json.object(&[])), |refused: Json.Json| Json.encode(&refused)))
+  let delivered = Json.object(&[("id", Json.Text("t1")), ("kind", Json.Text("task")), ("source", Json.Text("lead")), ("target", Json.object(&[("participant", Json.Text("general"))])), ("payload", Json.object(&[("text", Json.Text("Fix the bug"))]))])
+  let direct = Json.withField(&delivered, "target", Json.object(&[("participant", Json.Text("builder"))]))
+  let compactVia = Result.map(attached, |found: Session.Session| Wire.compact(&found, 7, &delivered))
+  let compactDirect = Result.map(attached, |found: Session.Session| Wire.compact(&found, 8, &direct))
+  let prompt = Result.map(attached, |found: Session.Session| Runner.prompt(&found, &delivered))
+  let issued = Authority.issue(&Fixtures.claims("agent-token", "builder", &[Vocabulary.ABILITY_TRANSFER_SEND]), "another-fabric-secret-0123456789abcdef")
+  let checks = Test.suite("Agent adapter", &[
+      Test.equals("the handshake agrees on the version the client asked for", &JsonRead.text(&result(&handshake), "protocolVersion"), &Some("2025-06-18")),
+      Test.that("and opens a legacy session", opened[0] == Negotiation.Legacy("2025-06-18")),
+      Test.equals("the server names itself", &Option.andThen(Json.field(&result(&handshake), "serverInfo"), |info: Json.Json| JsonRead.text(&info, "name")), &Some("grail")),
+      Test.that("and tells the model how to behave as a participant", Option.holds(&JsonRead.text(&result(&handshake), "instructions"), |text: Str| text.contains("grail_reply") && text.contains("$secret"))),
+      Test.equals("every tool is listed", &tools.length(), &Tools.TOOLS.length()),
+      Test.that("every tool's input schema is an object schema", List.all(&tools, |tool: Json.Json| Option.holds(&Json.field(&tool, "inputSchema"), |schema: Json.Json| JsonRead.text(&schema, "type") == Some("object")))),
+      Test.that("a participant that cannot attach still answers, with the reason as a tool error", Json.field(&called, "isError") == Some(Json.Boolean(true)) && Json.encode(&called).contains("GRAIL_TOKEN")),
+      Test.equals("an unknown method is refused as such", &Option.andThen(Json.field(&unknown, "error"), |error: Json.Json| JsonRead.whole(&error, "code")), &Some(-32601)),
+      Test.that("a notification gets no answer", Option.isNone(&notified[1])),
+      Test.equals("a line that is not JSON is a parse error", &Option.andThen(Json.field(&garbage, "error"), |error: Json.Json| JsonRead.whole(&error, "code")), &Some(-32700)),
+      Test.that("an unknown tool is refused without reaching the fabric", Result.isErr(&noTool) && Result.unwrapOrElse(Result.map(noTool, |_ok: Json.Json| ""), |reason: Str| reason).contains("grail_launch")),
+      Test.that("a send names exactly one address", Result.isErr(&twoAddresses) && Result.unwrapOrElse(Result.map(twoAddresses, |_ok: Json.Json| ""), |reason: Str| reason).contains("exactly one")),
+      Test.that("a reply's outcome is checked before anything is read", Result.isErr(&badOutcome) && Result.unwrapOrElse(Result.map(badOutcome, |_ok: Json.Json| ""), |reason: Str| reason).contains("outcome")),
+      Test.that("a fabric that cannot be reached is a tool error, not a crash", Result.isOk(&unreachable)),
+      Test.equals("prose becomes a text payload", &Wire.payloadOf(Some("hi"), None), &Some(Json.object(&[("text", Json.Text("hi"))]))),
+      Test.equals("prose joins structured content", &Wire.payloadOf(Some("hi"), Some(Json.object(&[("n", Json.Number(1)), ("text", Json.Text("old"))]))), &Some(Json.object(&[("n", Json.Number(1)), ("text", Json.Text("hi"))]))),
+      Test.equals("nothing makes no payload", &Wire.payloadOf(None, None), &None),
+      Test.equals("a delivery through a channel says which channel carried it", &Result.toOption(Result.map(compactVia, |shown: Json.Json| JsonRead.text(&shown, "via"))), &Some(Some("general"))),
+      Test.equals("a direct delivery names no channel", &Result.toOption(Result.map(compactDirect, |shown: Json.Json| JsonRead.text(&shown, "via"))), &Some(None)),
+      Test.that("the runner's prompt carries the task id, the sender, and the request", Result.holds(&prompt, |text: Str| text.contains("t1") && text.contains("lead") && text.contains("Fix the bug"))),
+      Test.equals("a token's claims are read without its fabric's secret", &Option.map(Authority.claimed(issued), |claims: Capability.Token| claims.audience), &Some("builder")),
+      Test.equals("text that is not a token has no claims", &Option.map(Authority.claimed("not.a-token"), |claims: Capability.Token| claims.audience), &None)
+    ])
+
+  Suite.finish(&checks)
+}

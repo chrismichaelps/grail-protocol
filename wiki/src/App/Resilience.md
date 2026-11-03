@@ -20,7 +20,7 @@ Every message runs under a concurrency limit and a deadline; a waiting pull's de
 
 ```pudu
 /// The guard of one kind's answers: a bounded number at once, a bounded queue, and a deadline.
-export fn guard[R]() -> Result[Pipeline.Pipeline[R, Messaging.Failure[Problem.Problem]], Str] { guardFor(Capacity.MESSAGE_TIMEOUT_MILLIS) }
+export fn guard[R]() -> Result[Pipeline.Pipeline[R, Messaging.Failure[Problem.Problem]], Str]
 /// The guard of a kind whose answers may take up to `millis`.
 export fn guardFor[R](millis: Int) -> Result[Pipeline.Pipeline[R, Messaging.Failure[Problem.Problem]], Str]
 /// A guard for every message kind.

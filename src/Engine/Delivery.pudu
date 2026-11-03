@@ -10,6 +10,7 @@ import Contract.Limits as Limits
 import Contract.Vocabulary as Vocabulary
 import Domain.Capability as Capability
 import Domain.Envelope as Envelope
+import Domain.Graph as Graph
 import Domain.Ledger as Ledger
 import Domain.Scope as Scope
 import Domain.Transfer as Transfer
@@ -40,6 +41,27 @@ export fn pull(state: &Scope.State, address: &Envelope.Address, after: Int, limi
   let cursor = if records.isEmpty() { after } else { records[records.length() - 1].entry.sequence }
   let marked = Scope.State{..*state, served: Map.insert(&state.served, mark, Math.max(served, cursor))}
   (Transfer.Page{records: records, cursor: cursor}, marked)
+}
+
+/// What was posted to a channel after a cursor, as an authority may read it: envelopes addressed to the channel by id whose kind the reader's subscription carries, the owner reading every kind. Nothing is acknowledged and no secret is revealed.
+export fn channel(state: &Scope.State, graph: &Graph.Graph, id: Str, authority: &Capability.Authority, after: Int, limit: Int) -> Transfer.Page {
+  let addressed = Envelope.ToParticipant(id)
+  var records: Array[Ledger.Record] = []
+  var position = after + 1
+
+  while position <= Scope.length(state) && records.length() < limit {
+    if let Some(record) = Scope.recordAt(state, position) {
+      let posted = record.envelope.graph == graph.id && record.envelope.target == addressed
+      let carried = authority.audience == Security.OWNER || Graph.carries(graph, id, authority.audience, record.envelope.kind)
+
+      if posted && carried && visible(&record, authority) { records = records.push(record) }
+    }
+
+    position = position + 1
+  }
+
+  let cursor = if records.isEmpty() { Math.max(after, Scope.length(state)) } else { records[records.length() - 1].entry.sequence }
+  Transfer.Page{records: records, cursor: cursor}
 }
 
 /// The ledger after a cursor.

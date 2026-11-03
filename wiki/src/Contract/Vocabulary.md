@@ -59,7 +59,27 @@ export const KIND_HANDOFF_EXPORT: Str = "handoff.export"
 /// `handoff.import`.
 export const KIND_HANDOFF_IMPORT: Str = "handoff.import"
 /// Every value of the set.
-export const KINDS: Array[Str]
+export const KINDS: Array[Str] = [
+  "task",
+  "result",
+  "error",
+  "progress",
+  "input.request",
+  "cancel",
+  "thought",
+  "observation",
+  "memory",
+  "tool.call",
+  "tool.result",
+  "stream.open",
+  "stream.chunk",
+  "stream.close",
+  "ability.advert",
+  "graph.mutation",
+  "bridge.rpc",
+  "handoff.export",
+  "handoff.import"
+]
 /// `*`.
 export const ABILITY_ALL: Str = "*"
 /// `graph.read`.
@@ -85,7 +105,20 @@ export const ABILITY_HANDOFF_IMPORT: Str = "handoff.import"
 /// `secret.manage`.
 export const ABILITY_SECRET_MANAGE: Str = "secret.manage"
 /// Every value of the set.
-export const ABILITIES: Array[Str]
+export const ABILITIES: Array[Str] = [
+  "*",
+  "graph.read",
+  "graph.write",
+  "transfer.send",
+  "transfer.receive",
+  "transfer.read",
+  "ledger.read",
+  "ledger.erase",
+  "token.delegate",
+  "handoff.export",
+  "handoff.import",
+  "secret.manage"
+]
 /// `agent`.
 export const PARTICIPANT_AGENT: Str = "agent"
 /// `tool`.
@@ -98,14 +131,27 @@ export const PARTICIPANT_HUMAN: Str = "human"
 export const PARTICIPANT_SERVICE: Str = "service"
 /// `graph`.
 export const PARTICIPANT_GRAPH: Str = "graph"
+/// `channel`.
+export const PARTICIPANT_CHANNEL: Str = "channel"
 /// Every value of the set.
-export const PARTICIPANT_KINDS: Array[Str]
+export const PARTICIPANT_KINDS: Array[Str] = [
+  "agent",
+  "tool",
+  "memory",
+  "human",
+  "service",
+  "graph",
+  "channel"
+]
 /// `flow`.
 export const RELATION_FLOW: Str = "flow"
 /// `dependency`.
 export const RELATION_DEPENDENCY: Str = "dependency"
 /// Every value of the set.
-export const RELATIONS: Array[Str]
+export const RELATIONS: Array[Str] = [
+  "flow",
+  "dependency"
+]
 /// `at-most-once`.
 export const DELIVERY_AT_MOST_ONCE: Str = "at-most-once"
 /// `at-least-once`.
@@ -113,7 +159,11 @@ export const DELIVERY_AT_LEAST_ONCE: Str = "at-least-once"
 /// `effectively-once`.
 export const DELIVERY_EFFECTIVELY_ONCE: Str = "effectively-once"
 /// Every value of the set.
-export const DELIVERY_MODES: Array[Str]
+export const DELIVERY_MODES: Array[Str] = [
+  "at-most-once",
+  "at-least-once",
+  "effectively-once"
+]
 /// `scope`.
 export const VISIBILITY_SCOPE: Str = "scope"
 /// `graph`.
@@ -121,7 +171,11 @@ export const VISIBILITY_GRAPH: Str = "graph"
 /// `recipients`.
 export const VISIBILITY_RECIPIENTS: Str = "recipients"
 /// Every value of the set.
-export const VISIBILITIES: Array[Str]
+export const VISIBILITIES: Array[Str] = [
+  "scope",
+  "graph",
+  "recipients"
+]
 /// `submitted`.
 export const STATE_SUBMITTED: Str = "submitted"
 /// `working`.
@@ -139,7 +193,16 @@ export const STATE_EXPIRED: Str = "expired"
 /// `rejected`.
 export const STATE_REJECTED: Str = "rejected"
 /// Every value of the set.
-export const STATES: Array[Str]
+export const STATES: Array[Str] = [
+  "submitted",
+  "working",
+  "input-required",
+  "completed",
+  "failed",
+  "canceled",
+  "expired",
+  "rejected"
+]
 /// `add-participant`.
 export const OP_ADD_PARTICIPANT: Str = "add-participant"
 /// `remove-participant`.
@@ -149,17 +212,31 @@ export const OP_ADD_EDGE: Str = "add-edge"
 /// `remove-edge`.
 export const OP_REMOVE_EDGE: Str = "remove-edge"
 /// Every value of the set.
-export const MUTATION_OPS: Array[Str]
+export const MUTATION_OPS: Array[Str] = [
+  "add-participant",
+  "remove-participant",
+  "add-edge",
+  "remove-edge"
+]
 /// The lifecycle states that never change again.
-export const FINAL_STATES: Array[Str]
+export const FINAL_STATES: Array[Str] = [
+  "completed",
+  "failed",
+  "canceled",
+  "expired",
+  "rejected"
+]
 /// The kinds that open a lifecycle.
-export const OPENING_KINDS: Array[Str]
+export const OPENING_KINDS: Array[Str] = [
+  "task",
+  "tool.call",
+  "bridge.rpc"
+]
 ```
 
 ### Linkage
 
-- **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Cli/Commands]] · [[src/Domain/Graph]] · [[src/Domain/Identifier]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Bridge]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Journal]] · [[src/Engine/Kinds]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Engine/Routing]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/CustodyTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/MutationsTest]] · [[test/Engine/ShapesTest]] · [[test/Security/AttackTest]] · [[test/Security/CustodyTest]] · [[test/Security/HandoffTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/Agent/Runner]] · [[src/Agent/Tools]] · [[src/Agent/Wire]] · [[src/Cli/Commands]] · [[src/Domain/Graph]] · [[src/Domain/Identifier]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Bridge]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Journal]] · [[src/Engine/Kinds]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Engine/Routing]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]]
 
 ## Referenced by
 

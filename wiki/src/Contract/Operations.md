@@ -20,7 +20,18 @@ Every operation of the bindings. Projected from the contract by [[tools/Contract
 ### Signatures
 
 ```pudu
-export type Operation = { … }
+export type Operation = {
+  id: Str,
+  method: Str,
+  path: Str,
+  pattern: Str,
+  ability: Str,
+  status: Int,
+  secured: Bool,
+  bodied: Bool,
+  pathParameters: Array[Str],
+  queryParameters: Array[Str]
+}
 /// `GET /.well-known/grail`.
 export const DISCOVER: Str = "discover"
 /// `GET /openapi.json`.
@@ -43,6 +54,8 @@ export const TRACE_TRANSFER: Str = "traceTransfer"
 export const ERASE_TRANSFER: Str = "eraseTransfer"
 /// `GET /v1/scopes/{scope}/graphs/{graph}/participants/{participant}/deliveries`.
 export const PULL_DELIVERIES: Str = "pullDeliveries"
+/// `GET /v1/scopes/{scope}/graphs/{graph}/channels/{channel}`.
+export const READ_CHANNEL: Str = "readChannel"
 /// `GET /v1/scopes/{scope}/ledger`.
 export const READ_LEDGER: Str = "readLedger"
 /// `POST /v1/scopes/{scope}/tokens`.
@@ -68,13 +81,37 @@ export const PUT_SECRET: Str = "putSecret"
 /// `DELETE /v1/scopes/{scope}/secrets/{secret}`.
 export const DELETE_SECRET: Str = "deleteSecret"
 /// Every operation, in contract order.
-export const ALL: Array[Operation]
+export const ALL: Array[Operation] = [
+  Operation{id: "discover", method: "GET", path: "/.well-known/grail", pattern: "/.well-known/grail", ability: "none", status: 200, secured: false, bodied: false, pathParameters: [], queryParameters: []},
+  Operation{id: "describeContract", method: "GET", path: "/openapi.json", pattern: "/openapi.json", ability: "none", status: 200, secured: false, bodied: false, pathParameters: [], queryParameters: []},
+  Operation{id: "checkHealth", method: "GET", path: "/v1/health", pattern: "/v1/health", ability: "none", status: 200, secured: false, bodied: false, pathParameters: [], queryParameters: []},
+  Operation{id: "readGraph", method: "GET", path: "/v1/scopes/\{scope\}/graphs/\{graph\}", pattern: "/v1/scopes/:scope/graphs/:graph", ability: "graph.read", status: 200, secured: true, bodied: false, pathParameters: ["scope", "graph"], queryParameters: []},
+  Operation{id: "createGraph", method: "PUT", path: "/v1/scopes/\{scope\}/graphs/\{graph\}", pattern: "/v1/scopes/:scope/graphs/:graph", ability: "graph.write", status: 201, secured: true, bodied: true, pathParameters: ["scope", "graph"], queryParameters: []},
+  Operation{id: "mutateGraph", method: "POST", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/mutations", pattern: "/v1/scopes/:scope/graphs/:graph/mutations", ability: "graph.write", status: 200, secured: true, bodied: true, pathParameters: ["scope", "graph"], queryParameters: []},
+  Operation{id: "sendEnvelope", method: "POST", path: "/v1/scopes/\{scope\}/transfers", pattern: "/v1/scopes/:scope/transfers", ability: "transfer.send", status: 202, secured: true, bodied: true, pathParameters: ["scope"], queryParameters: []},
+  Operation{id: "readTransfer", method: "GET", path: "/v1/scopes/\{scope\}/transfers/\{transfer\}", pattern: "/v1/scopes/:scope/transfers/:transfer", ability: "transfer.read", status: 200, secured: true, bodied: false, pathParameters: ["scope", "transfer"], queryParameters: []},
+  Operation{id: "traceTransfer", method: "GET", path: "/v1/scopes/\{scope\}/transfers/\{transfer\}/trace", pattern: "/v1/scopes/:scope/transfers/:transfer/trace", ability: "ledger.read", status: 200, secured: true, bodied: false, pathParameters: ["scope", "transfer"], queryParameters: []},
+  Operation{id: "eraseTransfer", method: "POST", path: "/v1/scopes/\{scope\}/transfers/\{transfer\}/erasure", pattern: "/v1/scopes/:scope/transfers/:transfer/erasure", ability: "ledger.erase", status: 200, secured: true, bodied: false, pathParameters: ["scope", "transfer"], queryParameters: []},
+  Operation{id: "pullDeliveries", method: "GET", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/participants/\{participant\}/deliveries", pattern: "/v1/scopes/:scope/graphs/:graph/participants/:participant/deliveries", ability: "transfer.receive", status: 200, secured: true, bodied: false, pathParameters: ["scope", "graph", "participant"], queryParameters: ["after", "limit", "wait"]},
+  Operation{id: "readChannel", method: "GET", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/channels/\{channel\}", pattern: "/v1/scopes/:scope/graphs/:graph/channels/:channel", ability: "transfer.receive", status: 200, secured: true, bodied: false, pathParameters: ["scope", "graph", "channel"], queryParameters: ["after", "limit", "wait"]},
+  Operation{id: "readLedger", method: "GET", path: "/v1/scopes/\{scope\}/ledger", pattern: "/v1/scopes/:scope/ledger", ability: "ledger.read", status: 200, secured: true, bodied: false, pathParameters: ["scope"], queryParameters: ["after", "limit"]},
+  Operation{id: "delegateToken", method: "POST", path: "/v1/scopes/\{scope\}/tokens", pattern: "/v1/scopes/:scope/tokens", ability: "token.delegate", status: 201, secured: true, bodied: true, pathParameters: ["scope"], queryParameters: []},
+  Operation{id: "inspectToken", method: "GET", path: "/v1/scopes/\{scope\}/tokens/self", pattern: "/v1/scopes/:scope/tokens/self", ability: "none", status: 200, secured: true, bodied: false, pathParameters: ["scope"], queryParameters: []},
+  Operation{id: "revokeToken", method: "POST", path: "/v1/scopes/\{scope\}/tokens/\{token\}/revocation", pattern: "/v1/scopes/:scope/tokens/:token/revocation", ability: "token.delegate", status: 200, secured: true, bodied: false, pathParameters: ["scope", "token"], queryParameters: []},
+  Operation{id: "bridgeRpc", method: "POST", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/bridge/\{participant\}", pattern: "/v1/scopes/:scope/graphs/:graph/bridge/:participant", ability: "transfer.send", status: 202, secured: true, bodied: true, pathParameters: ["scope", "graph", "participant"], queryParameters: []},
+  Operation{id: "exportHandoff", method: "POST", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/participants/\{participant\}/handoffs", pattern: "/v1/scopes/:scope/graphs/:graph/participants/:participant/handoffs", ability: "handoff.export", status: 201, secured: true, bodied: true, pathParameters: ["scope", "graph", "participant"], queryParameters: []},
+  Operation{id: "importHandoff", method: "PUT", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/participants/\{participant\}/handoffs/\{handoff\}", pattern: "/v1/scopes/:scope/graphs/:graph/participants/:participant/handoffs/:handoff", ability: "handoff.import", status: 201, secured: true, bodied: true, pathParameters: ["scope", "graph", "participant", "handoff"], queryParameters: []},
+  Operation{id: "readHandoff", method: "GET", path: "/v1/scopes/\{scope\}/handoffs/\{handoff\}", pattern: "/v1/scopes/:scope/handoffs/:handoff", ability: "ledger.read", status: 200, secured: true, bodied: false, pathParameters: ["scope", "handoff"], queryParameters: []},
+  Operation{id: "verifyHandoff", method: "POST", path: "/v1/scopes/\{scope\}/handoffs/\{handoff\}/verification", pattern: "/v1/scopes/:scope/handoffs/:handoff/verification", ability: "none", status: 200, secured: false, bodied: true, pathParameters: ["scope", "handoff"], queryParameters: []},
+  Operation{id: "listSecrets", method: "GET", path: "/v1/scopes/\{scope\}/secrets", pattern: "/v1/scopes/:scope/secrets", ability: "graph.read", status: 200, secured: true, bodied: false, pathParameters: ["scope"], queryParameters: []},
+  Operation{id: "putSecret", method: "PUT", path: "/v1/scopes/\{scope\}/secrets/\{secret\}", pattern: "/v1/scopes/:scope/secrets/:secret", ability: "secret.manage", status: 201, secured: true, bodied: true, pathParameters: ["scope", "secret"], queryParameters: []},
+  Operation{id: "deleteSecret", method: "DELETE", path: "/v1/scopes/\{scope\}/secrets/\{secret\}", pattern: "/v1/scopes/:scope/secrets/:secret", ability: "secret.manage", status: 200, secured: true, bodied: false, pathParameters: ["scope", "secret"], queryParameters: []}
+]
 ```
 
 ### Linkage
 
-- **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/App/Messages]] · [[src/Cli/Commands]] · [[src/Engine/Paths]] · [[src/Web/Description]] · [[src/Web/Handlers]] · [[src/Web/Router]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/Agent/Runner]] · [[src/Agent/Tools]] · [[src/App/Messages]] · [[src/Cli/Commands]] · [[src/Engine/Paths]] · [[src/Web/Description]] · [[src/Web/Handlers]] · [[src/Web/Router]]
 
 ## Referenced by
 

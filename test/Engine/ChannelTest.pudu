@@ -1,0 +1,169 @@
+/** @Test.Engine.Channel.Suite — channels fan posts out to their subscribers, keep them readable without acknowledging, and never act */
+module Engine.ChannelTest
+
+import Std.Json as Json
+import Std.List as List
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import Std.Test as Test
+import Constants.Security as Security
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
+import Domain.Envelope as Envelope
+import Domain.Graph as Graph
+import Domain.Ledger as Ledger
+import Domain.Lifecycle as Lifecycle
+import Domain.Problem as Problem
+import Domain.Scope as Scope
+import Domain.Transfer as Transfer
+import Engine.Delivery as Delivery
+import Engine.Mutations as Mutations
+import Engine.Routing as Routing
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+import Validation.Graph as Rules
+
+fn channel(id: Str) -> Graph.Participant { Graph.Participant{id: id, kind: Vocabulary.PARTICIPANT_CHANNEL, roles: [], abilities: [], graph: None} }
+
+fn carrying(id: Str, from: Str, into: Str, kinds: &Array[Str]) -> Graph.Edge { Graph.Edge{id: id, from: from, to: into, relation: Vocabulary.RELATION_FLOW, kinds: *kinds} }
+
+fn studio() -> Graph.Graph {
+  Graph.Graph {
+    id: Fixtures.GRAPH,
+    scopeId: Fixtures.SCOPE,
+    revision: 1,
+    participants: [Fixtures.member("lead", &[], &[]), Fixtures.member("builder", &[], &[]), Fixtures.member("reviewer", &[], &[]), Fixtures.member("watcher", &[], &[]), Fixtures.member("outsider", &[], &[]), channel("general")],
+    edges: [
+      carrying("lg", "lead", "general", &[]),
+      carrying("lb", "lead", "builder", &[Vocabulary.KIND_TASK]),
+      carrying("bg", "builder", "general", &[]),
+      carrying("gl", "general", "lead", &[]),
+      carrying("gb", "general", "builder", &[]),
+      carrying("gr", "general", "reviewer", &[Vocabulary.KIND_TASK]),
+      carrying("gw", "general", "watcher", &[]),
+      Fixtures.edge("needs-builder", "builder", "general", Vocabulary.RELATION_DEPENDENCY)
+    ]
+  }
+}
+
+fn scoped(graph: &Graph.Graph) -> Scope.State {
+  let empty = Scope.empty(Fixtures.SCOPE)
+  Scope.State{..empty, graphs: Map.insert(&empty.graphs, graph.id, *graph)}
+}
+
+fn posted(id: Str, source: Str, kind: Str, parents: &Array[Str]) -> Json.Json { Fixtures.body(id, source, Fixtures.to("general"), kind, parents) }
+
+fn after(state: &Scope.State, sent: &Json.Json) -> Scope.State { Result.unwrapOr(Fixtures.admitted(state, sent), *state) }
+
+fn heard(state: &Scope.State, id: Str) -> Array[Str] {
+  Option.fold(state.records.get(id), |record: Ledger.Record| record.recipients.map(|address: Envelope.Address| address.participant), [])
+}
+
+fn reader(audience: Str) -> Capability.Authority {
+  Capability.Authority{scopeId: Fixtures.SCOPE, graph: Some(Fixtures.GRAPH), audience: audience, abilities: [Vocabulary.ABILITY_TRANSFER_RECEIVE], token: "", chain: []}
+}
+
+/// Graphs nested `levels` deep under a top graph whose `team` participant stands for the first of them, and whose channel `hall` has `team` as its only subscriber besides the lead.
+fn nesting(levels: Int) -> Map[Str, Graph.Graph] {
+  let top = Graph.Graph{id: "top", scopeId: Fixtures.SCOPE, revision: 1, participants: [Fixtures.member("lead", &[], &[]), Graph.Participant{id: "team", kind: Vocabulary.PARTICIPANT_GRAPH, roles: [], abilities: [], graph: Some("level1")}, channel("hall")], edges: [carrying("lt", "lead", "team", &[]), carrying("lh", "lead", "hall", &[]), carrying("ht", "hall", "team", &[])]}
+  var graphs = Map.insert(&Map.empty(), "top", top)
+  var level = 1
+
+  while level <= levels {
+    let inner = if level == levels { Fixtures.member("worker", &["entry"], &[]) } else { Graph.Participant{id: "deeper", kind: Vocabulary.PARTICIPANT_GRAPH, roles: ["entry"], abilities: [], graph: Some("level" + show(level + 1))} }
+    graphs = Map.insert(&graphs, "level" + show(level), Graph.Graph{id: "level" + show(level), scopeId: Fixtures.SCOPE, revision: 1, participants: [inner], edges: []})
+    level = level + 1
+  }
+
+  graphs
+}
+
+fn reached(levels: Int, target: Str) -> Result[Array[Envelope.Route], Problem.Problem] {
+  let graphs = nesting(levels)
+  Routing.routes(&Map.getOr(&graphs, "top", studio()), &[target], &graphs, "lead", Vocabulary.KIND_OBSERVATION)
+}
+
+fn ids(page: &Transfer.Page) -> Array[Str] { page.records.map(|record: Ledger.Record| record.entry.id) }
+
+fn main() -> Int {
+  let graph = studio()
+  let start = scoped(&graph)
+  let note = after(&start, &posted("note", "lead", Vocabulary.KIND_OBSERVATION, &[]))
+  let early = Fixtures.admitted(&note, &posted("early", "lead", Vocabulary.KIND_TASK, &[]))
+  let built = after(&after(&note, &Fixtures.body("build", "lead", Fixtures.to("builder"), Vocabulary.KIND_TASK, &[])), &Fixtures.body("built", "builder", Fixtures.to("lead"), Vocabulary.KIND_RESULT, &["build"]))
+  let asked = after(&built, &posted("ask", "lead", Vocabulary.KIND_TASK, &["built"]))
+  let answered = after(&asked, &Fixtures.body("answer", "reviewer", Fixtures.to("lead"), Vocabulary.KIND_RESULT, &["ask"]))
+  let second = Fixtures.admitted(&answered, &Fixtures.body("second", "builder", Fixtures.to("lead"), Vocabulary.KIND_RESULT, &["ask"]))
+  let canceled = after(&asked, &Fixtures.body("stop", "lead", Fixtures.to("builder"), Vocabulary.KIND_CANCEL, &["ask"]))
+  let claimed = after(&asked, &Fixtures.body("claim", "reviewer", Fixtures.to("lead"), Vocabulary.KIND_PROGRESS, &["ask"]))
+  let lateClaim = Fixtures.admitted(&claimed, &Fixtures.body("late-claim", "builder", Fixtures.to("lead"), Vocabulary.KIND_PROGRESS, &["ask"]))
+  let holderAnswers = Fixtures.admitted(&claimed, &Fixtures.body("held-answer", "reviewer", Fixtures.to("lead"), Vocabulary.KIND_RESULT, &["ask"]))
+  let directClaim = after(&after(&built, &Fixtures.body("direct", "lead", Fixtures.to("builder"), Vocabulary.KIND_TASK, &[])), &Fixtures.body("direct-progress", "builder", Fixtures.to("lead"), Vocabulary.KIND_PROGRESS, &["direct"]))
+  let outsiderAnswer = Fixtures.admitted(&asked, &Fixtures.body("outsider-answer", "outsider", Fixtures.to("lead"), Vocabulary.KIND_RESULT, &["ask"]))
+  let hidden = after(&answered, &Json.withField(&posted("private", "lead", Vocabulary.KIND_OBSERVATION, &[]), "visibility", Json.Text(Vocabulary.VISIBILITY_RECIPIENTS)))
+  let fromChannel = Fixtures.admitted(&start, &Fixtures.body("loud", "general", Fixtures.to("lead"), Vocabulary.KIND_OBSERVATION, &[]))
+  let outsider = Fixtures.admitted(&start, &posted("intrude", "outsider", Vocabulary.KIND_OBSERVATION, &[]))
+  let lonely = Graph.Graph{..graph, edges: [carrying("lg", "lead", "general", &[]), carrying("gl", "general", "lead", &[])]}
+  let alone = Fixtures.admitted(&scoped(&lonely), &posted("alone", "lead", Vocabulary.KIND_OBSERVATION, &[]))
+  let lonelyTask = Fixtures.admitted(&scoped(&lonely), &posted("lonely-task", "lead", Vocabulary.KIND_TASK, &[]))
+  let kept = Result.unwrapOr(alone, scoped(&lonely))
+  let keptPage = Delivery.channel(&kept, &lonely, "general", &Fixtures.owner(), 0, 100)
+  let watcherPage = Delivery.channel(&hidden, &graph, "general", &reader("watcher"), 0, 100)
+  let reviewerPage = Delivery.channel(&hidden, &graph, "general", &reader("reviewer"), 0, 100)
+  let ownerPage = Delivery.channel(&hidden, &graph, "general", &Fixtures.owner(), 0, 100)
+  let latePage = Delivery.channel(&hidden, &graph, "general", &reader("watcher"), Scope.length(&hidden), 100)
+  let limited = Delivery.channel(&hidden, &graph, "general", &reader("watcher"), 0, 1)
+  let onward = Delivery.channel(&hidden, &graph, "general", &reader("watcher"), limited.cursor, 100)
+  let chained = Graph.Graph{..graph, participants: graph.participants.push(channel("echo")), edges: graph.edges.push(carrying("ge", "general", "echo", &[]))}
+  let waitsOnChannel = Graph.Graph{..graph, participants: graph.participants.push(channel("echo")), edges: graph.edges.push(Fixtures.edge("de", "echo", "lead", Vocabulary.RELATION_DEPENDENCY))}
+  let routed = Routing.routes(&graph, &["general"], &start.graphs, "lead", Vocabulary.KIND_OBSERVATION)
+  let checks = Test.suite("channels", &[
+      Test.equals("a post reaches every subscriber whose edge carries its kind, except the sender", &heard(&note, "note"), &["builder", "watcher"]),
+      Test.equals("a task also reaches a subscriber that hears only tasks", &heard(&asked, "ask"), &["builder", "reviewer", "watcher"]),
+      Test.that("every route starts at the channel", Result.holds(&routed, |found: Array[Envelope.Route]| List.all(&found, |route: Envelope.Route| route.path[0].participant == "general"))),
+      Test.equals("a channel's own dependency gates a task posted to it", &Fixtures.code(&early), &Codes.DEPENDENCY_UNMET),
+      Test.equals("a task posted to a channel opens one lifecycle", &Fixtures.stateOf(&asked, "ask"), &Vocabulary.STATE_SUBMITTED),
+      Test.equals("any subscriber it reached may answer it", &Fixtures.stateOf(&answered, "ask"), &Vocabulary.STATE_COMPLETED),
+      Test.equals("and another subscriber's later answer is refused, because the task was taken", &Fixtures.code(&second), &Codes.FORBIDDEN),
+      Test.equals("a participant the task never reached cannot answer it", &Fixtures.code(&outsiderAnswer), &Codes.FORBIDDEN),
+      Test.equals("a channel never sends", &Fixtures.code(&fromChannel), &Codes.FORBIDDEN),
+      Test.equals("posting needs a flow edge into the channel", &Fixtures.code(&outsider), &Codes.NO_ROUTE),
+      Test.equals("a post nobody else hears yet is still accepted", &Fixtures.code(&alone), &""),
+      Test.equals("and kept for whoever reads the channel later", &ids(&keptPage), &["alone"]),
+      Test.equals("with no recipients", &heard(&kept, "alone"), &[]),
+      Test.equals("but a task nobody could answer is refused", &Fixtures.code(&lonelyTask), &Codes.NO_ROUTE),
+      Test.equals("the first subscriber to report progress takes a channel task", &Fixtures.code(&lateClaim), &Codes.FORBIDDEN),
+      Test.equals("and only it may answer", &Fixtures.code(&holderAnswers), &""),
+      Test.equals("taking narrows who may move the task", &Option.fold(Map.get(&claimed.lifecycles, "ask"), |found: Lifecycle.Lifecycle| found.recipients.map(|address: Envelope.Address| address.participant), []), &["reviewer"]),
+      Test.equals("cancelling a channel task leaves who received it alone", &Option.fold(Map.get(&canceled.lifecycles, "ask"), |found: Lifecycle.Lifecycle| found.recipients.length(), 0), &3),
+      Test.equals("and cancels it", &Fixtures.stateOf(&canceled, "ask"), &Vocabulary.STATE_CANCELED),
+      Test.equals("a task sent to one participant is not narrowed by its progress", &Option.fold(Map.get(&directClaim.lifecycles, "direct"), |found: Lifecycle.Lifecycle| found.recipients.length(), 0), &1),
+      Test.equals("a subscriber reads every post its edge carries, oldest first", &ids(&watcherPage), &["note", "ask", "private"]),
+      Test.equals("a subscriber that hears only tasks reads only tasks, and not a recipients-only post it never received", &ids(&reviewerPage), &["ask"]),
+      Test.equals("the owner reads every post", &ids(&ownerPage), &["note", "ask", "private"]),
+      Test.equals("an empty page's cursor is the end of the ledger", &latePage.cursor, &Scope.length(&hidden)),
+      Test.equals("a read from the end returns nothing, not the last post again", &ids(&latePage), &[]),
+      Test.equals("a read after a cursor continues past the post at that cursor", &ids(&onward), &["ask", "private"]),
+      Test.equals("a page never exceeds its limit", &ids(&limited), &["note"]),
+      Test.equals("reading a channel acknowledges nothing", &hidden.served, &answered.served),
+      Test.equals("a channel does not subscribe to a channel", &Fixtures.code(&Mutations.check(&chained, &Map.empty())), &Codes.INVALID),
+      Test.equals("nothing depends on a channel", &Fixtures.code(&Mutations.check(&waitsOnChannel, &Map.empty())), &Codes.INVALID),
+      Test.that("the studio graph itself is well formed", Result.isOk(&Mutations.check(&graph, &Map.empty()))),
+      Test.not("a channel declares no roles", Rules.channelHolds(&Graph.Participant{..channel("c"), roles: ["entry"]})),
+      Test.not("a channel declares no abilities", Rules.channelHolds(&Graph.Participant{..channel("c"), abilities: ["draft"]})),
+      Test.that("a plain channel holds", Rules.channelHolds(&channel("c"))),
+      Test.that("other kinds keep their roles", Rules.channelHolds(&Fixtures.member("a", &["entry"], &["draft"]))),
+      Test.equals("subscribers leave out the sender and the channel", &Routing.subscribers(&graph, "general", "builder", Vocabulary.KIND_TASK), &["lead", "reviewer", "watcher"]),
+      Test.that("a channel is recognized by kind", Graph.isChannel(&graph, "general") && !Graph.isChannel(&graph, "lead") && !Graph.isChannel(&graph, "missing")),
+      Test.that("a team nested exactly as deep as the limit is reached", Result.isOk(&reached(Limits.CONTAINMENT_DEPTH, "team"))),
+      Test.equals("one level deeper is refused", &Fixtures.code(&reached(Limits.CONTAINMENT_DEPTH + 1, "team")), &Codes.LIMIT_EXCEEDED),
+      Test.equals("a channel counts toward the depth it reaches through", &Fixtures.code(&reached(Limits.CONTAINMENT_DEPTH, "hall")), &Codes.LIMIT_EXCEEDED),
+      Test.that("a channel reaches a team one level shallower", Result.isOk(&reached(Limits.CONTAINMENT_DEPTH - 1, "hall"))),
+      Test.that("linked ignores what an edge carries", Graph.linked(&graph, "general", "reviewer") && !Graph.linked(&graph, "general", "outsider"))
+    ])
+
+  Runner.finish(&checks)
+}

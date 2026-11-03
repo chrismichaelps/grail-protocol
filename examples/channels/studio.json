@@ -1,0 +1,35 @@
+{
+  "participants": [
+    {"id": "lead", "kind": "human"},
+    {"id": "builder", "kind": "agent"},
+    {"id": "reviewer", "kind": "agent"},
+    {"id": "deployer", "kind": "tool"},
+    {"id": "search", "kind": "tool"},
+    {"id": "watcher", "kind": "service"},
+    {"id": "general", "kind": "channel"},
+    {"id": "reviews", "kind": "channel"},
+    {"id": "builds", "kind": "channel"}
+  ],
+  "edges": [
+    {"id": "lead-posts-general", "from": "lead", "to": "general", "relation": "flow"},
+    {"id": "builder-posts-general", "from": "builder", "to": "general", "relation": "flow"},
+    {"id": "reviewer-posts-general", "from": "reviewer", "to": "general", "relation": "flow"},
+    {"id": "deployer-posts-general", "from": "deployer", "to": "general", "relation": "flow", "kinds": ["observation"]},
+    {"id": "general-to-lead", "from": "general", "to": "lead", "relation": "flow"},
+    {"id": "general-to-builder", "from": "general", "to": "builder", "relation": "flow"},
+    {"id": "general-to-reviewer", "from": "general", "to": "reviewer", "relation": "flow"},
+    {"id": "general-to-watcher", "from": "general", "to": "watcher", "relation": "flow"},
+    {"id": "builder-posts-reviews", "from": "builder", "to": "reviews", "relation": "flow"},
+    {"id": "reviews-to-reviewer", "from": "reviews", "to": "reviewer", "relation": "flow", "kinds": ["task"]},
+    {"id": "reviews-to-lead", "from": "reviews", "to": "lead", "relation": "flow"},
+    {"id": "reviews-to-watcher", "from": "reviews", "to": "watcher", "relation": "flow"},
+    {"id": "builder-streams-builds", "from": "builder", "to": "builds", "relation": "flow"},
+    {"id": "builds-to-lead", "from": "builds", "to": "lead", "relation": "flow"},
+    {"id": "builds-to-watcher", "from": "builds", "to": "watcher", "relation": "flow"},
+    {"id": "lead-asks-builder", "from": "lead", "to": "builder", "relation": "flow", "kinds": ["task", "cancel"]},
+    {"id": "lead-asks-reviewer", "from": "lead", "to": "reviewer", "relation": "flow", "kinds": ["task"]},
+    {"id": "builder-calls-deployer", "from": "builder", "to": "deployer", "relation": "flow", "kinds": ["tool.call"]},
+    {"id": "lead-bridges-search", "from": "lead", "to": "search", "relation": "flow", "kinds": ["bridge.rpc"]},
+    {"id": "deploys-need-review", "from": "reviewer", "to": "deployer", "relation": "dependency"}
+  ]
+}

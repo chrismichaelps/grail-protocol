@@ -1,0 +1,104 @@
+/** @Agent.Mcp.Server — serves the participant's tools to a hosted model over a tool protocol on standard input and output */
+module Agent.Mcp
+
+import Std.Io as Io
+import Std.Json as Json
+import Std.Option as Option
+import Std.Result as Result
+import Agent.Session as Session
+import Agent.Tools as Tools
+import Constants.Agent as Names
+import Constants.Fabric as Fabric
+import Constants.Mcp as Methods
+import PuduLangMcp.Domain.Protocol.Negotiation as Negotiation
+import PuduLangMcp.Domain.Rpc.Message as Message
+import PuduLangMcp.Domain.Rpc.Reply as Reply
+import PuduLangMcp.Errors.RpcError as RpcError
+
+/// Serves one client until its input ends; answers the exit status. A participant that cannot attach still answers the handshake, and every tool call then explains why.
+export fn serve() -> Int {
+  let attached = Session.fromEnvironment()
+  var session = Negotiation.Unopened
+
+  loop {
+    match Io.readLineOrEnd() {
+      case Ok(Some(line)) => {
+        let answered = respond(&attached, &session, line)
+        session = answered[0]
+
+        if let Some(reply) = answered[1] {
+          if Io.writeLine(reply) != Ok(()) { return 1 }
+        }
+      }
+      case Ok(None) => { return 0 }
+      case Err(_) => { return 1 }
+    }
+  }
+}
+
+/// The protocol session after one input line, and the line to answer it with, if any.
+export fn respond(attached: &Result[Session.Session, Str], session: &Negotiation.Session, line: Str) -> (Negotiation.Session, Option[Str]) {
+  match Message.parse(line) {
+    case Message.Request(id, method, params) => {
+      match Negotiation.admit(session, method, &params) {
+        case Ok(era) => {
+          let opened = match era {
+            case Negotiation.LegacyEra(version) => if Negotiation.isHandshake(method) { Negotiation.Legacy(version) } else { *session }
+            case Negotiation.Modern => *session
+          }
+          let answer = Result.map(answerOf(attached, &era, method, &params), |body: Json.Json| Reply.result(&id, &body))
+          (opened, Some(Result.unwrapOrElse(answer, |problem: RpcError.ProtocolError| Reply.failure(&Some(id), &problem))))
+        }
+        case Err(problem) => (*session, Some(Reply.failure(&Some(id), &problem)))
+      }
+    }
+    case Message.Refused(id, problem) => (*session, Some(Reply.failure(&id, &problem)))
+    case _ => (*session, None)
+  }
+}
+
+fn answerOf(attached: &Result[Session.Session, Str], era: &Negotiation.Era, method: Str, params: &Json.Json) -> Result[Json.Json, RpcError.ProtocolError] {
+  if method == Methods.INITIALIZE { return Ok(handshake(era)) }
+  if method == Methods.PING { return Ok(stamped(era, &[])) }
+  if method == Methods.TOOLS_LIST { return Ok(stamped(era, &[(Methods.TOOLS_MEMBER, Json.List(Tools.TOOLS.map(|tool: Tools.Tool| described(&tool))))])) }
+  if method == Methods.TOOLS_CALL { return Result.map(called(attached, params), |fields: Array[(Str, Json.Json)]| stamped(era, &fields)) }
+
+  Err(RpcError.MethodNotFound(method))
+}
+
+fn handshake(era: &Negotiation.Era) -> Json.Json {
+  let version = match *era {
+    case Negotiation.LegacyEra(agreed) => agreed
+    case Negotiation.Modern => Methods.MODERN_VERSION
+  }
+  let identity = Json.object(&[(Methods.NAME_MEMBER, Json.Text(Names.SERVER_NAME)), (Methods.TITLE_MEMBER, Json.Text(Names.SERVER_TITLE)), (Methods.VERSION_MEMBER, Json.Text(Fabric.VERSION))])
+  let capabilities = Json.object(&[(Methods.TOOLS_MEMBER, Json.object(&[(Methods.LIST_CHANGED_MEMBER, Json.Boolean(false))]))])
+  stamped(era, &[(Methods.PROTOCOL_VERSION_MEMBER, Json.Text(version)), (Methods.CAPABILITIES_MEMBER, capabilities), (Methods.SERVER_INFO_MEMBER, identity), (Methods.INSTRUCTIONS_MEMBER, Json.Text(Names.INSTRUCTIONS))])
+}
+
+fn stamped(era: &Negotiation.Era, fields: &Array[(Str, Json.Json)]) -> Json.Json {
+  match *era {
+    case Negotiation.Modern => Json.object(&[(Methods.RESULT_TYPE_MEMBER, Json.Text(Methods.RESULT_COMPLETE))].concat(*fields))
+    case Negotiation.LegacyEra(_) => Json.object(fields)
+  }
+}
+
+fn described(tool: &Tools.Tool) -> Json.Json {
+  Json.object(&[(Methods.NAME_MEMBER, Json.Text(tool.name)), (Methods.DESCRIPTION_MEMBER, Json.Text(tool.description)), (Methods.INPUT_SCHEMA_MEMBER, Result.unwrapOr(Json.decode(tool.schema), Json.object(&[])))])
+}
+
+fn called(attached: &Result[Session.Session, Str], params: &Json.Json) -> Result[Array[(Str, Json.Json)], RpcError.ProtocolError] {
+  let name = match Json.field(params, Methods.NAME_MEMBER) {
+    case Some(Json.Text(found)) => found
+    case _ => { return Err(RpcError.InvalidParams(Names.MISSING_ARGUMENT + Methods.NAME_MEMBER)) }
+  }
+  let arguments = Option.unwrapOr(Json.field(params, Methods.ARGUMENTS_MEMBER), Json.object(&[]))
+  let outcome = match attached {
+    case Ok(session) => Tools.call(name, &session, &arguments)
+    case Err(reason) => Err(Json.object(&[(Methods.DETAIL_MEMBER, Json.Text(reason))]))
+  }
+  let failed = Result.isErr(&outcome)
+  let body = Result.unwrapOrElse(outcome, |refused: Json.Json| refused)
+  let content = Json.List([Json.object(&[(Methods.TYPE_MEMBER, Json.Text(Methods.TEXT_CONTENT)), (Methods.TEXT_MEMBER, Json.Text(Json.encodePretty(&body)))])])
+  Ok([(Methods.CONTENT_MEMBER, content), (Methods.STRUCTURED_MEMBER, body), (Methods.IS_ERROR_MEMBER, Json.Boolean(failed))])
+}

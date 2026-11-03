@@ -44,6 +44,18 @@ export fn verify(text: Str, key: &Bytes) -> Result[Capability.Token, Problem.Pro
   Option.okOr(TokenCodec.fromJson(&value), unauthorized())
 }
 
+/// The claims a token states, read without checking its signature. Only for a client deciding which scope and graph to address; the fabric verifies the token on every call.
+export fn claimed(text: Str) -> Option[Capability.Token] {
+  let parts = text.trim().split(Security.TOKEN_SEPARATOR)
+
+  if parts.length() != 2 { return None }
+
+  let claims = Result.toOption(ByteSeq.decodeBase64Url(parts[0])) ?
+  let decoded = Result.toOption(ByteSeq.toText(&claims)) ?
+  let value = Result.toOption(Json.decode(decoded)) ?
+  TokenCodec.fromJson(&value)
+}
+
 /// What a presented token lets its holder do in a scope, or why it lets them do nothing.
 export fn authorize(text: Str, scopeId: Str, secret: Str, now: Int, revoked: &Set[Str]) -> Result[Capability.Authority, Problem.Problem] {
   let key = scopeKey(secret, scopeId)

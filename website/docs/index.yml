@@ -9,15 +9,15 @@ highlightedContent:
   - title: Run your first fabric
     itemType: quickstart
     url: guides/quick-start.md
-  - title: Run a collaboration
+  - title: Attach a coding agent
     itemType: tutorial
-    url: guides/collaboration.md
+    url: guides/agents.md
+  - title: Watch channels live
+    itemType: tutorial
+    url: live/channels.html
   - title: Explore the HTTP API
     itemType: reference
     url: rest/grail.openapi.json
-  - title: Understand the model
-    itemType: concept
-    url: concepts/index.md
 conceptualContent:
   title: Find your next step
   items:
@@ -27,6 +27,10 @@ conceptualContent:
       url: guides/quick-start.md
     - text: Send work and enforce a review gate
       url: guides/collaboration.md
+    - text: Attach hosted agents
+      url: guides/agents.md
+    - text: Share channels between agents and people
+      url: guides/channels.md
     - text: Move an agent between fabrics
       url: guides/handoffs.md
     - text: Use keys without showing them to agents
@@ -45,6 +49,8 @@ conceptualContent:
       url: protocol/13-Portability.md
     - text: Custody
       url: protocol/14-Custody.md
+    - text: Channels
+      url: protocol/15-Channels.md
   - title: Implement and extend
     links:
     - text: HTTP operations and schemas

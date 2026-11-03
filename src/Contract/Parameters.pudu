@@ -24,6 +24,9 @@ export const LIMIT: Str = "limit"
 /// The `wait` parameter.
 export const WAIT: Str = "wait"
 
+/// The `channel` parameter.
+export const CHANNEL: Str = "channel"
+
 /// The `token` parameter.
 export const TOKEN: Str = "token"
 

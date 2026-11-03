@@ -22,6 +22,7 @@ A binding maps the protocol's operations onto a transport. Each operation has a 
 | `readTransfer` | `transfer.read` | Reads an envelope and its lifecycle. |
 | `traceTransfer` | `ledger.read` | Reads the causal ancestry (5.5). |
 | `pullDeliveries` | `transfer.receive` | Reads deliveries for a participant after a cursor. |
+| `readChannel` | `transfer.receive` | Reads a channel's posts after a cursor without acknowledging anything (15.3). |
 | `readLedger` | `ledger.read` | Reads a range of ledger entries with their links. |
 | `delegateToken` | `token.delegate` | Issues a narrower token (7.5). |
 | `inspectToken` | none | Describes the presented token: its scope, graph, audience, abilities, window, and depth. |
@@ -40,7 +41,7 @@ A binding maps the protocol's operations onto a transport. Each operation has a 
 
 - Requests and responses use `application/json`; problems use `application/problem+json`.
 - The token travels as `Authorization: Bearer <token>`.
-- A client SHOULD send `Grail-Version: 1.1`. A fabric that does not support the requested version answers `grail.unsupported-version` with the versions it supports.
+- A client SHOULD send `Grail-Version: 1.2`. A fabric that does not support the requested version answers `grail.unsupported-version` with the versions it supports.
 - Paths, methods, parameters, bodies, and status codes are exactly those in the contract.
 - Pulling deliveries is cursor based: `after` is the last ledger sequence the recipient has processed. Passing a cursor acknowledges every delivery up to it, which is how `at-least-once` delivery learns that redelivery can stop. `limit` bounds the page and defaults to 100, at most 1000. `wait` (milliseconds, at most 30 000) holds the request open until a delivery arrives or the time runs out, so a participant behind a firewall or on a laptop receives work as it happens without the fabric ever calling it.
 
@@ -69,6 +70,14 @@ The answer is one line: `{"status": 202, "body": {…}}`, or `{"status": 4xx, "p
 | `extensions` | Extension names it supports. |
 
 Discovery reveals nothing about any scope.
+
+## 8.5 Browsers
+
+A fabric MAY let pages on listed origins call it. For such an origin it answers a preflight request (`OPTIONS` with `Access-Control-Request-Method`) with `204` and the methods and headers the binding uses, including `Authorization` and `Grail-Version`, and it MAY add `Access-Control-Allow-Private-Network: true` so a public page can reach a fabric on the visitor's own machine. Requests from any other origin receive no permission. Tokens travel only in `Authorization`, never in cookies or URLs, so allowing an origin grants it nothing by itself.
+
+## 8.6 Attaching hosted agents
+
+A participant run by software that was not written for Grail, such as a coding agent, attaches through an adapter that holds its token and exposes the operations it needs. Adapters SHOULD read the fabric's base address from `GRAIL_FABRIC` and the token from the file named by `GRAIL_TOKEN_FILE`, falling back to `GRAIL_TOKEN`, so the same configuration attaches any agent to any fabric. An adapter MUST NOT place the token in anything the agent's model reads. An adapter that supervises an agent per task SHOULD name the task as the first parent of everything the agent sends for it, and SHOULD name what the agent sent and read as parents of the answer, so the trace of an answer covers the work behind it.
 
 ## Referenced by
 

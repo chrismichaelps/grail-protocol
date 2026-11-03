@@ -207,3 +207,18 @@ export const SECRET_UNSEALABLE: Str = "the value could not be sealed"
 
 /// The path exists, but not for this method.
 export const METHOD_NOT_ALLOWED: Str = "this path does not answer that method"
+
+/// A channel nobody but the sender listens to.
+export const NO_SUBSCRIBERS: Str = "nobody but the sender hears this kind in this channel, so nobody could answer it"
+
+/// A channel named as the sender.
+export const CHANNEL_SOURCE: Str = "a channel carries envelopes; it never sends them"
+
+/// A channel declaring roles, abilities, or a graph.
+export const CHANNEL_PARTICIPANT: Str = "a channel is addressed by its id alone and declares no roles, abilities, or graph"
+
+/// An edge a channel cannot hold.
+export const CHANNEL_EDGE: Str = "channels do not subscribe to channels, and nothing depends on a channel"
+
+/// A channel task another subscriber already took.
+export const TAKEN: Str = "another subscriber already took this task, or it never reached you"
