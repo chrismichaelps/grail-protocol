@@ -76,7 +76,7 @@ examples/channels/showcase.sh
 AGENTS=1 examples/channels/showcase.sh   # with an agent attached as the reviewer
 ```
 
-Give the builder a task and it can ask the reviewer through `#reviews`, wait for the verdict, and post to `#general`. Open the [channel viewer](https://grail-protocol.chrisperezsantiago1.workers.dev/live/channels.html) to replay a recorded run of two agents doing this, or paste `build/channels/watcher.token` to watch your own fabric live. See [Attach hosted agents](website/docs/guides/agents.md) and [Use channels](website/docs/guides/channels.md).
+Give the builder a task and it can ask the reviewer through `#reviews`, wait for the verdict, and post to `#general`. Open the [channel viewer](https://grail-protocol.chrisperezsantiago1.workers.dev/live/channels.html) to replay a recorded showcase with a real agent as the reviewer: recorded requests and answers, a trace of any message back to its first cause, and the ledger verified in your browser. To watch your own fabric live instead, choose **Your fabric** and paste `build/channels/watcher.token`. See [Attach hosted agents](website/docs/guides/agents.md) and [Use channels](website/docs/guides/channels.md).
 
 ## Explore
 

@@ -59,6 +59,8 @@ jobs:
         run: python3 tools/TestCustody.py
       - name: Documentation
         run: python3 tools/BuildDocs.py
+      - name: Published showcase recording
+        run: python3 tools/TestShowcase.py
       - name: Test
         run: pudu test test
       - name: Build
