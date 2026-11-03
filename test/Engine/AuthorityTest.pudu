@@ -54,7 +54,11 @@ fn main() -> Int {
   let forgedChild = Authority.encode(&Capability.Token{..Fixtures.claims("forged", "writer", &[Vocabulary.ABILITY_LEDGER_READ]), issuer: "lead", parent: Some("narrow-root"), chain: [narrowRootToken]}, &key)
   let boundParent = Capability.Token{..Fixtures.claims("bound", "x", &[Vocabulary.ABILITY_GRAPH_READ]), graph: Some(Fixtures.GRAPH)}
   let boundChild = Capability.Token{..Fixtures.claims("child", "y", &[Vocabulary.ABILITY_GRAPH_READ]), issuer: "x", parent: Some("bound"), graph: Some(Fixtures.GRAPH)}
+  let forgedOwner = Authority.encode(&Capability.Token{..Fixtures.claims("false-owner", Security.OWNER, &[Vocabulary.ABILITY_GRAPH_READ]), issuer: "lead", parent: Some(narrowRoot.id), chain: [narrowRootToken]}, &key)
   let checks = Test.suite("Authority", &[
+      Test.equals("a signed chain cannot turn a non-owner into owner", &Fixtures.code(&Authority.authorize(forgedOwner, Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW, &setOf([]))), &Codes.UNAUTHORIZED),
+      Test.not("the reserved owner audience is wider than a participant", Authority.narrows(&boundParent, &Capability.Token{..boundChild, audience: Security.OWNER})),
+      Test.that("an owner may retain its own principal when narrowing", Authority.narrows(&Fixtures.claims("root", Security.OWNER, &[Vocabulary.ABILITY_ALL]), &Capability.Token{..Fixtures.claims("narrow-owner", Security.OWNER, &[Vocabulary.ABILITY_GRAPH_READ]), parent: Some("root")})),
       Test.succeeded("a chain as deep as the limit verifies", &chained(Limits.DELEGATION_DEPTH - 1)),
       Test.equals("a chain deeper than the limit is refused", &Fixtures.code(&chained(Limits.DELEGATION_DEPTH)), &Codes.LIMIT_EXCEEDED),
       Test.equals("a token is expired at its expiry instant", &Fixtures.code(&Authority.authorize(rootToken, Fixtures.SCOPE, Fixtures.SECRET, Fixtures.NOW + Fixtures.DAY, &setOf([]))), &Codes.UNAUTHORIZED),

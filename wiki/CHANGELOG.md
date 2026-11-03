@@ -1,5 +1,7 @@
 # Changelog
 
+- 2026-11-02 · [[src/Engine/Authority]] · non-owner delegation cannot introduce the reserved owner principal; signed-chain and custody-delivery attacks reproduce and prevent escalation · risk HIGH
+
 - 2026-11-02 · [[protocol/14-Custody]] · custody: secrets used by name, revealed only in deliveries to their audience, refused anywhere else; sealed, write-only storage; handoffs list what they need · risk HIGH · [[decisions/ADR-0010-custody]]
 
 - 2026-11-02 · [[protocol/13-Portability]] · protocol 1.1 and reference fabric 0.2.0: agents move between fabrics as sealed, self-verifying handoffs; two-fabric suite and full mutation kills · risk HIGH · [[decisions/ADR-0009-portable-handoffs]]

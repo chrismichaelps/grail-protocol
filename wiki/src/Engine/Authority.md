@@ -14,6 +14,8 @@ tags: [module, engine]
 
 Signs, verifies, delegates, and checks capability tokens.
 
+The reserved `owner` audience may be retained only by an owner parent. A non-owner cannot mint it through delegation, even with unchanged abilities. This invariant is checked both at issuance and for every verified chain link, because owner-specific source, inbox, and revocation privileges exceed ordinary participant authority.
+
 ## Interface
 
 ### Signatures

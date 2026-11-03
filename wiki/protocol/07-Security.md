@@ -70,6 +70,8 @@ A participant holding `token.delegate` may issue a token to another participant 
 5. the child's validity window lies inside the parent's;
 6. the chain holds at most 8 tokens.
 
+The reserved `owner` audience MUST NOT appear as a child of a non-owner audience. Keeping the same abilities does not make that transition narrower: `owner` carries source, inbox, and revocation privileges that ordinary participants do not hold. Issuance refuses it with `grail.forbidden`; verification of a chain containing it fails with `grail.unauthorized`.
+
 Revoking a token revokes every token delegated from it. A fabric MUST check revocation for every token in the chain. A participant may revoke the tokens it issued; the owner may revoke any token of the scope.
 
 ## 7.6 End-to-end encryption
