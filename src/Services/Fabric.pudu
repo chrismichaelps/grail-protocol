@@ -147,7 +147,7 @@ fn pullOnce(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> 
 
       let address = Envelope.Address{graph: asked.input.graph, participant: asked.input.participant}
       let pulled = Delivery.pull(&state, &address, asked.input.after, Delivery.pageSize(asked.input.limit), now)
-      let shown = Custody.delivered(&pulled[1], &pulled[0].records, &address, secret, now)
+      let shown = Custody.delivered(&pulled[1], &pulled[0].records, &address, &authority, secret, now) ?
       Ok((Transfer.Page{..pulled[0], records: shown[0]}, shown[1]))
     })
 }

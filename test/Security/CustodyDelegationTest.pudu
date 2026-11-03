@@ -1,0 +1,65 @@
+/** @Test.Security.CustodyDelegation.Suite — a revealing token cannot exceed its issuers' custody authority */
+module Security.CustodyDelegationTest
+
+import Std.Http as Http
+import Std.Json as Json
+import Std.Option as Option
+import Std.Test as Test
+import App.Assembly as Assembly
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Support.Fabric as Fabric
+import Support.Runner as Runner
+import Utils.JsonRead as JsonRead
+
+fn contains(answer: &Fabric.Answer, value: Str) -> Bool { Json.encode(&answer.body).contains(value) }
+
+fn main() -> Int {
+  let router = match Fabric.start() {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Custody delegation", &[Test.that("the fabric starts: " + reason, false)])) }
+  }
+  let root = Fabric.owner("demo")
+  let base = "/v1/scopes/demo"
+  let created = Fabric.sent(&router, Http.Put, base + "/graphs/g", root, "\{\"participants\":[\{\"id\":\"planner\",\"kind\":\"agent\"\},\{\"id\":\"executor\",\"kind\":\"tool\"\},\{\"id\":\"helper\",\"kind\":\"tool\"\}],\"edges\":[\{\"id\":\"flow\",\"from\":\"planner\",\"to\":\"executor\",\"relation\":\"flow\"\},\{\"id\":\"other\",\"from\":\"helper\",\"to\":\"executor\",\"relation\":\"flow\"\}]\}")
+  let abilities = [Vocabulary.ABILITY_TOKEN_DELEGATE, Vocabulary.ABILITY_TRANSFER_RECEIVE]
+  let expires = Assembly.now() + 600000
+  let planner = Fabric.delegated(&router, root, "planner", "planner", &abilities, "g", expires)
+  let executor = Fabric.delegated(&router, root, "executor", "executor", &abilities, "g", expires)
+  let child = Fabric.delegated(&router, planner, "child", "executor", &[Vocabulary.ABILITY_TRANSFER_RECEIVE], "g", expires - 1000)
+  let legitimate = Fabric.delegated(&router, executor, "legitimate", "executor", &[Vocabulary.ABILITY_TRANSFER_RECEIVE], "g", expires - 1000)
+  let deposited = Fabric.sent(&router, Http.Put, base + "/secrets/key", root, "\{\"value\":\"synthetic-lineage-canary-92741\",\"graph\":\"g\",\"audience\":[\"executor\"],\"senders\":[\"planner\"],\"uses\":1\}")
+  let sent = Fabric.sent(&router, Http.Post, base + "/transfers", root, "\{\"grail\":\"1.1\",\"id\":\"call\",\"scope\":\"demo\",\"graph\":\"g\",\"source\":\"planner\",\"target\":\{\"participant\":\"executor\"\},\"kind\":\"tool.call\",\"delivery\":\{\"mode\":\"at-most-once\"\},\"payload\":\{\"auth\":\{\"$secret\":\"key\"\}\}\}")
+  let path = base + "/graphs/g/participants/executor/deliveries"
+  let refused = Fabric.sent(&router, Http.Get, path, child, "")
+  let afterRefusal = Fabric.sent(&router, Http.Get, base + "/secrets", root, "")
+  let allowed = Fabric.sent(&router, Http.Get, path, legitimate, "")
+  let repeated = Fabric.sent(&router, Http.Get, path, legitimate, "")
+  let counted = Fabric.sent(&router, Http.Get, base + "/secrets", root, "")
+  let pending = Fabric.sent(&router, Http.Post, base + "/transfers", root, "\{\"grail\":\"1.1\",\"id\":\"pending\",\"scope\":\"demo\",\"graph\":\"g\",\"source\":\"planner\",\"target\":\{\"participant\":\"executor\"\},\"kind\":\"tool.call\",\"payload\":\{\"auth\":\{\"$secret\":\"rotating\"\}\}\}")
+  let rotationDeposit = Fabric.sent(&router, Http.Put, base + "/secrets/rotating", root, "\{\"value\":\"synthetic-old-key-67219\",\"graph\":\"g\",\"audience\":[\"executor\"],\"senders\":[\"planner\"]\}")
+  let queued = Fabric.sent(&router, Http.Post, base + "/transfers", root, "\{\"grail\":\"1.1\",\"id\":\"queued\",\"scope\":\"demo\",\"graph\":\"g\",\"source\":\"planner\",\"target\":\{\"participant\":\"executor\"\},\"kind\":\"tool.call\",\"payload\":\{\"auth\":\{\"$secret\":\"rotating\"\}\}\}")
+  let rotated = Fabric.sent(&router, Http.Put, base + "/secrets/rotating", root, "\{\"value\":\"synthetic-new-key-58317\",\"graph\":\"g\",\"audience\":[\"executor\"],\"senders\":[\"helper\"]\}")
+  let staleSender = Fabric.sent(&router, Http.Get, path, executor, "")
+  let fresh = Fabric.sent(&router, Http.Post, base + "/transfers", root, "\{\"grail\":\"1.1\",\"id\":\"fresh\",\"scope\":\"demo\",\"graph\":\"g\",\"source\":\"helper\",\"target\":\{\"participant\":\"executor\"\},\"kind\":\"tool.call\",\"payload\":\{\"auth\":\{\"$secret\":\"rotating\"\}\}\}")
+  let cursor = Option.unwrapOr(JsonRead.whole(&queued.body, "sequence"), 0)
+  let freshPull = Fabric.sent(&router, Http.Get, path + "?after=" + show(cursor), executor, "")
+  let checks = Test.suite("Custody delegation", &[
+      Test.equals("the graph and secret exist", &[created.status, deposited.status], &[201, 201]),
+      Test.that("ordinary audience delegation remains valid", !child.isEmpty() && !legitimate.isEmpty()),
+      Test.equals("the single-use call is admitted", &sent.status, &202),
+      Test.equals("a parent outside the secret audience cannot reveal through its child", &Fabric.code(&refused), &Codes.FORBIDDEN),
+      Test.not("the refused response contains no key", contains(&refused, "synthetic-lineage-canary-92741")),
+      Test.that("refusal does not count a reveal", contains(&afterRefusal, "\"reveals\":0")),
+      Test.that("the authorized child still receives the at-most-once delivery", allowed.status == 200 && contains(&allowed, "synthetic-lineage-canary-92741")),
+      Test.not("the delivery is not served twice", contains(&repeated, "synthetic-lineage-canary-92741")),
+      Test.that("the accepted reveal is counted once", contains(&counted, "\"reveals\":1")),
+      Test.equals("unknown references are not queued", &Fabric.code(&pending), &Codes.NOT_FOUND),
+      Test.equals("the old-policy call is admitted before rotation", &[rotationDeposit.status, queued.status, rotated.status], &[201, 202, 201]),
+      Test.equals("rotation rechecks the original sender before revealing a new value", &Fabric.code(&staleSender), &Codes.FORBIDDEN),
+      Test.not("a queued call cannot obtain a key under a stricter sender policy", contains(&staleSender, "synthetic-new-key-58317")),
+      Test.that("a new call satisfying the current policy receives the rotated key", fresh.status == 202 && freshPull.status == 200 && contains(&freshPull, "synthetic-new-key-58317"))
+    ])
+
+  Runner.finish(&checks)
+}

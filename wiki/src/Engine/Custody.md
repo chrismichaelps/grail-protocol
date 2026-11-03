@@ -14,6 +14,8 @@ tags: [module, engine]
 
 Seals secrets, keeps their values out of every envelope, and reveals them only in deliveries to their audience.
 
+Revelation checks the complete verified delegation chain: every non-owner ancestor must be a current executor in the secret's audience. The stored envelope must still satisfy the current sender and kind policy, including after rotation. Refused batches commit neither delivery marks nor reveal counts. Admission consumes `uses`; successful redelivery does not consume another use.
+
 ## Interface
 
 ### Signatures
@@ -34,11 +36,11 @@ export fn guarded(state: &Scope.State, record: &Ledger.Record, now: Int) -> Resu
 /// Whether a JSON value holds the value of any secret the scope keeps, as written or in one of its disguises.
 export fn exposes(state: &Scope.State, value: &Json.Json, secret: Str) -> Bool
 
-/// The record as one recipient receives it: references to secrets whose audience holds the recipient become their values; everything else is left as stored.
-export fn revealed(state: &Scope.State, record: &Ledger.Record, recipient: &Envelope.Address, secret: Str, now: Int) -> Ledger.Record
+/// The recipient's delivery under the caller's verified chain and current secret policy; refusal leaves the stored record unchanged.
+export fn revealed(state: &Scope.State, record: &Ledger.Record, recipient: &Envelope.Address, authority: &Capability.Authority, secret: Str, now: Int) -> Result[Ledger.Record, Problem.Problem]
 
-/// The records as one recipient receives them, and the scope with every reveal counted on the secret it revealed.
-export fn delivered(state: &Scope.State, records: &Array[Ledger.Record], recipient: &Envelope.Address, secret: Str, now: Int) -> (Array[Ledger.Record], Scope.State)
+/// The delivery batch and reveal counts, or a refusal before either can be committed.
+export fn delivered(state: &Scope.State, records: &Array[Ledger.Record], recipient: &Envelope.Address, authority: &Capability.Authority, secret: Str, now: Int) -> Result[(Array[Ledger.Record], Scope.State), Problem.Problem]
 
 /// Whether a participant of a graph is an executor custody may reveal a value to.
 export fn executes(state: &Scope.State, graph: Str, participant: Str) -> Bool

@@ -57,6 +57,10 @@ The ledger, traces, reads, and handoffs keep `{"$secret": "github"}`. When `exec
 
 `DELETE /v1/scopes/demo/secrets/github` destroys the key. Calls already waiting for delivery stop resolving at once.
 
+## Delegate executor access
+
+Issue executor tokens directly from the owner, or from another executor already authorized by that secret's audience. Giving an agent `token.delegate` does not let it acquire a key by minting a child token named after an executor: every non-owner issuer in the chain must also be an authorized executor. Pending calls are checked against the current sender and kind policy when a key rotates.
+
 ## Moving agents between fabrics
 
 A [handoff](handoffs.md) lists the secrets its context `needs` and never carries a value. The receiving owner deposits its own key under the same name.

@@ -61,6 +61,10 @@ The rule that every recipient must be in the audience is deliberately strict. A 
 
 When a recipient pulls its deliveries, each reference is replaced by the value, as a JSON string, when its secret still exists, has not expired, lists that recipient in its audience, and the recipient is still a `tool` or `service` participant. The last condition is checked again at every pull, so a graph mutated after the deposit cannot turn a model into an audience member. Each reveal adds one to the secret's `reveals`. Nothing else ever reveals a value. That includes `readTransfer`, `traceTransfer`, `readLedger`, `readHandoff`, `exportHandoff`, discovery, and logs. Because the stored body keeps the reference, the ledger proves which secret, at which point in the conversation, was handed to which executor, without holding the secret itself.
 
+Revealing a value also requires the whole presenting token's verified delegation chain to hold that authority. Every non-owner audience in the chain MUST currently be a tool or service participant in the secret's audience. An agent cannot obtain a key by delegating `transfer.receive` to an executor identity. An owner may issue an executor token directly; an authorized executor may narrow it further. An empty chain is not authority.
+
+The stored envelope's graph, sender, and kind MUST still satisfy the current secret policy at reveal time, including after rotation. `uses` counts admission rather than redelivery and is not decremented again. A refusal answers `grail.forbidden` and MUST commit neither delivery acknowledgment marks nor any reveal counters from the batch.
+
 ## 14.5 Storage
 
 The reference fabric seals each value with an authenticated cipher. The key is derived from the fabric secret and the scope, a fresh nonce is drawn for every version, and the scope, name, and version are bound as associated data. A sealed value moved to another scope, name, or version does not open. Values are opened only to reveal them in a delivery and to check admissions. They never appear in log lines; notifications name a secret and its version only.

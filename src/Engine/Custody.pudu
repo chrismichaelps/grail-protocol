@@ -87,26 +87,32 @@ export fn exposes(state: &Scope.State, value: &Json.Json, secret: Str) -> Bool {
   List.any(&Map.values(&state.secrets), |held: Custody.Held| Option.holds(&valueOf(&held, secret, state.id), |found: Str| List.any(&Disguise.forms(found), |shown: Str| text.contains(shown))))
 }
 
-/// The record as one recipient receives it: references to secrets whose audience holds the recipient become their values; everything else is left as stored.
-export fn revealed(state: &Scope.State, record: &Ledger.Record, recipient: &Envelope.Address, secret: Str, now: Int) -> Ledger.Record {
+/// The recipient's delivery under the caller's verified chain and current secret policy; refusal leaves the stored record unchanged.
+export fn revealed(state: &Scope.State, record: &Ledger.Record, recipient: &Envelope.Address, authority: &Capability.Authority, secret: Str, now: Int) -> Result[Ledger.Record, Problem.Problem] {
   let payload = match record.envelope.payload {
     case Some(found) => found
-    case None => { return *record }
+    case None => { return Ok(*record) }
   }
 
-  if references(&payload).isEmpty() { return *record }
+  for name in references(&payload) {
+    if let Some(held) = state.secrets.get(name) {
+      if receives(state, &held, recipient, now) {
+        let _allowed = mayReveal(state, &held, record, authority) ?
+      }
+    }
+  }
 
   let shown = substituted(&payload, |name: Str| Option.andThen(state.secrets.get(name), |held: Custody.Held| if receives(state, &held, recipient, now) { valueOf(&held, secret, state.id) } else { None }))
-  Ledger.Record{..*record, body: Json.withField(&record.body, Members.ENVELOPE_PAYLOAD, shown), envelope: Envelope.Envelope{..record.envelope, payload: Some(shown)}}
+  Ok(Ledger.Record{..*record, body: Json.withField(&record.body, Members.ENVELOPE_PAYLOAD, shown), envelope: Envelope.Envelope{..record.envelope, payload: Some(shown)}})
 }
 
-/// The records as one recipient receives them, and the scope with every reveal counted on the secret it revealed.
-export fn delivered(state: &Scope.State, records: &Array[Ledger.Record], recipient: &Envelope.Address, secret: Str, now: Int) -> (Array[Ledger.Record], Scope.State) {
+/// The delivery batch and reveal counts, or a refusal before either can be committed.
+export fn delivered(state: &Scope.State, records: &Array[Ledger.Record], recipient: &Envelope.Address, authority: &Capability.Authority, secret: Str, now: Int) -> Result[(Array[Ledger.Record], Scope.State), Problem.Problem] {
   var counted = state.secrets
   var shown: Array[Ledger.Record] = []
 
   for record in *records {
-    shown = shown.push(revealed(state, &record, recipient, secret, now))
+    shown = shown.push(revealed(state, &record, recipient, authority, secret, now) ?)
 
     for name in references(&Option.unwrapOr(record.envelope.payload, Json.Null)) {
       if let Some(held) = counted.get(name) {
@@ -115,7 +121,7 @@ export fn delivered(state: &Scope.State, records: &Array[Ledger.Record], recipie
     }
   }
 
-  (shown, Scope.State{..*state, secrets: counted})
+  Ok((shown, Scope.State{..*state, secrets: counted}))
 }
 
 /// Whether a participant of a graph is an executor custody may reveal a value to.
@@ -156,6 +162,18 @@ fn permitted(state: &Scope.State, held: &Custody.Held, record: &Ledger.Record, n
 
 fn receives(state: &Scope.State, held: &Custody.Held, recipient: &Envelope.Address, now: Int) -> Bool {
   recipient.graph == held.graph && held.audience.contains(recipient.participant) && executes(state, recipient.graph, recipient.participant) && !Option.holds(&held.expires, |expires: Int| expires <= now)
+}
+
+fn mayReveal(state: &Scope.State, held: &Custody.Held, record: &Ledger.Record, authority: &Capability.Authority) -> Result[(), Problem.Problem] {
+  let envelope = record.envelope
+  let chainHeld = !authority.chain.isEmpty() && List.all(&authority.chain, |token: Capability.Token| token.audience == Security.OWNER || held.audience.contains(token.audience) && executes(state, held.graph, token.audience))
+
+  if !chainHeld { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_DELEGATION)) }
+  if held.graph != envelope.graph { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_AUDIENCE)) }
+  if !held.senders.isEmpty() && !held.senders.contains(envelope.source) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_SENDER)) }
+  if !held.kinds.isEmpty() && !held.kinds.contains(envelope.kind) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_KIND)) }
+
+  Ok(())
 }
 
 fn collected(value: &Json.Json) -> Array[Str] {
