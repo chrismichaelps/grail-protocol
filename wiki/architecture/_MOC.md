@@ -46,11 +46,11 @@ Layers 0 through 3 other than `Config/` are pure: they may not read the clock, t
 
 | Measure | Now |
 | --- | --- |
-| Modules | 89 in `src/`, 0 refused imports, 0 cycles |
+| Modules | 94 in `src/`, 0 refused imports, 0 cycles |
 | Deepest module | [[src/Main]] at structural depth 15 |
-| Suites | 14 suites, 290 assertions; tool suites 29 assertions |
+| Suites | 16 suites, 350 assertions; tool suites 29 assertions |
 | Seams | [[seams/ScopeStore]] EXPLORATORY · [[seams/RpcBridge]] EXPLORATORY · [[seams/PeerTransport]] EXPLORATORY |
-| Conformance | every check of [[protocol/11-Conformance#11.2 Required checks]], Portable included, has a test |
+| Conformance | every check of [[protocol/11-Conformance#11.2 Required checks]], Portable and Custody included, has a test |
 
 ## Referenced by
 

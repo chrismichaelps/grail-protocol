@@ -36,8 +36,8 @@ export fn identifier(prefix: Str, bytes: Int) -> Result[Str, Problem.Problem]
 
 - **Requires:** [[src/Config/Settings]] · [[src/Constants/Details]] · [[src/Constants/Server]] · [[src/Contract/Problems]] · [[src/Domain/Problem]] · [[src/Services/Store]]
 - **Standard library:** `Std.Bytes`, `Std.Random`, `Std.Result`, `Std.Sync`, `Std.Time`
-- **Consumed by:** [[src/App/Assembly]] · [[src/App/Handlers]] · [[src/Main]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/App/Assembly]] · [[src/App/Handlers]] · [[src/Main]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
 
 ## Referenced by
 
-[[src/Services/_MOC]] · [[src/App/Assembly]] · [[src/App/Handlers]] · [[src/Main]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
+[[src/Services/_MOC]] · [[src/App/Assembly]] · [[src/App/Handlers]] · [[src/Main]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]

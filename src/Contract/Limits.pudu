@@ -90,6 +90,18 @@ export const HANDOFF_LIFETIME_MILLIS: Int = 86400000
 /// The `handoffBytes` limit.
 export const HANDOFF_BYTES: Int = 4194304
 
+/// The `secrets` limit.
+export const SECRETS: Int = 256
+
+/// The `secretBytes` limit.
+export const SECRET_BYTES: Int = 4096
+
+/// The `secretLengthMin` limit.
+export const SECRET_LENGTH_MIN: Int = 12
+
+/// The `secretAudience` limit.
+export const SECRET_AUDIENCE: Int = 64
+
 /// Every limit by its contract name, for discovery.
 export const ALL: Array[(Str, Int)] = [
   ("envelopeBytes", 1114112),
@@ -120,5 +132,9 @@ export const ALL: Array[(Str, Int)] = [
   ("handoffAnchors", 64),
   ("handoffEntries", 10000),
   ("handoffLifetimeMillis", 86400000),
-  ("handoffBytes", 4194304)
+  ("handoffBytes", 4194304),
+  ("secrets", 256),
+  ("secretBytes", 4096),
+  ("secretLengthMin", 12),
+  ("secretAudience", 64)
 ]

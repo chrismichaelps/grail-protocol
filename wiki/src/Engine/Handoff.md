@@ -19,7 +19,7 @@ Assembles, seals, and checks handoffs that carry an agent's context between fabr
 ### Signatures
 
 ```pudu
-/// A sealed handoff of the anchors and their causal ancestry. Entries the authority may not read travel withheld: their digest and link prove they exist, their content stays home.
+/// A sealed handoff of the anchors and their causal ancestry. Entries the authority may not read travel withheld: their digest and link prove they exist, their content stays home. Secrets never travel; the handoff names the ones its carried envelopes reference, so the receiving owner can bind its own.
 export fn assemble(state: &Scope.State, origin: &Handoff.Origin, member: &Graph.Participant, asked: &Handoff.Asked, authority: &Capability.Authority, issued: Int, secret: Str) -> Result[Json.Json, Problem.Problem]
 
 /// Whether one handoff may carry this many entries.
@@ -46,10 +46,10 @@ export fn summary(bundle: &Json.Json, direction: Str, entries: Int) -> Json.Json
 
 ### Linkage
 
-- **Requires:** [[src/Constants/Details]] · [[src/Constants/Fabric]] · [[src/Constants/Handoff]] · [[src/Constants/Ledger]] · [[src/Contract/Limits]] · [[src/Contract/Members]] · [[src/Contract/Problems]] · [[src/Domain/Capability]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Ledger]] · [[src/Domain/Problem]] · [[src/Domain/Scope]] · [[src/Engine/Causality]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Delivery]] · [[src/Engine/Ledger]] · [[src/Utils/Canonical]] · [[src/Utils/JsonRead]] · [[src/Utils/Pointer]]
+- **Requires:** [[src/Constants/Details]] · [[src/Constants/Fabric]] · [[src/Constants/Handoff]] · [[src/Constants/Ledger]] · [[src/Contract/Limits]] · [[src/Contract/Members]] · [[src/Contract/Problems]] · [[src/Domain/Capability]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Ledger]] · [[src/Domain/Problem]] · [[src/Domain/Scope]] · [[src/Engine/Causality]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Ledger]] · [[src/Utils/Canonical]] · [[src/Utils/JsonRead]] · [[src/Utils/Pointer]]
 - **Standard library:** `Std.Bytes`, `Std.Crypto`, `Std.Json`, `Std.List`, `Std.Option`
-- **Consumed by:** [[src/Services/Handoffs]] · [[test/Engine/HandoffTest]] · [[test/Security/HandoffTest]]
+- **Consumed by:** [[src/Services/Handoffs]] · [[test/Engine/HandoffTest]] · [[test/Security/CustodyTest]] · [[test/Security/HandoffTest]]
 
 ## Referenced by
 
-[[src/Engine/_MOC]] · [[src/Services/Handoffs]] · [[test/Engine/HandoffTest]] · [[test/Security/HandoffTest]]
+[[src/Engine/_MOC]] · [[src/Services/Handoffs]] · [[test/Engine/HandoffTest]] · [[test/Security/CustodyTest]] · [[test/Security/HandoffTest]]

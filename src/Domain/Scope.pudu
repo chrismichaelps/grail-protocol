@@ -2,6 +2,7 @@
 module Domain.Scope
 
 import Std.Map as Map
+import Domain.Custody as Custody
 import Domain.Graph as Graph
 import Domain.Handoff as Handoff
 import Domain.Ledger as Ledger
@@ -10,7 +11,7 @@ import Domain.Lifecycle as Lifecycle
 /** @Domain.Scope.Keyed — the envelope an effectively-once key was first used for */
 export type Keyed = { id: Str, digest: Str, accepted: Int }
 
-/** @Domain.Scope.State — graphs, ledger, lifecycles, delivery keys, streams, tokens with their issuers, delivery marks, and handoffs of one scope */
+/** @Domain.Scope.State — graphs, ledger, lifecycles, delivery keys, streams, tokens with their issuers, delivery marks, handoffs, and secrets in custody of one scope */
 export type State = {
   id: Str,
   graphs: Map[Str, Graph.Graph],
@@ -24,7 +25,8 @@ export type State = {
   revoked: Set[Str],
   issuers: Map[Str, Str],
   served: Map[Str, Int],
-  handoffs: Map[Str, Handoff.Stored]
+  handoffs: Map[Str, Handoff.Stored],
+  secrets: Map[Str, Custody.Held]
 }
 
 /// A scope with nothing in it.
@@ -42,7 +44,8 @@ export fn empty(id: Str) -> State {
     revoked: setOf([]),
     issuers: Map.empty(),
     served: Map.empty(),
-    handoffs: Map.empty()
+    handoffs: Map.empty(),
+    secrets: Map.empty()
   }
 }
 

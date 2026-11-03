@@ -29,6 +29,8 @@ conceptualContent:
       url: guides/collaboration.md
     - text: Move an agent between fabrics
       url: guides/handoffs.md
+    - text: Use keys without showing them to agents
+      url: guides/secrets.md
     - text: Command-line reference
       url: guides/command-line.md
   - title: Understand the protocol
@@ -41,6 +43,8 @@ conceptualContent:
       url: guides/capabilities.md
     - text: Portability
       url: protocol/13-Portability.md
+    - text: Custody
+      url: protocol/14-Custody.md
   - title: Implement and extend
     links:
     - text: HTTP operations and schemas

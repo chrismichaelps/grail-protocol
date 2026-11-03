@@ -77,6 +77,15 @@ export const READ_HANDOFF: Str = "readHandoff"
 /// `POST /v1/scopes/{scope}/handoffs/{handoff}/verification`.
 export const VERIFY_HANDOFF: Str = "verifyHandoff"
 
+/// `GET /v1/scopes/{scope}/secrets`.
+export const LIST_SECRETS: Str = "listSecrets"
+
+/// `PUT /v1/scopes/{scope}/secrets/{secret}`.
+export const PUT_SECRET: Str = "putSecret"
+
+/// `DELETE /v1/scopes/{scope}/secrets/{secret}`.
+export const DELETE_SECRET: Str = "deleteSecret"
+
 /// Every operation, in contract order.
 export const ALL: Array[Operation] = [
   Operation{id: "discover", method: "GET", path: "/.well-known/grail", pattern: "/.well-known/grail", ability: "none", status: 200, secured: false, bodied: false, pathParameters: [], queryParameters: []},
@@ -98,5 +107,8 @@ export const ALL: Array[Operation] = [
   Operation{id: "exportHandoff", method: "POST", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/participants/\{participant\}/handoffs", pattern: "/v1/scopes/:scope/graphs/:graph/participants/:participant/handoffs", ability: "handoff.export", status: 201, secured: true, bodied: true, pathParameters: ["scope", "graph", "participant"], queryParameters: []},
   Operation{id: "importHandoff", method: "PUT", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/participants/\{participant\}/handoffs/\{handoff\}", pattern: "/v1/scopes/:scope/graphs/:graph/participants/:participant/handoffs/:handoff", ability: "handoff.import", status: 201, secured: true, bodied: true, pathParameters: ["scope", "graph", "participant", "handoff"], queryParameters: []},
   Operation{id: "readHandoff", method: "GET", path: "/v1/scopes/\{scope\}/handoffs/\{handoff\}", pattern: "/v1/scopes/:scope/handoffs/:handoff", ability: "ledger.read", status: 200, secured: true, bodied: false, pathParameters: ["scope", "handoff"], queryParameters: []},
-  Operation{id: "verifyHandoff", method: "POST", path: "/v1/scopes/\{scope\}/handoffs/\{handoff\}/verification", pattern: "/v1/scopes/:scope/handoffs/:handoff/verification", ability: "none", status: 200, secured: false, bodied: true, pathParameters: ["scope", "handoff"], queryParameters: []}
+  Operation{id: "verifyHandoff", method: "POST", path: "/v1/scopes/\{scope\}/handoffs/\{handoff\}/verification", pattern: "/v1/scopes/:scope/handoffs/:handoff/verification", ability: "none", status: 200, secured: false, bodied: true, pathParameters: ["scope", "handoff"], queryParameters: []},
+  Operation{id: "listSecrets", method: "GET", path: "/v1/scopes/\{scope\}/secrets", pattern: "/v1/scopes/:scope/secrets", ability: "graph.read", status: 200, secured: true, bodied: false, pathParameters: ["scope"], queryParameters: []},
+  Operation{id: "putSecret", method: "PUT", path: "/v1/scopes/\{scope\}/secrets/\{secret\}", pattern: "/v1/scopes/:scope/secrets/:secret", ability: "secret.manage", status: 201, secured: true, bodied: true, pathParameters: ["scope", "secret"], queryParameters: []},
+  Operation{id: "deleteSecret", method: "DELETE", path: "/v1/scopes/\{scope\}/secrets/\{secret\}", pattern: "/v1/scopes/:scope/secrets/:secret", ability: "secret.manage", status: 200, secured: true, bodied: false, pathParameters: ["scope", "secret"], queryParameters: []}
 ]

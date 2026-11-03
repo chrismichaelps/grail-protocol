@@ -1,0 +1,55 @@
+/** @Engine.Codec.Custody — deposits read against the contract, and what may be said about a held secret */
+module Engine.Codec.Custody
+
+import Std.Json as Json
+import Std.Option as Option
+import Constants.Details as Details
+import Contract.Members as Members
+import Contract.Schemas as Schemas
+import Domain.Custody as Custody
+import Domain.Identifier as Identifier
+import Domain.Problem as Problem
+import Engine.Codec.Shapes as Shapes
+import Utils.JsonRead as JsonRead
+import Utils.Pointer as Pointer
+
+/// A deposit under a name, or every way the body departs from the contract. A violation never repeats the value.
+export fn decodeDeposit(body: &Json.Json, name: Str) -> Result[Custody.Deposit, Problem.Problem] {
+  let violations = Shapes.check(Schemas.SECRET_DEPOSIT, body, "")
+  let audience = Option.unwrapOr(JsonRead.texts(body, Members.SECRET_DEPOSIT_AUDIENCE), [])
+
+  if !Identifier.isName(name) { return Err(Problem.invalid(&[Problem.violation(Pointer.of(&[Members.SECRET_VIEW_NAME]), Details.WRONG_VALUE)])) }
+  if !violations.isEmpty() { return Err(Problem.invalid(&violations)) }
+  if audience.isEmpty() { return Err(Problem.invalid(&[Problem.violation(Pointer.of(&[Members.SECRET_DEPOSIT_AUDIENCE]), Details.WRONG_VALUE)])) }
+
+  Ok(Custody.Deposit {
+      name: name,
+      value: Option.unwrapOr(JsonRead.text(body, Members.SECRET_DEPOSIT_VALUE), ""),
+      graph: Option.unwrapOr(JsonRead.text(body, Members.SECRET_DEPOSIT_GRAPH), ""),
+      audience: audience,
+      senders: Option.unwrapOr(JsonRead.texts(body, Members.SECRET_DEPOSIT_SENDERS), []),
+      kinds: Option.unwrapOr(JsonRead.texts(body, Members.SECRET_DEPOSIT_KINDS), []),
+      uses: JsonRead.whole(body, Members.SECRET_DEPOSIT_USES),
+      expires: JsonRead.whole(body, Members.SECRET_DEPOSIT_EXPIRES),
+      description: JsonRead.text(body, Members.SECRET_DEPOSIT_DESCRIPTION)
+    })
+}
+
+/// A held secret as anyone allowed to know it exists sees it: its name, version, and policy, never its value.
+export fn view(held: &Custody.Held) -> Json.Json {
+  JsonRead.objectOf(&[
+      (Members.SECRET_VIEW_NAME, Some(Json.Text(held.name))),
+      (Members.SECRET_VIEW_VERSION, Some(Json.Number(held.version))),
+      (Members.SECRET_VIEW_GRAPH, Some(Json.Text(held.graph))),
+      (Members.SECRET_VIEW_AUDIENCE, Some(JsonRead.textList(&held.audience))),
+      (Members.SECRET_VIEW_SENDERS, Some(JsonRead.textList(&held.senders))),
+      (Members.SECRET_VIEW_KINDS, Some(JsonRead.textList(&held.kinds))),
+      (Members.SECRET_VIEW_USES, Option.map(held.uses, |left: Int| Json.Number(left))),
+      (Members.SECRET_VIEW_EXPIRES, Option.map(held.expires, |expires: Int| Json.Number(expires))),
+      (Members.SECRET_VIEW_DESCRIPTION, Option.map(held.description, |text: Str| Json.Text(text))),
+      (Members.SECRET_VIEW_CREATED, Some(Json.Number(held.created)))
+    ])
+}
+
+/// Several held secrets.
+export fn list(found: &Array[Custody.Held]) -> Json.Json { Json.object(&[(Members.SECRET_LIST_SECRETS, Json.List(found.map(|held: Custody.Held| view(&held))))]) }

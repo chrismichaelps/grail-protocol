@@ -34,7 +34,7 @@ export fn verifyHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Handoff.P
 
 ### Linkage
 
-- **Requires:** [[src/Constants/Details]] · [[src/Constants/Handoff]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Envelope]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Ledger]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Scope]] · [[src/Engine/Authority]] · [[src/Engine/Delivery]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]]
+- **Requires:** [[src/Constants/Details]] · [[src/Constants/Handoff]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Envelope]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Ledger]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Scope]] · [[src/Engine/Authority]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]]
 - **Standard library:** `Std.Json`, `Std.Map`, `Std.Option`, `Std.Result`
 - **Consumed by:** [[src/App/Handlers]]
 

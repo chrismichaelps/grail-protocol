@@ -61,6 +61,12 @@ export const IMPORT_HANDOFF: Str = "importHandoff"
 export const READ_HANDOFF: Str = "readHandoff"
 /// `POST /v1/scopes/{scope}/handoffs/{handoff}/verification`.
 export const VERIFY_HANDOFF: Str = "verifyHandoff"
+/// `GET /v1/scopes/{scope}/secrets`.
+export const LIST_SECRETS: Str = "listSecrets"
+/// `PUT /v1/scopes/{scope}/secrets/{secret}`.
+export const PUT_SECRET: Str = "putSecret"
+/// `DELETE /v1/scopes/{scope}/secrets/{secret}`.
+export const DELETE_SECRET: Str = "deleteSecret"
 /// Every operation, in contract order.
 export const ALL: Array[Operation]
 ```

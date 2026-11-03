@@ -38,6 +38,8 @@ export const WAIT: Str = "wait"
 export const TOKEN: Str = "token"
 /// The `handoff` parameter.
 export const HANDOFF: Str = "handoff"
+/// The `secret` parameter.
+export const SECRET: Str = "secret"
 ```
 
 ### Linkage

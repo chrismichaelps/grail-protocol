@@ -21,7 +21,7 @@ An envelope is a JSON object. Unknown top-level members MUST be refused unless t
 | `kind` | kind | yes | See 3.2. |
 | `parents` | array of transfer ids | no | Causal parents. At most 64. Each MUST already be in the ledger of the same scope. |
 | `schema` | string | no | A URI or name identifying the payload's type. At most 512 characters. |
-| `payload` | any JSON | no | The content. Its encoded size MUST NOT exceed 1 048 576 bytes. |
+| `payload` | any JSON | no | The content. Its encoded size MUST NOT exceed 1 048 576 bytes. An object whose only member is `$secret` is a secret reference ([[protocol/14-Custody]]). |
 | `delivery` | object | no | `{"mode": "at-most-once" \| "at-least-once" \| "effectively-once", "key": string}`. Default mode `at-least-once`. `key` is REQUIRED for `effectively-once`. |
 | `priority` | integer | no | 0 (lowest) to 9 (highest). Default 4. |
 | `deadline` | integer | no | Milliseconds since the Unix epoch after which the envelope MUST NOT be delivered. |
@@ -88,6 +88,9 @@ The digest is computed over the UTF-8 bytes of the canonical form. Two envelopes
 | Handoff anchors | 64 |
 | Handoff entries | 10 000 |
 | Encoded handoff | 4 194 304 bytes |
+| Secrets per scope | 256 |
+| Secret value | 12 to 4 096 characters |
+| Secret audience or senders | 64 |
 | Handoff lifetime | 86 400 000 milliseconds |
 
 A fabric MAY lower these limits and MUST advertise its own in the discovery document ([[protocol/08-Bindings#8.4 Discovery]]).

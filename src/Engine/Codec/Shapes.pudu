@@ -24,6 +24,7 @@ export type Rule
   | IsText(Int)
   | IsTextUpTo(Int)
   | IsFlag
+  | IsSecret(Int, Int)
   | IsWhole(Int, Int)
   | IsAtLeast(Int)
   | IsOneOf(Array[Str])
@@ -247,7 +248,25 @@ const SHAPES: Map[Str, Shape] = mapOf([
           (Members.HANDOFF_ISSUED, IsAtLeast(0)),
           (Members.HANDOFF_EXPIRES, IsAtLeast(0)),
           (Members.HANDOFF_DIGEST, IsText(Limits.IDENTIFIER_LENGTH)),
-          (Members.HANDOFF_SEAL, IsText(Limits.IDENTIFIER_LENGTH))
+          (Members.HANDOFF_SEAL, IsText(Limits.IDENTIFIER_LENGTH)),
+          (Members.HANDOFF_NEEDS, IsNames(Limits.SECRETS))
+        ]
+      }),
+    (Schemas.SECRET_DEPOSIT, Shape {
+        allowed: Members.SECRET_DEPOSIT_ALLOWED,
+        required: Members.SECRET_DEPOSIT_REQUIRED,
+        closed: Members.SECRET_DEPOSIT_CLOSED,
+        extensible: Members.SECRET_DEPOSIT_EXTENSIBLE,
+        single: false,
+        rules: [
+          (Members.SECRET_DEPOSIT_VALUE, IsSecret(Limits.SECRET_LENGTH_MIN, Limits.SECRET_BYTES)),
+          (Members.SECRET_DEPOSIT_GRAPH, IsIdentifier),
+          (Members.SECRET_DEPOSIT_AUDIENCE, IsIdentifiers(Limits.SECRET_AUDIENCE)),
+          (Members.SECRET_DEPOSIT_SENDERS, IsIdentifiers(Limits.SECRET_AUDIENCE)),
+          (Members.SECRET_DEPOSIT_KINDS, IsKinds),
+          (Members.SECRET_DEPOSIT_USES, IsAtLeast(1)),
+          (Members.SECRET_DEPOSIT_EXPIRES, IsAtLeast(0)),
+          (Members.SECRET_DEPOSIT_DESCRIPTION, IsText(Limits.SCHEMA_LENGTH))
         ]
       })
   ])
@@ -290,6 +309,7 @@ fn checkRule(rule: &Rule, value: &Json.Json, path: Str) -> Array[Problem.Violati
     case IsText(longest) => textHolds(value, |text: Str| !text.isEmpty() && text.length() <= longest)
     case IsTextUpTo(longest) => textHolds(value, |text: Str| text.length() <= longest)
     case IsFlag => Option.isSome(&Json.asBool(value))
+    case IsSecret(shortest, longest) => textHolds(value, |text: Str| text.length() >= shortest && text.length() <= longest)
     case IsWhole(lowest, highest) => Option.holds(&Json.asInt(value), |number: Int| number >= lowest && number <= highest)
     case IsAtLeast(lowest) => Option.holds(&Json.asInt(value), |number: Int| number >= lowest)
     case IsOneOf(values) => textHolds(value, |text: Str| values.contains(text))

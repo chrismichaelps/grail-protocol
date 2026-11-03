@@ -8,6 +8,7 @@ tags: [moc]
 One page per file, each with its interface and the modules it depends on.
 
 - [[src/Domain/Capability]] — signed, expiring, narrowing grants of abilities
+- [[src/Domain/Custody]] — secrets a scope holds for its participants, sealed, and the policy that says who may use them
 - [[src/Domain/Envelope]] — the single message shape of the protocol
 - [[src/Domain/Graph]] — participants, edges, and their lookups
 - [[src/Domain/Handoff]] — an agent's working context as it leaves one fabric and arrives at another

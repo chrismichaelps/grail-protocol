@@ -7,6 +7,7 @@ tags: [moc]
 
 One page per file, each with its interface and the modules it depends on.
 
+- [[src/Engine/Codec/Custody]] — deposits read against the contract, and what may be said about a held secret
 - [[src/Engine/Codec/Envelope]] — envelopes to and from JSON
 - [[src/Engine/Codec/Graph]] — graphs, drafts, and mutations to and from JSON
 - [[src/Engine/Codec/Handoff]] — handoff requests and handoffs read against the contract, and the answers about them

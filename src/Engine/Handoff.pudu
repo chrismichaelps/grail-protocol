@@ -21,6 +21,7 @@ import Domain.Problem as Problem
 import Domain.Scope as Scope
 import Engine.Causality as Causality
 import Engine.Codec.Graph as GraphCodec
+import Engine.Custody as Custody
 import Engine.Delivery as Delivery
 import Engine.Ledger as Chain
 import Utils.Canonical as Canonical
@@ -30,7 +31,7 @@ import Utils.Pointer as Pointer
 /// The members a handoff's digest never covers.
 const SEALING: Array[Str] = [Members.HANDOFF_DIGEST, Members.HANDOFF_SEAL]
 
-/// A sealed handoff of the anchors and their causal ancestry. Entries the authority may not read travel withheld: their digest and link prove they exist, their content stays home.
+/// A sealed handoff of the anchors and their causal ancestry. Entries the authority may not read travel withheld: their digest and link prove they exist, their content stays home. Secrets never travel; the handoff names the ones its carried envelopes reference, so the receiving owner can bind its own.
 export fn assemble(state: &Scope.State, origin: &Handoff.Origin, member: &Graph.Participant, asked: &Handoff.Asked, authority: &Capability.Authority, issued: Int, secret: Str) -> Result[Json.Json, Problem.Problem] {
   let expires = Option.unwrapOr(asked.expires, issued + Limits.HANDOFF_LIFETIME_MILLIS)
 
@@ -53,6 +54,7 @@ export fn assemble(state: &Scope.State, origin: &Handoff.Origin, member: &Graph.
       (Members.HANDOFF_PARTICIPANT, GraphCodec.participantJson(member)),
       (Members.HANDOFF_ANCHORS, JsonRead.textList(&asked.transfers)),
       (Members.HANDOFF_ENTRIES, Json.List(carried.map(|record: Ledger.Record| entryJson(state, &record, !Delivery.visible(&record, authority))))),
+      (Members.HANDOFF_NEEDS, JsonRead.textList(&Custody.references(&Json.List(carried.filter(|record: Ledger.Record| Delivery.visible(&record, authority)).map(|record: Ledger.Record| Option.unwrapOr(record.envelope.payload, Json.Null)))))),
       (Members.HANDOFF_ISSUED, Json.Number(issued)),
       (Members.HANDOFF_EXPIRES, Json.Number(expires))
     ])

@@ -47,7 +47,11 @@
     "handoffAnchors": 64,
     "handoffEntries": 10000,
     "handoffLifetimeMillis": 86400000,
-    "handoffBytes": 4194304
+    "handoffBytes": 4194304,
+    "secrets": 256,
+    "secretBytes": 4096,
+    "secretLengthMin": 12,
+    "secretAudience": 64
   },
   "x-grail-final-states": [
     "completed",
@@ -81,6 +85,11 @@
       "code": "grail.not-found",
       "status": 404,
       "title": "Not found"
+    },
+    {
+      "code": "grail.method-not-allowed",
+      "status": 405,
+      "title": "Method not allowed"
     },
     {
       "code": "grail.duplicate",
@@ -131,6 +140,11 @@
       "code": "grail.integrity",
       "status": 422,
       "title": "Integrity failure"
+    },
+    {
+      "code": "grail.secret-exposed",
+      "status": 422,
+      "title": "Secret exposed"
     },
     {
       "code": "grail.limit-exceeded",
@@ -852,6 +866,96 @@
           }
         }
       }
+    },
+    "/v1/scopes/{scope}/secrets": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Scope"
+        }
+      ],
+      "get": {
+        "operationId": "listSecrets",
+        "tags": ["Custody"],
+        "summary": "Lists the secrets of the token's graphs: names, versions, and policy, never values.",
+        "x-grail-ability": "graph.read",
+        "responses": {
+          "200": {
+            "description": "The secrets.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretList"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/scopes/{scope}/secrets/{secret}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Scope"
+        },
+        {
+          "$ref": "#/components/parameters/SecretName"
+        }
+      ],
+      "put": {
+        "operationId": "putSecret",
+        "tags": ["Custody"],
+        "summary": "Gives a secret to the fabric's custody, or rotates it to a new version.",
+        "x-grail-ability": "secret.manage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecretDeposit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The held secret, without its value.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretView"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteSecret",
+        "tags": ["Custody"],
+        "summary": "Destroys a held secret; references to it stop resolving at once.",
+        "x-grail-ability": "secret.manage",
+        "responses": {
+          "200": {
+            "description": "The destroyed secret.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretView"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -939,6 +1043,14 @@
         "schema": {
           "$ref": "#/components/schemas/Identifier"
         }
+      },
+      "SecretName": {
+        "name": "secret",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Name"
+        }
       }
     },
     "responses": {
@@ -1011,7 +1123,8 @@
           "ledger.erase",
           "token.delegate",
           "handoff.export",
-          "handoff.import"
+          "handoff.import",
+          "secret.manage"
         ]
       },
       "ParticipantKind": {
@@ -2009,6 +2122,7 @@
           "participant",
           "anchors",
           "entries",
+          "needs",
           "issued",
           "expires",
           "digest",
@@ -2059,6 +2173,14 @@
           "seal": {
             "type": "string",
             "description": "The origin fabric's attestation of the digest; only the origin can check it."
+          },
+          "needs": {
+            "type": "array",
+            "maxItems": 256,
+            "items": {
+              "$ref": "#/components/schemas/Name"
+            },
+            "description": "The secret names the carried envelopes reference. Values never travel; the receiving owner binds its own."
           }
         }
       },
@@ -2117,6 +2239,146 @@
           },
           "expired": {
             "type": "boolean"
+          }
+        }
+      },
+      "SecretReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "$secret"
+        ],
+        "description": "Stands for a held secret anywhere inside a payload. The fabric replaces it with the value only in deliveries to the secret's audience; everywhere else it stays a reference.",
+        "properties": {
+          "$secret": {
+            "$ref": "#/components/schemas/Name"
+          }
+        }
+      },
+      "SecretDeposit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "graph",
+          "audience"
+        ],
+        "description": "A secret given to the fabric's custody. The value can never be read back.",
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 4096,
+            "writeOnly": true
+          },
+          "graph": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "audience": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            },
+            "description": "The participants whose deliveries receive the value, usually tool executors."
+          },
+          "senders": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            },
+            "description": "The participants that may reference the secret; empty means any participant of the graph."
+          },
+          "kinds": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/Kind"
+            },
+            "description": "The envelope kinds that may carry a reference; empty means any."
+          },
+          "uses": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "How many admitted envelopes may reference it before it is spent."
+          },
+          "expires": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 512
+          }
+        }
+      },
+      "SecretView": {
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "graph",
+          "audience",
+          "senders",
+          "kinds",
+          "created"
+        ],
+        "description": "What anyone allowed to see a secret's existence may know about it. Never the value.",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "audience": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "senders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Kind"
+            }
+          },
+          "uses": {
+            "type": "integer"
+          },
+          "expires": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created": {
+            "type": "integer"
+          }
+        }
+      },
+      "SecretList": {
+        "type": "object",
+        "required": [
+          "secrets"
+        ],
+        "properties": {
+          "secrets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SecretView"
+            }
           }
         }
       }

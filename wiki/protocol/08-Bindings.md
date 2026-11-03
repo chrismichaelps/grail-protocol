@@ -32,6 +32,9 @@ A binding maps the protocol's operations onto a transport. Each operation has a 
 | `importHandoff` | `handoff.import` | Admits a handoff from another fabric (13.4). |
 | `readHandoff` | `ledger.read` | Reads a handoff the scope exported or imported. |
 | `verifyHandoff` | none | Says whether this fabric sealed a handoff (13.3). |
+| `putSecret` | `secret.manage` | Gives a secret to custody or rotates it (14.2). |
+| `deleteSecret` | `secret.manage` | Destroys a secret in custody (14.2). |
+| `listSecrets` | `graph.read` | Lists secret names and policies, never values (14.2). |
 
 ## 8.2 HTTP binding
 

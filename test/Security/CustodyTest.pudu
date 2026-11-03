@@ -1,0 +1,183 @@
+/** @Test.Security.Custody.Suite — a planning agent uses a key it never sees; the key reaches only its executor, and never the ledger, a trace, a handoff, or another agent */
+module Security.CustodyTest
+
+import Std.Bytes as ByteSeq
+import Std.Http as Http
+import Std.Http.Server.Route as Route
+import Std.Json as Json
+import Std.List as List
+import Std.Option as Option
+import Std.Test as Test
+import App.Assembly as Assembly
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Engine.Handoff as Portability
+import Engine.Ledger as Chain
+import Support.Fabric as Fabric
+import Support.Runner as Runner
+import Utils.JsonRead as JsonRead
+
+/// The key the planner may use and must never see.
+const KEY: Str = "ghp_0123456789abcdefGHIJKLmnop"
+
+/// A planning agent, the tool that executes its calls, and a person who audits.
+const GRAPH: Str = "\{\"participants\":[\{\"id\":\"planner\",\"kind\":\"agent\"\},\{\"id\":\"executor\",\"kind\":\"tool\"\},\{\"id\":\"auditor\",\"kind\":\"human\"\}],\"edges\":[\{\"id\":\"e1\",\"from\":\"planner\",\"to\":\"executor\",\"relation\":\"flow\"\},\{\"id\":\"e2\",\"from\":\"planner\",\"to\":\"auditor\",\"relation\":\"flow\"\},\{\"id\":\"e3\",\"from\":\"auditor\",\"to\":\"executor\",\"relation\":\"flow\"\}]\}"
+
+fn deposit(value: Str, extra: Str) -> Str { "\{\"value\":\"" + value + "\",\"graph\":\"g\",\"audience\":[\"executor\"],\"senders\":[\"planner\"],\"kinds\":[\"tool.call\"]" + extra + "\}" }
+
+fn call(id: Str, source: Str, target: Str, kind: Str, payload: Json.Json, parents: &Array[Str]) -> Str {
+  Json.encode(&Json.object(&[
+        ("grail", Json.Text("1.1")),
+        ("id", Json.Text(id)),
+        ("scope", Json.Text("demo")),
+        ("graph", Json.Text("g")),
+        ("source", Json.Text(source)),
+        ("target", Json.object(&[("participant", Json.Text(target))])),
+        ("kind", Json.Text(kind)),
+        ("parents", JsonRead.textList(parents)),
+        ("payload", payload)
+      ]))
+}
+
+fn using(name: Str) -> Json.Json { Json.object(&[("url", Json.Text("https://api.example.test/repos")), ("auth", Json.object(&[("$secret", Json.Text(name))]))]) }
+
+fn delegate(router: &Route.Router, root: Str, id: Str, audience: Str, abilities: &Array[Str]) -> Str {
+  let body = Json.encode(&Json.object(&[("id", Json.Text(id)), ("audience", Json.Text(audience)), ("graph", Json.Text("g")), ("abilities", JsonRead.textList(abilities)), ("expires", Json.Number(Assembly.now() + 600000))]))
+  Option.unwrapOr(JsonRead.text(&Fabric.sent(router, Http.Post, "/v1/scopes/demo/tokens", root, body).body, "token"), "")
+}
+
+fn holds(answer: &Fabric.Answer) -> Bool { Json.encode(&answer.body).contains(KEY) }
+
+fn delivered(answer: &Fabric.Answer, id: Str) -> Json.Json {
+  let found = List.find(&Option.unwrapOr(JsonRead.list(&answer.body, "deliveries"), []), |item: Json.Json| Option.andThen(Json.field(&item, "envelope"), |envelope: Json.Json| JsonRead.text(&envelope, "id")) == Some(id))
+  Option.unwrapOr(Option.andThen(Option.andThen(found, |item: Json.Json| Json.field(&item, "envelope")), |envelope: Json.Json| Json.field(&envelope, "payload")), Json.Null)
+}
+
+fn auth(payload: &Json.Json) -> Json.Json { Option.unwrapOr(Json.field(payload, "auth"), Json.Null) }
+
+fn filled(router: &Route.Router, root: Str) -> Array[Int] {
+  var statuses: Array[Int] = []
+  var index = 0
+
+  while index < Limits.SECRETS {
+    statuses = statuses.push(Fabric.sent(router, Http.Put, "/v1/scopes/full/secrets/s" + show(index), root, "\{\"value\":\"value-0123456789-" + show(index) + "\",\"graph\":\"g\",\"audience\":[\"executor\"]\}").status)
+    index = index + 1
+  }
+
+  statuses
+}
+
+fn main() -> Int {
+  let router = match Fabric.start() {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Custody", &[Test.that("the fabric starts: " + reason, false)])) }
+  }
+  let root = Fabric.owner("demo")
+  let base = "/v1/scopes/demo"
+  let created = Fabric.sent(&router, Http.Put, base + "/graphs/g", root, GRAPH)
+  let planner = delegate(&router, root, "planner", "planner", &[Vocabulary.ABILITY_TRANSFER_SEND, Vocabulary.ABILITY_GRAPH_READ, Vocabulary.ABILITY_HANDOFF_EXPORT])
+  let executor = delegate(&router, root, "executor", "executor", &[Vocabulary.ABILITY_TRANSFER_SEND, Vocabulary.ABILITY_TRANSFER_RECEIVE])
+  let auditor = delegate(&router, root, "auditor", "auditor", &[Vocabulary.ABILITY_TRANSFER_SEND, Vocabulary.ABILITY_TRANSFER_RECEIVE])
+  let stored = Fabric.sent(&router, Http.Put, base + "/secrets/github", root, deposit(KEY, ""))
+  let unmanaged = Fabric.sent(&router, Http.Put, base + "/secrets/other", planner, deposit(KEY, ""))
+  let short = Fabric.sent(&router, Http.Put, base + "/secrets/short", root, deposit("tiny-key", ""))
+  let stranger = Fabric.sent(&router, Http.Put, base + "/secrets/stranger", root, "\{\"value\":\"" + KEY + "-x\",\"graph\":\"g\",\"audience\":[\"nobody\"]\}")
+  let listed = Fabric.sent(&router, Http.Get, base + "/secrets", planner, "")
+  let readBack = Fabric.sent(&router, Http.Get, base + "/secrets/github", root, "")
+  let used = Fabric.sent(&router, Http.Post, base + "/transfers", planner, call("c1", "planner", "executor", Vocabulary.KIND_TOOL_CALL, using("github"), &[]))
+  let stamped = Fabric.sent(&router, Http.Get, base + "/transfers/c1", root, "")
+  let executed = Fabric.sent(&router, Http.Get, base + "/graphs/g/participants/executor/deliveries", executor, "")
+  let ledger = Fabric.sent(&router, Http.Get, base + "/ledger", root, "")
+  let leaked = Fabric.sent(&router, Http.Post, base + "/transfers", executor, call("r1", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text("token was " + KEY), &["c1"]))
+  let encoded = Fabric.sent(&router, Http.Post, base + "/transfers", executor, call("r2", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(ByteSeq.encodeBase64(&ByteSeq.fromText(KEY))), &["c1"]))
+  let hexed = Fabric.sent(&router, Http.Post, base + "/transfers", executor, call("r3", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(ByteSeq.encodeHex(&ByteSeq.fromText(KEY))), &["c1"]))
+  let answered = Fabric.sent(&router, Http.Post, base + "/transfers", executor, call("r4", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text("201 created"), &["c1"]))
+  let lateLeak = Fabric.sent(&router, Http.Post, base + "/transfers", executor, call("r5", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(KEY), &["c1"]))
+  let traced = Fabric.sent(&router, Http.Get, base + "/transfers/r4/trace", root, "")
+  let toPerson = Fabric.sent(&router, Http.Post, base + "/transfers", planner, call("c2", "planner", "auditor", Vocabulary.KIND_TOOL_CALL, using("github"), &[]))
+  let notSender = Fabric.sent(&router, Http.Post, base + "/transfers", auditor, call("c3", "auditor", "executor", Vocabulary.KIND_TOOL_CALL, using("github"), &[]))
+  let wrongKind = Fabric.sent(&router, Http.Post, base + "/transfers", planner, call("c4", "planner", "executor", Vocabulary.KIND_TASK, using("github"), &[]))
+  let unknown = Fabric.sent(&router, Http.Post, base + "/transfers", planner, call("c5", "planner", "executor", Vocabulary.KIND_TOOL_CALL, using("gitlab"), &[]))
+  let once = Fabric.sent(&router, Http.Put, base + "/secrets/once", root, deposit(KEY + "-once", ",\"uses\":1"))
+  let first = Fabric.sent(&router, Http.Post, base + "/transfers", planner, call("c6", "planner", "executor", Vocabulary.KIND_TOOL_CALL, using("once"), &[]))
+  let second = Fabric.sent(&router, Http.Post, base + "/transfers", planner, call("c7", "planner", "executor", Vocabulary.KIND_TOOL_CALL, using("once"), &[]))
+  let stale = Fabric.sent(&router, Http.Put, base + "/secrets/stale", root, deposit(KEY + "-stale", ",\"expires\":1"))
+  let expired = Fabric.sent(&router, Http.Post, base + "/transfers", planner, call("c8", "planner", "executor", Vocabulary.KIND_TOOL_CALL, using("stale"), &[]))
+  let rotated = Fabric.sent(&router, Http.Put, base + "/secrets/github", root, deposit(KEY + "-v2", ""))
+  let afterRotation = Fabric.sent(&router, Http.Post, base + "/transfers", planner, call("c9", "planner", "executor", Vocabulary.KIND_TOOL_CALL, using("github"), &[]))
+  let rotatedPull = Fabric.sent(&router, Http.Get, base + "/graphs/g/participants/executor/deliveries", executor, "")
+  let pending = Fabric.sent(&router, Http.Post, base + "/transfers", planner, call("c10", "planner", "executor", Vocabulary.KIND_TOOL_CALL, using("github"), &[]))
+  let destroyed = Fabric.sent(&router, Http.Delete, base + "/secrets/github", root, "")
+  let afterDelete = Fabric.sent(&router, Http.Get, base + "/graphs/g/participants/executor/deliveries", executor, "")
+  let exported = Fabric.sent(&router, Http.Post, base + "/graphs/g/participants/planner/handoffs", planner, "\{\"id\":\"move\",\"transfers\":[\"c9\"]\}")
+  let renamed = Json.withField(&exported.body, "handoff", Json.Text("move-in"))
+  let smuggled = Json.withField(&renamed, "entries", Json.List(Option.unwrapOr(JsonRead.list(&exported.body, "entries"), []).map(|entry: Json.Json| smuggle(&entry))))
+  let hidden = Fabric.sent(&router, Http.Put, base + "/secrets/hidden", root, deposit("hidden-value-0123456789", ""))
+  let rebundled = Json.withField(&smuggled, "digest", Json.Text(Portability.digestOf(&smuggled)))
+  let smuggledIn = Fabric.sent(&router, Http.Put, base + "/graphs/g/participants/auditor/handoffs/move-in", root, Json.encode(&rebundled))
+  let bridged = Fabric.sent(&router, Http.Post, base + "/graphs/g/bridge/executor", planner, "\{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":\{\"token\":\"hidden-value-0123456789\"\}\}")
+  let fullRoot = Fabric.owner("full")
+  let fullGraph = Fabric.sent(&router, Http.Put, "/v1/scopes/full/graphs/g", fullRoot, GRAPH)
+  let fills = filled(&router, fullRoot)
+  let beyond = Fabric.sent(&router, Http.Put, "/v1/scopes/full/secrets/one-more", fullRoot, "\{\"value\":\"value-0123456789-more\",\"graph\":\"g\",\"audience\":[\"executor\"]\}")
+  let rotateAtLimit = Fabric.sent(&router, Http.Put, "/v1/scopes/full/secrets/s0", fullRoot, "\{\"value\":\"value-0123456789-again\",\"graph\":\"g\",\"audience\":[\"executor\"]\}")
+  let checks = Test.suite("Custody", &[
+      Test.that("a scope holds secrets up to the limit", fullGraph.status == 201 && List.all(&fills, |status: Int| status == 201)),
+      Test.equals("a scope holds no more than the limit", &Fabric.code(&beyond), &Codes.LIMIT_EXCEEDED),
+      Test.equals("a full scope may still rotate a name it holds", &rotateAtLimit.status, &201),
+      Test.equals("the graph exists", &created.status, &201),
+      Test.that("the narrowed tokens are issued", !planner.isEmpty() && !executor.isEmpty() && !auditor.isEmpty()),
+      Test.equals("an owner gives a key to custody", &stored.status, &201),
+      Test.that("the answer to a deposit never repeats the value", !holds(&stored) && JsonRead.whole(&stored.body, "version") == Some(1)),
+      Test.equals("depositing needs secret.manage", &Fabric.code(&unmanaged), &Codes.FORBIDDEN),
+      Test.equals("a value shorter than the contract allows is refused", &Fabric.code(&short), &Codes.INVALID),
+      Test.that("a refused value is not repeated in the refusal", !Json.encode(&short.body).contains("tiny-key")),
+      Test.equals("an audience outside the graph is refused", &Fabric.code(&stranger), &Codes.NOT_FOUND),
+      Test.that("agents can learn a secret's name and policy, not its value", Json.encode(&listed.body).contains("github") && !holds(&listed)),
+      Test.equals("no operation reads a value back", &(readBack.status, Fabric.code(&readBack)), &(405, Codes.METHOD_NOT_ALLOWED)),
+      Test.equals("the planner uses the key by name", &used.status, &202),
+      Test.that("the stored envelope keeps the reference", !holds(&stamped) && Json.encode(&stamped.body).contains("$secret")),
+      Test.equals("the executor receives the value in its delivery", &auth(&delivered(&executed, "c1")), &Json.Text(KEY)),
+      Test.equals("the ledger never holds the value", &holds(&ledger), &false),
+      Test.equals("a result that repeats the value is refused", &Fabric.code(&leaked), &Codes.SECRET_EXPOSED),
+      Test.equals("the value in base64 is refused", &Fabric.code(&encoded), &Codes.SECRET_EXPOSED),
+      Test.equals("the value in hex is refused", &Fabric.code(&hexed), &Codes.SECRET_EXPOSED),
+      Test.equals("a clean result is accepted", &answered.status, &202),
+      Test.equals("a leak is reported as a leak even when admission would refuse it anyway", &Fabric.code(&lateLeak), &Codes.SECRET_EXPOSED),
+      Test.that("a trace shows the reference, never the value", !holds(&traced) && Json.encode(&traced.body).contains("$secret")),
+      Test.equals("a reference cannot be routed outside the audience", &Fabric.code(&toPerson), &Codes.FORBIDDEN),
+      Test.equals("only listed senders may use the key", &Fabric.code(&notSender), &Codes.FORBIDDEN),
+      Test.equals("only listed kinds may carry the key", &Fabric.code(&wrongKind), &Codes.FORBIDDEN),
+      Test.equals("an unknown secret is refused", &Fabric.code(&unknown), &Codes.NOT_FOUND),
+      Test.equals("a single-use key is held", &once.status, &201),
+      Test.equals("its one use is admitted", &first.status, &202),
+      Test.equals("a spent key is refused", &Fabric.code(&second), &Codes.FORBIDDEN),
+      Test.equals("an expiring key is held", &stale.status, &201),
+      Test.equals("an expired key is refused", &Fabric.code(&expired), &Codes.EXPIRED),
+      Test.equals("rotating makes a new version", &JsonRead.whole(&rotated.body, "version"), &Some(2)),
+      Test.equals("a call after rotation is admitted", &afterRotation.status, &202),
+      Test.equals("the executor receives the rotated value", &auth(&delivered(&rotatedPull, "c9")), &Json.Text(KEY + "-v2")),
+      Test.equals("a call waiting for delivery is admitted", &pending.status, &202),
+      Test.equals("destroying a key answers what was destroyed", &destroyed.status, &200),
+      Test.equals("a destroyed key stops resolving at once", &auth(&delivered(&afterDelete, "c10")), &Json.object(&[("$secret", Json.Text("github"))])),
+      Test.equals("a handoff names the secrets its context needs", &JsonRead.texts(&exported.body, "needs"), &Some(["github"])),
+      Test.that("a handoff never carries a value", exported.status == 201 && !holds(&exported)),
+      Test.equals("a second secret is held", &hidden.status, &201),
+      Test.equals("an intact handoff that smuggles a held value is refused", &Fabric.code(&smuggledIn), &Codes.SECRET_EXPOSED),
+      Test.equals("a bridged message that holds a value is refused", &Fabric.code(&bridged), &Codes.SECRET_EXPOSED)
+    ])
+
+  Runner.finish(&checks)
+}
+
+fn smuggle(entry: &Json.Json) -> Json.Json {
+  let envelope = match Json.field(entry, "envelope") {
+    case Some(found) => found
+    case None => { return *entry }
+  }
+  let body = Json.withField(&envelope, "payload", Json.Text("hidden-value-0123456789"))
+  let digest = Chain.digestOf(&body)
+  let previous = Option.unwrapOr(JsonRead.text(entry, "previous"), "")
+  Json.withField(&Json.withField(&Json.withField(entry, "envelope", body), "digest", Json.Text(digest)), "link", Json.Text(Chain.linkAfter(previous, digest)))
+}

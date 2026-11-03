@@ -10,7 +10,7 @@ tags: [protocol, specification]
 
 The protocol version has the form `major.minor`. A minor version only adds: new optional members, new kinds, new operations, new problem codes. A major version may remove or change meaning. Envelopes carry their version in `grail`; HTTP requests carry it in `Grail-Version`. A fabric MUST refuse a major version it does not implement with `grail.unsupported-version`, and SHOULD accept any minor version of a major it implements, ignoring members it does not know only when their names start with `x-`.
 
-Version 1.1 is the first minor version. It adds the operations, kinds, abilities, limits, and problem code of [[protocol/13-Portability]], and changes nothing that 1.0 defined. A 1.1 fabric accepts 1.0 envelopes and requests.
+Version 1.1 is the first minor version. It adds the operations, kinds, abilities, limits, and problem codes of [[protocol/13-Portability]] and [[protocol/14-Custody]], and changes nothing that 1.0 defined. A payload object whose only member is `$secret` is read as a reference from 1.1 on. A 1.1 fabric accepts 1.0 envelopes and requests.
 
 ## 12.2 Extensions
 

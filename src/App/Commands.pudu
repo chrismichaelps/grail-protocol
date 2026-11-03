@@ -3,6 +3,7 @@ module App.Commands
 
 import App.Assembly as Assembly
 import Domain.Capability as Capability
+import Domain.Custody as Custody
 import Domain.Graph as Graph
 import Domain.Handoff as Handoff
 import Domain.Problem as Problem
@@ -99,3 +100,20 @@ export fn readHandoff(app: &Assembly.App, call: Request.Call[Str]) -> Result[Han
 
 /// Verifies a handoff against the fabric that may have sealed it.
 export fn verifyHandoff(app: &Assembly.App, call: Request.Call[Handoff.Presented]) -> Result[Handoff.Check, Problem.Problem] { Assembly.send(app, &app.kinds.verifyHandoff, call) }
+
+/// Gives a secret to custody.
+export fn putSecret(app: &Assembly.App, call: Request.Call[Custody.Deposit]) -> Result[Custody.Held, Problem.Problem] {
+  let held = Assembly.send(app, &app.kinds.putSecret, call) ?
+  Assembly.announce(app, &app.events.sealed, held)
+  Ok(held)
+}
+
+/// Destroys a secret in custody.
+export fn deleteSecret(app: &Assembly.App, call: Request.Call[Str]) -> Result[Custody.Held, Problem.Problem] {
+  let held = Assembly.send(app, &app.kinds.deleteSecret, call) ?
+  Assembly.announce(app, &app.events.destroyed, held)
+  Ok(held)
+}
+
+/// Lists the secrets in custody the token may know about.
+export fn listSecrets(app: &Assembly.App, call: Request.Call[()]) -> Result[Array[Custody.Held], Problem.Problem] { Assembly.send(app, &app.kinds.listSecrets, call) }

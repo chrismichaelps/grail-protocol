@@ -55,6 +55,7 @@ Tool protocols describe a session between one client and one server, and their s
 4. **Isolation by construction.** Scope is part of every identifier the fabric resolves. A reference into a scope the caller does not hold behaves exactly like a reference to nothing.
 5. **No ambient authority.** Every operation presents a token. A token names its scope, its audience, its abilities, and its lifetime.
 6. **Portable by construction.** Because history is content-addressed, it can be moved as a document and checked by whoever receives it. No fabric has to trust another's database, and none has to call another to accept work.
+7. **Keys by name.** Participants reference secrets; the fabric reveals a value only in a delivery to the executor allowed to use it, and refuses any message that carries one. A model can use a key it has never seen.
 
 ## 1.6 How systems use Grail
 

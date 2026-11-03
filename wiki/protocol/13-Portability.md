@@ -22,6 +22,7 @@ A handoff is a document, not a connection. Fabrics never call each other to comp
 | `participant` | The participant as its graph declares it: kind, roles, and abilities. The receiving side decides whether to grant the same. |
 | `anchors` | The transfers the export was asked to carry. |
 | `entries` | The anchors and every causal ancestor of them, each once, in origin ledger order. |
+| `needs` | The secret names that readable entries reference ([[protocol/14-Custody#14.6 Across fabrics]]). Values never travel. |
 | `issued`, `expires` | When the handoff was sealed, and the end of its import window. |
 | `digest` | `sha256:` and the hex SHA-256 of the canonical form ([[protocol/03-Envelope]]) of the handoff without `digest` and `seal`. |
 | `seal` | The origin's attestation of `digest` (13.3). |

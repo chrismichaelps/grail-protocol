@@ -17,6 +17,7 @@ import Domain.Problem as Problem
 import Domain.Request as Request
 import Domain.Scope as Scope
 import Engine.Authority as Authority
+import Engine.Custody as Custody
 import Engine.Delivery as Delivery
 import Engine.Handoff as Portability
 import Engine.Journal as Journal
@@ -62,6 +63,8 @@ export fn importHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Handoff.A
 
       let entries = Portability.intact(&asked.input.bundle) ?
       let digest = Portability.digestOf(&asked.input.bundle)
+
+      if Custody.exposes(&state, &asked.input.bundle, secret) { return Err(Problem.of(Codes.SECRET_EXPOSED, Details.SECRET_EXPOSED)) }
 
       if let Some(known) = state.handoffs.get(asked.input.id) {
         if known.direction == Portable.IMPORTED && known.digest == digest && known.graph == graph.id { return Ok((receiptOf(&known, true), state)) }

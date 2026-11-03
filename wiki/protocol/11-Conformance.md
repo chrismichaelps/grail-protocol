@@ -14,6 +14,7 @@ tags: [protocol, specification]
 | **Fabric Core** | Chapters 2 through 7 and 9; the HTTP binding; discovery. |
 | **Fabric Full** | Fabric Core plus the line binding, the bridge, graphs inside graphs, and erasure. |
 | **Portable** | Fabric Core plus chapter 13: export, import, reading, and verifying handoffs. |
+| **Custody** | Fabric Core plus chapter 14: references, delivery-time reveal, the tripwire, and write-only storage. |
 
 A fabric claims a profile in its discovery document under `fabric.profiles`.
 
@@ -46,6 +47,15 @@ For Portable, a fabric additionally conforms only if each of the following holds
 6. An expired handoff yields `grail.expired`; a lifetime above `handoffLifetimeMillis` is refused at export.
 7. Senders cannot submit `handoff.export` or `handoff.import`.
 8. A result in the receiving fabric that names the import entry as a parent traces back to it.
+
+For Custody, a fabric additionally conforms only if each of the following holds:
+
+1. No answer of any operation other than `pullDeliveries` contains a held value, and a deposit's own answer does not either.
+2. A reference is revealed only in deliveries to members of the secret's audience.
+3. An envelope, bridged message, or imported handoff that holds a value, as written, JSON-escaped, base64 of either alphabet, or hex, is refused with `grail.secret-exposed` and nothing is appended.
+4. References outside the graph, after expiry, past the last use, from an unlisted sender, in an unlisted kind, or to any recipient outside the audience are refused.
+5. Rotation reveals the new value; deletion stops revealing at once.
+6. A handoff lists the secrets it needs and carries no value.
 
 ## 11.3 Test vectors
 

@@ -40,6 +40,9 @@ export fn registrations(kinds: &Messages.Kinds) -> Result[Array[Registration.Reg
       Resilient.register(&kinds.exportHandoff, guard() ?),
       Resilient.register(&kinds.importHandoff, guard() ?),
       Resilient.register(&kinds.readHandoff, guard() ?),
-      Resilient.register(&kinds.verifyHandoff, guard() ?)
+      Resilient.register(&kinds.verifyHandoff, guard() ?),
+      Resilient.register(&kinds.putSecret, guard() ?),
+      Resilient.register(&kinds.deleteSecret, guard() ?),
+      Resilient.register(&kinds.listSecrets, guard() ?)
     ])
 }

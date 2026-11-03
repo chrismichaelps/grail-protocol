@@ -1,0 +1,153 @@
+/** @Engine.Custody.Guard — seals secrets, keeps their values out of every envelope, and reveals them only in deliveries to their audience */
+module Engine.Custody
+
+import Std.Bytes as ByteSeq
+import Std.Crypto as Crypto
+import Std.Json as Json
+import Std.List as List
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import Constants.Custody as Sealing
+import Constants.Details as Details
+import Contract.Members as Members
+import Contract.Problems as Codes
+import Domain.Custody as Custody
+import Domain.Envelope as Envelope
+import Domain.Ledger as Ledger
+import Domain.Problem as Problem
+import Domain.Scope as Scope
+
+/// A deposit sealed as the next version of its name. The value is bound to the scope, the name, and the version, so a sealed value moved anywhere else does not open.
+export fn sealed(state: &Scope.State, sealing: &Custody.Sealing, secret: Str) -> Result[Custody.Held, Problem.Problem] {
+  let deposit = sealing.deposit
+  let version = Option.unwrapOr(Option.map(state.secrets.get(deposit.name), |held: Custody.Held| held.version), 0) + 1
+  let closed = Crypto.seal(&keyOf(secret, state.id), &sealing.nonce, &ByteSeq.fromText(deposit.value), &binding(state.id, deposit.name, version))
+  let value = Option.okOr(closed, Problem.of(Codes.UNAVAILABLE, Details.SECRET_UNSEALABLE)) ?
+  Ok(Custody.Held {
+      name: deposit.name,
+      version: version,
+      graph: deposit.graph,
+      audience: deposit.audience,
+      senders: deposit.senders,
+      kinds: deposit.kinds,
+      uses: deposit.uses,
+      expires: deposit.expires,
+      description: deposit.description,
+      created: sealing.now,
+      nonce: sealing.nonce,
+      sealed: value
+    })
+}
+
+/// The value of a held secret, or `None` when it does not open under this fabric's key for this scope.
+export fn valueOf(held: &Custody.Held, secret: Str, scopeId: Str) -> Option[Str] {
+  let opened = Crypto.open(&keyOf(secret, scopeId), &held.nonce, &held.sealed, &binding(scopeId, held.name, held.version)) ?
+  Result.ok(ByteSeq.toText(&opened))
+}
+
+/// Nothing when a body holds no held value; a body that holds one, as written or in a common encoding, is refused before anything else is checked, so a leak is always reported as a leak.
+export fn screened(state: &Scope.State, body: &Json.Json, secret: Str) -> Result[(), Problem.Problem] {
+  if exposes(state, body, secret) { return Err(Problem.of(Codes.SECRET_EXPOSED, Details.SECRET_EXPOSED)) }
+
+  Ok(())
+}
+
+/// The scope after an admitted record's references are checked and counted: each must name a secret of the record's graph whose policy admits its sender, its kind, and every recipient.
+export fn guarded(state: &Scope.State, record: &Ledger.Record, now: Int) -> Result[Scope.State, Problem.Problem] {
+  var counted = state.secrets
+
+  for name in references(&Option.unwrapOr(record.envelope.payload, Json.Null)) {
+    let held = Option.okOr(counted.get(name), Problem.of(Codes.NOT_FOUND, Details.SECRET_UNKNOWN)) ?
+    let _allowed = permitted(&held, record, now) ?
+    counted = counted.insert(name, Custody.Held{..held, uses: Option.map(held.uses, |left: Int| left - 1)})
+  }
+
+  Ok(Scope.State{..*state, secrets: counted})
+}
+
+/// Whether a JSON value holds the value of any secret the scope keeps, as written or in one of its disguises.
+export fn exposes(state: &Scope.State, value: &Json.Json, secret: Str) -> Bool {
+  let text = Json.encode(value)
+  List.any(&Map.values(&state.secrets), |held: Custody.Held| Option.holds(&valueOf(&held, secret, state.id), |found: Str| List.any(&disguises(found), |shown: Str| text.contains(shown))))
+}
+
+/// The record as one recipient receives it: references to secrets whose audience holds the recipient become their values; everything else is left as stored.
+export fn revealed(state: &Scope.State, record: &Ledger.Record, recipient: &Envelope.Address, secret: Str, now: Int) -> Ledger.Record {
+  let payload = match record.envelope.payload {
+    case Some(found) => found
+    case None => { return *record }
+  }
+
+  if references(&payload).isEmpty() { return *record }
+
+  let shown = substituted(&payload, |name: Str| Option.andThen(state.secrets.get(name), |held: Custody.Held| if receives(&held, recipient, now) { valueOf(&held, secret, state.id) } else { None }))
+  Ledger.Record{..*record, body: Json.withField(&record.body, Members.ENVELOPE_PAYLOAD, shown), envelope: Envelope.Envelope{..record.envelope, payload: Some(shown)}}
+}
+
+/// Every secret name a value references, each once, in the order they appear.
+export fn references(value: &Json.Json) -> Array[Str] {
+  var found: Array[Str] = []
+
+  for name in collected(value) {
+    if !found.contains(name) { found = found.push(name) }
+  }
+
+  found
+}
+
+/// The forms a value is looked for in: as written, escaped inside JSON text, in base64 of both alphabets, and in hex.
+export fn disguises(value: Str) -> Array[Str] {
+  let escaped = Json.encode(&Json.Text(value))
+  let bytes = ByteSeq.fromText(value)
+  [value, escaped.drop(Sealing.QUOTE_LENGTH).take(escaped.length() - 2 * Sealing.QUOTE_LENGTH), ByteSeq.encodeBase64(&bytes), ByteSeq.encodeBase64Url(&bytes), ByteSeq.encodeHex(&bytes)]
+}
+
+fn permitted(held: &Custody.Held, record: &Ledger.Record, now: Int) -> Result[(), Problem.Problem] {
+  let envelope = record.envelope
+
+  if held.graph != envelope.graph { return Err(Problem.of(Codes.NOT_FOUND, Details.SECRET_UNKNOWN)) }
+  if Option.holds(&held.expires, |expires: Int| expires <= now) { return Err(Problem.of(Codes.EXPIRED, Details.SECRET_EXPIRED)) }
+  if Option.holds(&held.uses, |left: Int| left <= 0) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_SPENT)) }
+  if !held.senders.isEmpty() && !held.senders.contains(envelope.source) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_SENDER)) }
+  if !held.kinds.isEmpty() && !held.kinds.contains(envelope.kind) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_KIND)) }
+  if record.recipients.isEmpty() || !List.all(&record.recipients, |address: Envelope.Address| address.graph == held.graph && held.audience.contains(address.participant)) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_AUDIENCE)) }
+
+  Ok(())
+}
+
+fn receives(held: &Custody.Held, recipient: &Envelope.Address, now: Int) -> Bool {
+  recipient.graph == held.graph && held.audience.contains(recipient.participant) && !Option.holds(&held.expires, |expires: Int| expires <= now)
+}
+
+fn collected(value: &Json.Json) -> Array[Str] {
+  match value {
+    case Json.Object(members) => match referenced(&members) {
+      case Some(name) => [name]
+      case None => List.flatMap(&members, |pair: (Str, Json.Json)| collected(&pair[1]))
+    }
+    case Json.List(items) => List.flatMap(&items, |item: Json.Json| collected(&item))
+    case _ => []
+  }
+}
+
+fn substituted(value: &Json.Json, resolve: fn(Str) -> Option[Str]) -> Json.Json {
+  match value {
+    case Json.Object(members) => match referenced(&members) {
+      case Some(name) => Option.unwrapOr(Option.map(resolve(name), |shown: Str| Json.Text(shown)), *value)
+      case None => Json.Object(members.map(|pair: (Str, Json.Json)| (pair[0], substituted(&pair[1], resolve))))
+    }
+    case Json.List(items) => Json.List(items.map(|item: Json.Json| substituted(&item, resolve)))
+    case _ => *value
+  }
+}
+
+fn referenced(members: &Array[(Str, Json.Json)]) -> Option[Str] {
+  if members.length() != 1 || members[0][0] != Members.SECRET_REFERENCE_SECRET { return None }
+
+  Json.asText(&members[0][1])
+}
+
+fn keyOf(secret: Str, scopeId: Str) -> Bytes { Crypto.hmacSha256Text(secret, Sealing.KEY_LABEL + scopeId) }
+
+fn binding(scopeId: Str, name: Str, version: Int) -> Bytes { ByteSeq.fromText(scopeId + Sealing.BINDING_JOIN + name + Sealing.BINDING_JOIN + show(version)) }

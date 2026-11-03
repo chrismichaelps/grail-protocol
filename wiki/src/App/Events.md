@@ -28,7 +28,7 @@ export fn registrations(events: &Kinds, server: &Logger.Logger) -> Array[Registr
 
 ### Linkage
 
-- **Requires:** [[src/Constants/Logging]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Transfer]]
+- **Requires:** [[src/Constants/Logging]] · [[src/Domain/Custody]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Transfer]]
 - **Packages:** `PuduLangLog`, `PuduLangMediator`
 - **Consumed by:** [[src/App/Assembly]]
 

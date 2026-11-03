@@ -31,8 +31,8 @@ export fn firstBroken(entries: &Array[Ledger.Entry]) -> Option[Int]
 
 - **Requires:** [[src/Constants/Ledger]] · [[src/Contract/Members]] · [[src/Domain/Ledger]] · [[src/Utils/Canonical]]
 - **Standard library:** `Std.Crypto`, `Std.Json`
-- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]] · [[test/Security/HandoffTest]]
+- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]] · [[test/Security/CustodyTest]] · [[test/Security/HandoffTest]]
 
 ## Referenced by
 
-[[src/Engine/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]] · [[test/Security/HandoffTest]]
+[[src/Engine/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]] · [[test/Security/CustodyTest]] · [[test/Security/HandoffTest]]

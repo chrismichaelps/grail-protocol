@@ -32,7 +32,7 @@ export fn change[T](store: &Store, scopeId: Str, action: fn(Scope.State) -> Resu
 
 - **Requires:** [[src/Constants/Details]] · [[src/Contract/Problems]] · [[src/Domain/Problem]] · [[src/Domain/Scope]]
 - **Standard library:** `Std.Map`, `Std.Result`, `Std.Sync`
-- **Consumed by:** [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]]
+- **Consumed by:** [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]]
 
 <!-- authored -->
 ## Algorithm
@@ -50,4 +50,4 @@ The store is one cell holding every scope's state, guarded by one mutex. `change
 
 ## Referenced by
 
-[[src/Services/_MOC]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]]
+[[src/Services/_MOC]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]]

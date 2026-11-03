@@ -14,6 +14,7 @@ import Contract.Document as Document
 import Contract.Operations as Operations
 import Contract.Parameters as Parameters
 import Domain.Capability as Capability
+import Domain.Custody as Custody
 import Domain.Envelope as Envelope
 import Domain.Graph as Graph
 import Domain.Handoff as Handoff
@@ -21,6 +22,7 @@ import Domain.Mutation as Mutation
 import Domain.Problem as Problem
 import Domain.Request as Request
 import Domain.Transfer as Transfer
+import Engine.Codec.Custody as CustodyCodec
 import Engine.Codec.Envelope as EnvelopeCodec
 import Engine.Codec.Graph as GraphCodec
 import Engine.Codec.Handoff as HandoffCodec
@@ -53,7 +55,10 @@ const HANDLERS: Map[Str, Handler] = mapOf([
     (Operations.EXPORT_HANDOFF, exportHandoff),
     (Operations.IMPORT_HANDOFF, importHandoff),
     (Operations.READ_HANDOFF, readHandoff),
-    (Operations.VERIFY_HANDOFF, verifyHandoff)
+    (Operations.VERIFY_HANDOFF, verifyHandoff),
+    (Operations.PUT_SECRET, putSecret),
+    (Operations.DELETE_SECRET, deleteSecret),
+    (Operations.LIST_SECRETS, listSecrets)
   ])
 
 /// The ids of every operation with a handler.
@@ -151,6 +156,20 @@ fn verifyHandoff(app: Assembly.App, request: Route.Request, status: Int) -> Http
   let id = Caller.parameter(&request, Parameters.HANDOFF)
   let outcome = Result.andThen(Result.andThen(Caller.body(&request), |body: Json.Json| HandoffCodec.decodeBundle(&body, id)), |bundle: Json.Json| Commands.verifyHandoff(&app, Caller.call(&request, Handoff.Presented{id: id, bundle: bundle})))
   Respond.answer(status, outcome, |checked: Handoff.Check| HandoffCodec.check(&checked))
+}
+
+fn putSecret(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  let name = Caller.parameter(&request, Parameters.SECRET)
+  let outcome = Result.andThen(Result.andThen(Caller.body(&request), |body: Json.Json| CustodyCodec.decodeDeposit(&body, name)), |deposit: Custody.Deposit| Commands.putSecret(&app, Caller.call(&request, deposit)))
+  Respond.answer(status, outcome, |held: Custody.Held| CustodyCodec.view(&held))
+}
+
+fn deleteSecret(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  Respond.answer(status, Commands.deleteSecret(&app, Caller.call(&request, Caller.parameter(&request, Parameters.SECRET))), |held: Custody.Held| CustodyCodec.view(&held))
+}
+
+fn listSecrets(app: Assembly.App, request: Route.Request, status: Int) -> Http.Response {
+  Respond.answer(status, Commands.listSecrets(&app, Caller.call(&request, ())), |found: Array[Custody.Held]| CustodyCodec.list(&found))
 }
 
 fn cursor(request: &Route.Request) -> Result[(Int, Option[Int]), Problem.Problem] {

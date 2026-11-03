@@ -26,7 +26,7 @@ export fn kinds() -> Kinds
 
 ### Linkage
 
-- **Requires:** [[src/Contract/Operations]] · [[src/Domain/Capability]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Transfer]]
+- **Requires:** [[src/Contract/Operations]] · [[src/Domain/Capability]] · [[src/Domain/Custody]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Transfer]]
 - **Packages:** `PuduLangMediator`
 - **Consumed by:** [[src/App/Assembly]] · [[src/App/Handlers]] · [[src/App/Pipeline]] · [[src/App/Resilience]]
 

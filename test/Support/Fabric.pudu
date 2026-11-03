@@ -45,7 +45,7 @@ export fn ownerOn(secret: Str, scopeId: Str) -> Str {
 export fn sent(router: &Route.Router, method: Http.Method, path: Str, token: Str, body: Str) -> Answer {
   let started = Assembly.now()
   let message = Http.Request{method: method, target: path, headers: [("authorization", Security.BEARER_PREFIX + token), ("content-type", "application/json")], body: body, binaryBody: None}
-  let response = Route.dispatch(router, Route.Request{message: message, path: Route.pathOf(path), params: Map.empty(), query: Route.queryOf(path), peer: "test"})
+  let response = Router.refusing()(Route.Request{message: message, path: Route.pathOf(path), params: Map.empty(), query: Route.queryOf(path), peer: "test"}, |request: Route.Request| Route.dispatch(router, request))
   Answer{status: response.status.code, body: Result.unwrapOr(Json.decode(response.body), Json.Null), millis: Assembly.now() - started}
 }
 

@@ -1,0 +1,11 @@
+/** @Constants.Custody.Sealing — labels of the custody key and of what each sealed value is bound to */
+module Constants.Custody
+
+/// The label mixed into the key a scope's secrets are sealed with.
+export const KEY_LABEL: Str = "grail-custody:"
+
+/// What joins the scope, name, and version a sealed value is bound to.
+export const BINDING_JOIN: Str = "/"
+
+/// The quote marks a JSON-escaped value is wrapped in, trimmed before searching for it.
+export const QUOTE_LENGTH: Int = 1

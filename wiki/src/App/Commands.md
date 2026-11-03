@@ -53,11 +53,17 @@ export fn importHandoff(app: &Assembly.App, call: Request.Call[Handoff.Arriving]
 export fn readHandoff(app: &Assembly.App, call: Request.Call[Str]) -> Result[Handoff.Stored, Problem.Problem] { Assembly.send(app, &app.kinds.readHandoff, call) }
 /// Verifies a handoff against the fabric that may have sealed it.
 export fn verifyHandoff(app: &Assembly.App, call: Request.Call[Handoff.Presented]) -> Result[Handoff.Check, Problem.Problem] { Assembly.send(app, &app.kinds.verifyHandoff, call) }
+/// Gives a secret to custody.
+export fn putSecret(app: &Assembly.App, call: Request.Call[Custody.Deposit]) -> Result[Custody.Held, Problem.Problem]
+/// Destroys a secret in custody.
+export fn deleteSecret(app: &Assembly.App, call: Request.Call[Str]) -> Result[Custody.Held, Problem.Problem]
+/// Lists the secrets in custody the token may know about.
+export fn listSecrets(app: &Assembly.App, call: Request.Call[()]) -> Result[Array[Custody.Held], Problem.Problem] { Assembly.send(app, &app.kinds.listSecrets, call) }
 ```
 
 ### Linkage
 
-- **Requires:** [[src/App/Assembly]] · [[src/Domain/Capability]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Transfer]]
+- **Requires:** [[src/App/Assembly]] · [[src/Domain/Capability]] · [[src/Domain/Custody]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Transfer]]
 - **Consumed by:** [[src/Web/Handlers]]
 
 <!-- authored -->

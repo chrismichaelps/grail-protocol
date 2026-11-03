@@ -610,6 +610,8 @@ export const HANDOFF_EXPIRES: Str = "expires"
 export const HANDOFF_DIGEST: Str = "digest"
 /// The `seal` member of `Handoff`.
 export const HANDOFF_SEAL: Str = "seal"
+/// The `needs` member of `Handoff`.
+export const HANDOFF_NEEDS: Str = "needs"
 /// Members `Handoff` allows.
 export const HANDOFF_ALLOWED: Array[Str]
 /// Members `Handoff` requires.
@@ -656,13 +658,85 @@ export const HANDOFF_CHECK_REQUIRED: Array[Str]
 export const HANDOFF_CHECK_CLOSED: Bool = false
 /// Whether `HandoffCheck` accepts `x-` members.
 export const HANDOFF_CHECK_EXTENSIBLE: Bool = false
+/// The `$secret` member of `SecretReference`.
+export const SECRET_REFERENCE_SECRET: Str = "$secret"
+/// Members `SecretReference` allows.
+export const SECRET_REFERENCE_ALLOWED: Array[Str]
+/// Members `SecretReference` requires.
+export const SECRET_REFERENCE_REQUIRED: Array[Str]
+/// Whether `SecretReference` refuses members it does not list.
+export const SECRET_REFERENCE_CLOSED: Bool = true
+/// Whether `SecretReference` accepts `x-` members.
+export const SECRET_REFERENCE_EXTENSIBLE: Bool = false
+/// The `value` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_VALUE: Str = "value"
+/// The `graph` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_GRAPH: Str = "graph"
+/// The `audience` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_AUDIENCE: Str = "audience"
+/// The `senders` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_SENDERS: Str = "senders"
+/// The `kinds` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_KINDS: Str = "kinds"
+/// The `uses` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_USES: Str = "uses"
+/// The `expires` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_EXPIRES: Str = "expires"
+/// The `description` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_DESCRIPTION: Str = "description"
+/// Members `SecretDeposit` allows.
+export const SECRET_DEPOSIT_ALLOWED: Array[Str]
+/// Members `SecretDeposit` requires.
+export const SECRET_DEPOSIT_REQUIRED: Array[Str]
+/// Whether `SecretDeposit` refuses members it does not list.
+export const SECRET_DEPOSIT_CLOSED: Bool = true
+/// Whether `SecretDeposit` accepts `x-` members.
+export const SECRET_DEPOSIT_EXTENSIBLE: Bool = false
+/// The `name` member of `SecretView`.
+export const SECRET_VIEW_NAME: Str = "name"
+/// The `version` member of `SecretView`.
+export const SECRET_VIEW_VERSION: Str = "version"
+/// The `graph` member of `SecretView`.
+export const SECRET_VIEW_GRAPH: Str = "graph"
+/// The `audience` member of `SecretView`.
+export const SECRET_VIEW_AUDIENCE: Str = "audience"
+/// The `senders` member of `SecretView`.
+export const SECRET_VIEW_SENDERS: Str = "senders"
+/// The `kinds` member of `SecretView`.
+export const SECRET_VIEW_KINDS: Str = "kinds"
+/// The `uses` member of `SecretView`.
+export const SECRET_VIEW_USES: Str = "uses"
+/// The `expires` member of `SecretView`.
+export const SECRET_VIEW_EXPIRES: Str = "expires"
+/// The `description` member of `SecretView`.
+export const SECRET_VIEW_DESCRIPTION: Str = "description"
+/// The `created` member of `SecretView`.
+export const SECRET_VIEW_CREATED: Str = "created"
+/// Members `SecretView` allows.
+export const SECRET_VIEW_ALLOWED: Array[Str]
+/// Members `SecretView` requires.
+export const SECRET_VIEW_REQUIRED: Array[Str]
+/// Whether `SecretView` refuses members it does not list.
+export const SECRET_VIEW_CLOSED: Bool = false
+/// Whether `SecretView` accepts `x-` members.
+export const SECRET_VIEW_EXTENSIBLE: Bool = false
+/// The `secrets` member of `SecretList`.
+export const SECRET_LIST_SECRETS: Str = "secrets"
+/// Members `SecretList` allows.
+export const SECRET_LIST_ALLOWED: Array[Str]
+/// Members `SecretList` requires.
+export const SECRET_LIST_REQUIRED: Array[Str]
+/// Whether `SecretList` refuses members it does not list.
+export const SECRET_LIST_CLOSED: Bool = false
+/// Whether `SecretList` accepts `x-` members.
+export const SECRET_LIST_EXTENSIBLE: Bool = false
 ```
 
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Bridge]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]]
+- **Consumed by:** [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Bridge]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]]
 
 ## Referenced by
 
-[[src/Contract/_MOC]] · [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Bridge]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]]
+[[src/Contract/_MOC]] · [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Bridge]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]]

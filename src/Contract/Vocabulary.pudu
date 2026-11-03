@@ -116,6 +116,9 @@ export const ABILITY_HANDOFF_EXPORT: Str = "handoff.export"
 /// `handoff.import`.
 export const ABILITY_HANDOFF_IMPORT: Str = "handoff.import"
 
+/// `secret.manage`.
+export const ABILITY_SECRET_MANAGE: Str = "secret.manage"
+
 /// Every value of the set.
 export const ABILITIES: Array[Str] = [
   "*",
@@ -128,7 +131,8 @@ export const ABILITIES: Array[Str] = [
   "ledger.erase",
   "token.delegate",
   "handoff.export",
-  "handoff.import"
+  "handoff.import",
+  "secret.manage"
 ]
 
 /// `agent`.
