@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.1 — 2026-11-02
+
+### Fixed
+
+- Non-owner tokens cannot delegate the reserved owner principal.
+- Revocation logs omit raw caller-supplied token identifiers.
+- Custody revelation preserves issuer-chain authority and checks the current sender/kind policy after rotation.
+- Graph journals, exported handoff metadata, and public secret metadata cannot carry held values.
+- The secrets executor refuses redirects and implicit environment proxies on credential-bearing calls.
+
+### Validation and compatibility
+
+The suite passes 428 assertions. Authority and custody mutation runs killed all 46 and 45 selected mutants, with no invalid or surviving mutants. CI now tests native localhost custody boundaries and the example executor against a separate local redirect collector.
+
+Draft protocol 1.1 wire shapes are unchanged. Unsafe delegation and metadata flows now refuse; issue executor tokens directly from the owner or an already authorized executor. The [security review](wiki/architecture/SECURITY-REVIEW-2026-11-02.md) records the findings and operating limits. The API remains local and the store remains in memory; Cloudflare hosts static documentation only.
+
 ## 0.2.0 — 2026-11-02
 
 ### Added

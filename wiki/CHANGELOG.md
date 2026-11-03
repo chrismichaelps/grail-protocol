@@ -1,6 +1,7 @@
 # Changelog
 
 - 2026-11-02 · [[src/App/Events]] · revocation events omit raw caller-controlled identifiers; the native HTTP log regression checks a sensitive identifier canary · risk MED
+- 2026-11-02 · reference fabric 0.2.1 ships the reviewed custody/authorization security fixes, native localhost security CI, and an evidence-based review record; draft wire shapes remain 1.1 · risk HIGH
 
 - 2026-11-02 · [[src/Engine/Custody]] · custody revelation checks every non-owner issuer and the current graph/sender/kind policy; refused batches preserve delivery marks and reveal counts · risk HIGH
 - 2026-11-02 · custody exposure checks cover graph journals, exported handoff metadata, and secret metadata, including the incoming value; refusals preserve state and retain strikes · risk HIGH
