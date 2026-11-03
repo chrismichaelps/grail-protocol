@@ -1,460 +1,4153 @@
 {
- "workspace": "studio / studio",
- "channels": [
-  "general",
-  "reviews",
-  "builds"
- ],
- "recorded": "3 November 2026",
- "note": "Recorded on a local fabric with examples/channels/showcase.sh. A hosted coding agent was attached as the reviewer with grail run and did the review itself; the script played the other participants through their own tokens. Every post is exactly what readChannel returned, including the morning post that the showcase erased.",
- "posts": [
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 2,
-    "envelope": {
-     "grail": "1.2",
-     "id": "narration-1793724761-1",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [],
-     "payload": {
-      "text": "Showcase run 1793724761 starting. Everything below is the fabric answering real requests."
-     },
-     "sequence": 2,
-     "digest": "sha256:fc8ad60528b272104f2681d488e5a4f99b80d9116bfc3795dc741a3dbb457ebd",
-     "accepted": 1793724761745
+  "workspace": "studio",
+  "channels": [
+    "general",
+    "reviews",
+    "builds"
+  ],
+  "recorded": "3 November 2026",
+  "note": "Recorded on a local fabric with examples/channels/showcase.sh. A hosted coding agent attached as the reviewer did the review itself; the script played the other participants through their own tokens. The recorded calls and channel posts came from this run; the ledger contains the accepted envelopes. Tokens were never recorded, and the deploy key is shown only as a placeholder.",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Discovery says what this fabric speaks",
+      "notes": [
+        {
+          "mark": "line",
+          "text": "protocol versions  1.2, 1.1, 1.0"
+        },
+        {
+          "mark": "line",
+          "text": "profiles           core, portable, custody, channels"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "discover",
+          "as": "anyone",
+          "params": {},
+          "body": null,
+          "answer": {
+            "grail": [
+              "1.2",
+              "1.1",
+              "1.0"
+            ],
+            "fabric": {
+              "name": "grail-fabric",
+              "version": "0.3.0",
+              "profiles": [
+                "core",
+                "portable",
+                "custody",
+                "channels"
+              ],
+              "contract": "1.2.0"
+            },
+            "bindings": [
+              {
+                "name": "http"
+              },
+              {
+                "name": "lines"
+              }
+            ],
+            "limits": {
+              "envelopeBytes": 1114112,
+              "payloadBytes": 1048576,
+              "parents": 64,
+              "identifierLength": 128,
+              "nameLength": 64,
+              "schemaLength": 512,
+              "roles": 32,
+              "abilities": 64,
+              "participants": 1024,
+              "edges": 4096,
+              "operations": 256,
+              "delegationDepth": 8,
+              "containmentDepth": 8,
+              "routingPaths": 1024,
+              "clockSkewMillis": 300000,
+              "deduplicationMillis": 86400000,
+              "pageDefault": 100,
+              "pageMax": 1000,
+              "priorityMin": 0,
+              "priorityMax": 9,
+              "priorityDefault": 4,
+              "waitMax": 30000,
+              "scopeEntries": 1000000,
+              "deliveryKeys": 100000,
+              "ancestryMax": 100000,
+              "handoffAnchors": 64,
+              "handoffEntries": 10000,
+              "handoffLifetimeMillis": 86400000,
+              "handoffBytes": 4194304,
+              "secrets": 256,
+              "secretBytes": 4096,
+              "secretLengthMin": 12,
+              "secretAudience": 64,
+              "secretStrikes": 3,
+              "secretFragment": 16
+            },
+            "kinds": [
+              "task",
+              "result",
+              "error",
+              "progress",
+              "input.request",
+              "cancel",
+              "thought",
+              "observation",
+              "memory",
+              "tool.call",
+              "tool.result",
+              "stream.open",
+              "stream.chunk",
+              "stream.close",
+              "ability.advert",
+              "graph.mutation",
+              "bridge.rpc",
+              "handoff.export",
+              "handoff.import"
+            ],
+            "abilities": [
+              "*",
+              "graph.read",
+              "graph.write",
+              "transfer.send",
+              "transfer.receive",
+              "transfer.read",
+              "ledger.read",
+              "ledger.erase",
+              "token.delegate",
+              "handoff.export",
+              "handoff.import",
+              "secret.manage"
+            ],
+            "extensions": []
+          }
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "title": "One graph says who may talk to whom, and in what order",
+      "notes": [
+        {
+          "mark": "line",
+          "text": "participants  lead (human), builder (agent), reviewer (agent), deployer (tool), search (tool), watcher (service), general (channel), reviews (channel), builds (channel)"
+        },
+        {
+          "mark": "line",
+          "text": "edges         20 flow and dependency edges; reviewer → deployer is a dependency"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "readGraph",
+          "as": "lead",
+          "params": {
+            "scope": "studio",
+            "graph": "studio"
+          },
+          "body": null,
+          "answer": {
+            "id": "studio",
+            "scope": "studio",
+            "revision": 1,
+            "participants": [
+              {
+                "id": "lead",
+                "kind": "human",
+                "roles": [],
+                "abilities": []
+              },
+              {
+                "id": "builder",
+                "kind": "agent",
+                "roles": [],
+                "abilities": []
+              },
+              {
+                "id": "reviewer",
+                "kind": "agent",
+                "roles": [],
+                "abilities": []
+              },
+              {
+                "id": "deployer",
+                "kind": "tool",
+                "roles": [],
+                "abilities": []
+              },
+              {
+                "id": "search",
+                "kind": "tool",
+                "roles": [],
+                "abilities": []
+              },
+              {
+                "id": "watcher",
+                "kind": "service",
+                "roles": [],
+                "abilities": []
+              },
+              {
+                "id": "general",
+                "kind": "channel",
+                "roles": [],
+                "abilities": []
+              },
+              {
+                "id": "reviews",
+                "kind": "channel",
+                "roles": [],
+                "abilities": []
+              },
+              {
+                "id": "builds",
+                "kind": "channel",
+                "roles": [],
+                "abilities": []
+              }
+            ],
+            "edges": [
+              {
+                "id": "lead-posts-general",
+                "from": "lead",
+                "to": "general",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "builder-posts-general",
+                "from": "builder",
+                "to": "general",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "reviewer-posts-general",
+                "from": "reviewer",
+                "to": "general",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "deployer-posts-general",
+                "from": "deployer",
+                "to": "general",
+                "relation": "flow",
+                "kinds": [
+                  "observation"
+                ]
+              },
+              {
+                "id": "general-to-lead",
+                "from": "general",
+                "to": "lead",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "general-to-builder",
+                "from": "general",
+                "to": "builder",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "general-to-reviewer",
+                "from": "general",
+                "to": "reviewer",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "general-to-watcher",
+                "from": "general",
+                "to": "watcher",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "builder-posts-reviews",
+                "from": "builder",
+                "to": "reviews",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "reviews-to-reviewer",
+                "from": "reviews",
+                "to": "reviewer",
+                "relation": "flow",
+                "kinds": [
+                  "task"
+                ]
+              },
+              {
+                "id": "reviews-to-lead",
+                "from": "reviews",
+                "to": "lead",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "reviews-to-watcher",
+                "from": "reviews",
+                "to": "watcher",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "builder-streams-builds",
+                "from": "builder",
+                "to": "builds",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "builds-to-lead",
+                "from": "builds",
+                "to": "lead",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "builds-to-watcher",
+                "from": "builds",
+                "to": "watcher",
+                "relation": "flow",
+                "kinds": []
+              },
+              {
+                "id": "lead-asks-builder",
+                "from": "lead",
+                "to": "builder",
+                "relation": "flow",
+                "kinds": [
+                  "task",
+                  "cancel"
+                ]
+              },
+              {
+                "id": "lead-asks-reviewer",
+                "from": "lead",
+                "to": "reviewer",
+                "relation": "flow",
+                "kinds": [
+                  "task"
+                ]
+              },
+              {
+                "id": "builder-calls-deployer",
+                "from": "builder",
+                "to": "deployer",
+                "relation": "flow",
+                "kinds": [
+                  "tool.call"
+                ]
+              },
+              {
+                "id": "lead-bridges-search",
+                "from": "lead",
+                "to": "search",
+                "relation": "flow",
+                "kinds": [
+                  "bridge.rpc"
+                ]
+              },
+              {
+                "id": "deploys-need-review",
+                "from": "reviewer",
+                "to": "deployer",
+                "relation": "dependency",
+                "kinds": []
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "title": "Channels fan a post out to their subscribers",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "#general post heard by builder, reviewer, watcher; the reviewer hears #reviews only for tasks"
+        },
+        {
+          "mark": "refused",
+          "text": "the watcher holds transfer.receive only, so it can watch but never post: grail.forbidden"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "sendEnvelope",
+          "as": "lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "hello-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "lead",
+            "target": {
+              "participant": "general"
+            },
+            "kind": "observation",
+            "parents": [],
+            "payload": {
+              "text": "Morning. Today: ship the slugify helper."
+            }
+          },
+          "answer": {
+            "id": "hello-1793727791",
+            "sequence": 4,
+            "digest": "sha256:be5cf706132d1e8e3ee6f057927f800d515c6477ac49e7740c726d5d3a4e442c",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "builder"
+              },
+              {
+                "graph": "studio",
+                "participant": "reviewer"
+              },
+              {
+                "graph": "studio",
+                "participant": "watcher"
+              }
+            ],
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "watcher",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "shout-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "watcher",
+            "target": {
+              "participant": "general"
+            },
+            "kind": "observation",
+            "parents": [],
+            "payload": {
+              "text": "hi"
+            }
+          },
+          "answer": {
+            "type": "urn:grail:problem:forbidden",
+            "title": "Forbidden",
+            "status": 403,
+            "detail": "the token does not grant this ability",
+            "code": "grail.forbidden",
+            "ability": "transfer.send"
+          }
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "title": "Authority only narrows as it is delegated",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "the lead delegated a receive-only token for the builder, depth 2 in its chain"
+        },
+        {
+          "mark": "refused",
+          "text": "it cannot hand out graph.write, which it does not hold: grail.forbidden"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "delegateToken",
+          "as": "lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "id": "helper-1793727791",
+            "audience": "builder",
+            "graph": "studio",
+            "abilities": [
+              "transfer.receive"
+            ],
+            "expires": 1793731395000
+          },
+          "answer": {
+            "token": "‹token›",
+            "expires": 1793731395000
+          }
+        },
+        {
+          "operation": "inspectToken",
+          "as": "helper token delegated by the lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": null,
+          "answer": {
+            "id": "helper-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "issuer": "lead",
+            "audience": "builder",
+            "abilities": [
+              "transfer.receive"
+            ],
+            "notBefore": 1793727796039,
+            "expires": 1793731395000,
+            "depth": 2
+          }
+        },
+        {
+          "operation": "delegateToken",
+          "as": "lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "id": "wider-1793727791",
+            "audience": "builder",
+            "graph": "studio",
+            "abilities": [
+              "graph.write"
+            ],
+            "expires": 1793731395000
+          },
+          "answer": {
+            "type": "urn:grail:problem:forbidden",
+            "title": "Forbidden",
+            "status": 403,
+            "detail": "a delegated token may only narrow its parent",
+            "code": "grail.forbidden"
+          }
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "title": "A deploy asked for before its review is refused by the graph",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "the owner gave deploy-key to custody; only the deployer may ever see its value"
+        },
+        {
+          "mark": "refused",
+          "text": "deploy before review: grail.dependency-unmet, waiting on reviewer"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "putSecret",
+          "as": "owner",
+          "params": {
+            "scope": "studio",
+            "secret": "deploy-key"
+          },
+          "body": {
+            "value": "‹deploy-key›",
+            "graph": "studio",
+            "audience": [
+              "deployer"
+            ],
+            "senders": [
+              "builder"
+            ],
+            "kinds": [
+              "tool.call"
+            ],
+            "description": "pushes a release"
+          },
+          "answer": {
+            "name": "deploy-key",
+            "version": 1,
+            "graph": "studio",
+            "audience": [
+              "deployer"
+            ],
+            "senders": [
+              "builder"
+            ],
+            "kinds": [
+              "tool.call"
+            ],
+            "description": "pushes a release",
+            "created": 1793727798776,
+            "reveals": 0
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "builder",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "deploy-early-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "builder",
+            "target": {
+              "participant": "deployer"
+            },
+            "kind": "tool.call",
+            "parents": [],
+            "payload": {
+              "action": "release",
+              "auth": {
+                "$secret": "deploy-key"
+              }
+            }
+          },
+          "answer": {
+            "type": "urn:grail:problem:dependency-unmet",
+            "title": "Dependency unmet",
+            "status": 422,
+            "detail": "a dependency has not produced a result among this task's ancestors",
+            "code": "grail.dependency-unmet",
+            "unmet": [
+              "reviewer"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "step": 6,
+      "title": "The builder streams its build log into #builds",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "the log opened, carried three chunks, and closed in #builds, heard by the lead and the watcher"
+        },
+        {
+          "mark": "refused",
+          "text": "a chunk after the stream closed: grail.invalid-transition"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "sendEnvelope",
+          "as": "builder",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "log-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "builder",
+            "target": {
+              "participant": "builds"
+            },
+            "kind": "stream.open",
+            "parents": [],
+            "payload": {
+              "text": "build log for slugify"
+            }
+          },
+          "answer": {
+            "id": "log-1793727791",
+            "sequence": 7,
+            "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "lead"
+              },
+              {
+                "graph": "studio",
+                "participant": "watcher"
+              }
+            ],
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "builder",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "log-1793727791-28428",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "builder",
+            "target": {
+              "participant": "builds"
+            },
+            "kind": "stream.chunk",
+            "parents": [
+              "log-1793727791"
+            ],
+            "payload": {
+              "text": "collecting 14 tests"
+            }
+          },
+          "answer": {
+            "id": "log-1793727791-28428",
+            "sequence": 8,
+            "digest": "sha256:0521a8f843aba310996ce703da46128442a5d2d016af5c732a89d5deac80ff29",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "lead"
+              },
+              {
+                "graph": "studio",
+                "participant": "watcher"
+              }
+            ],
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "builder",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "log-1793727791-18858",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "builder",
+            "target": {
+              "participant": "builds"
+            },
+            "kind": "stream.chunk",
+            "parents": [
+              "log-1793727791"
+            ],
+            "payload": {
+              "text": "14 passed in 0.21s"
+            }
+          },
+          "answer": {
+            "id": "log-1793727791-18858",
+            "sequence": 9,
+            "digest": "sha256:753d44ce4a67a2932e8c9a13355672b8fede1e48859d68679539ad34e881ea36",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "lead"
+              },
+              {
+                "graph": "studio",
+                "participant": "watcher"
+              }
+            ],
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "builder",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "log-1793727791-25161",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "builder",
+            "target": {
+              "participant": "builds"
+            },
+            "kind": "stream.chunk",
+            "parents": [
+              "log-1793727791"
+            ],
+            "payload": {
+              "text": "wheel built: slugify-0.1.0"
+            }
+          },
+          "answer": {
+            "id": "log-1793727791-25161",
+            "sequence": 10,
+            "digest": "sha256:c176bfef976850265fa9165f34f0b9f7f89259747aa41feb428f570eb3d84e06",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "lead"
+              },
+              {
+                "graph": "studio",
+                "participant": "watcher"
+              }
+            ],
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "builder",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "log-1793727791-close",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "builder",
+            "target": {
+              "participant": "builds"
+            },
+            "kind": "stream.close",
+            "parents": [
+              "log-1793727791"
+            ],
+            "payload": {
+              "text": "build finished"
+            }
+          },
+          "answer": {
+            "id": "log-1793727791-close",
+            "sequence": 11,
+            "digest": "sha256:963e61a94740f2e1893714c670a37d906468a434b3882f86f7c20c0fc2ffdad1",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "lead"
+              },
+              {
+                "graph": "studio",
+                "participant": "watcher"
+              }
+            ],
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "builder",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "log-1793727791-late",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "builder",
+            "target": {
+              "participant": "builds"
+            },
+            "kind": "stream.chunk",
+            "parents": [
+              "log-1793727791"
+            ],
+            "payload": {
+              "text": "late line"
+            }
+          },
+          "answer": {
+            "type": "urn:grail:problem:invalid-transition",
+            "title": "Invalid transition",
+            "status": 422,
+            "detail": "the stream is closed",
+            "code": "grail.invalid-transition",
+            "state": "completed"
+          }
+        }
+      ]
+    },
+    {
+      "step": 7,
+      "title": "A review request goes to #reviews, and the first reviewer to start it takes it",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "the review task reached lead, reviewer, watcher"
+        },
+        {
+          "mark": "line",
+          "text": "waiting for the agent attached as the reviewer (up to 600s)"
+        },
+        {
+          "mark": "held",
+          "text": "review completed; the verdict reviewer:1793727826472:b22b01ca4104 reached the builder"
+        },
+        {
+          "mark": "line",
+          "text": "the reviewer said: Approved. No correctness issues found for a Unicode-preserving slugifier that removes accents, collapses separators, and trims hyphens."
+        }
+      ],
+      "calls": [
+        {
+          "operation": "sendEnvelope",
+          "as": "builder",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "review-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "builder",
+            "target": {
+              "participant": "reviews"
+            },
+            "kind": "task",
+            "parents": [
+              "log-1793727791"
+            ],
+            "payload": {
+              "text": "Please review:\n\n```python\nimport re\nimport unicodedata\n\n\ndef slugify(title: str) -> str:\n    normalized = unicodedata.normalize(\"NFKD\", title).lower()\n    unaccented = \"\".join(c for c in normalized if not unicodedata.combining(c))\n    return re.sub(r\"[\\W_]+\", \"-\", unaccented).strip(\"-\")\n```\n\nAt most three findings, or approve."
+            }
+          },
+          "answer": {
+            "id": "review-1793727791",
+            "sequence": 12,
+            "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "lead"
+              },
+              {
+                "graph": "studio",
+                "participant": "reviewer"
+              },
+              {
+                "graph": "studio",
+                "participant": "watcher"
+              }
+            ],
+            "state": "submitted",
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "pullDeliveries",
+          "as": "builder",
+          "params": {
+            "scope": "studio",
+            "graph": "studio",
+            "participant": "builder",
+            "after": 0,
+            "limit": 1000
+          },
+          "body": null,
+          "answer": {
+            "deliveries": [
+              {
+                "sequence": 2,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "narration-1793727791-1",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "lead",
+                  "target": {
+                    "participant": "general"
+                  },
+                  "kind": "observation",
+                  "parents": [],
+                  "payload": {
+                    "text": "Showcase run 1793727791 starting. Everything below is the fabric answering real requests."
+                  },
+                  "sequence": 2,
+                  "digest": "sha256:21e8a0bf468de616c8e6435d53df08262bcd43904020ca05fd176541b0238030",
+                  "accepted": 1793727792318
+                }
+              },
+              {
+                "sequence": 3,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "narration-1793727791-2",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "lead",
+                  "target": {
+                    "participant": "general"
+                  },
+                  "kind": "observation",
+                  "parents": [],
+                  "payload": {
+                    "text": "The studio has a lead, a builder, a reviewer, a deployer tool, a search tool, a watcher, and three channels. Deploys wait for a review."
+                  },
+                  "sequence": 3,
+                  "digest": "sha256:f35f834e8f9f81be479daa328d21035e1801bfda1cf27ae5af02dc08577a4407",
+                  "accepted": 1793727793857
+                }
+              },
+              {
+                "sequence": 4,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "hello-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "lead",
+                  "target": {
+                    "participant": "general"
+                  },
+                  "kind": "observation",
+                  "parents": [],
+                  "payload": {
+                    "text": "Morning. Today: ship the slugify helper."
+                  },
+                  "sequence": 4,
+                  "digest": "sha256:be5cf706132d1e8e3ee6f057927f800d515c6477ac49e7740c726d5d3a4e442c",
+                  "accepted": 1793727794570
+                }
+              },
+              {
+                "sequence": 5,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "narration-1793727791-4",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "lead",
+                  "target": {
+                    "participant": "general"
+                  },
+                  "kind": "observation",
+                  "parents": [],
+                  "payload": {
+                    "text": "Delegation: the lead handed the builder a receive-only token and could not hand out more than it holds."
+                  },
+                  "sequence": 5,
+                  "digest": "sha256:25475339f6e642f4b7b935d336d58722d8d6fad0aafea9818ae98da41c5f4d9d",
+                  "accepted": 1793727798087
+                }
+              },
+              {
+                "sequence": 6,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "narration-1793727791-5",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "lead",
+                  "target": {
+                    "participant": "general"
+                  },
+                  "kind": "observation",
+                  "parents": [],
+                  "payload": {
+                    "text": "The builder tried to deploy before any review. The graph refused it: deploys depend on a result from the reviewer."
+                  },
+                  "sequence": 6,
+                  "digest": "sha256:65945abff99694c82ad03973d9ca0139c85111a361029f7ec51282cbcd779272",
+                  "accepted": 1793727800153
+                }
+              },
+              {
+                "sequence": 13,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "reviewer:1793727805070:6e90ec5bbf3a",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "reviewer",
+                  "target": {
+                    "participant": "builder"
+                  },
+                  "kind": "progress",
+                  "parents": [
+                    "review-1793727791"
+                  ],
+                  "payload": {
+                    "text": "started by the runner"
+                  },
+                  "sequence": 13,
+                  "digest": "sha256:6339a918983976080f45dafe202667a6a6c8e5db077d7783a969bdccf6ebb718",
+                  "accepted": 1793727805079
+                }
+              },
+              {
+                "sequence": 14,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "reviewer:1793727826472:b22b01ca4104",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "reviewer",
+                  "target": {
+                    "participant": "builder"
+                  },
+                  "kind": "result",
+                  "parents": [
+                    "review-1793727791"
+                  ],
+                  "payload": {
+                    "text": "Approved. No correctness issues found for a Unicode-preserving slugifier that removes accents, collapses separators, and trims hyphens."
+                  },
+                  "delivery": {
+                    "mode": "effectively-once",
+                    "key": "reply:review-1793727791"
+                  },
+                  "sequence": 14,
+                  "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+                  "accepted": 1793727826479
+                }
+              }
+            ],
+            "cursor": 14
+          }
+        },
+        {
+          "operation": "readTransfer",
+          "as": "owner",
+          "params": {
+            "scope": "studio",
+            "transfer": "reviewer:1793727826472:b22b01ca4104"
+          },
+          "body": null,
+          "answer": {
+            "envelope": {
+              "grail": "1.2",
+              "id": "reviewer:1793727826472:b22b01ca4104",
+              "scope": "studio",
+              "graph": "studio",
+              "source": "reviewer",
+              "target": {
+                "participant": "builder"
+              },
+              "kind": "result",
+              "parents": [
+                "review-1793727791"
+              ],
+              "payload": {
+                "text": "Approved. No correctness issues found for a Unicode-preserving slugifier that removes accents, collapses separators, and trims hyphens."
+              },
+              "delivery": {
+                "mode": "effectively-once",
+                "key": "reply:review-1793727791"
+              },
+              "sequence": 14,
+              "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+              "accepted": 1793727826479
+            },
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "builder"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "step": 8,
+      "title": "The deploy now passes its gate, and only the deployer sees the key",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "deploy accepted with the verdict among its parents; state submitted"
+        },
+        {
+          "mark": "line",
+          "text": "what the ledger stores for the key: {\"$secret\":\"deploy-key\"}"
+        },
+        {
+          "mark": "held",
+          "text": "the deployer's own delivery carries the real value (40 characters, ghp_…), and nothing else does"
+        },
+        {
+          "mark": "refused",
+          "text": "a careless token pasted the key whole, in base64, and by half: each post refused, and the third strike revoked the token"
+        },
+        {
+          "mark": "held",
+          "text": "custody counts 1 reveal(s) of deploy-key"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "sendEnvelope",
+          "as": "builder",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "deploy-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "builder",
+            "target": {
+              "participant": "deployer"
+            },
+            "kind": "tool.call",
+            "parents": [
+              "reviewer:1793727826472:b22b01ca4104"
+            ],
+            "payload": {
+              "action": "release",
+              "auth": {
+                "$secret": "deploy-key"
+              }
+            }
+          },
+          "answer": {
+            "id": "deploy-1793727791",
+            "sequence": 16,
+            "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "deployer"
+              }
+            ],
+            "state": "submitted",
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "readTransfer",
+          "as": "owner",
+          "params": {
+            "scope": "studio",
+            "transfer": "deploy-1793727791"
+          },
+          "body": null,
+          "answer": {
+            "envelope": {
+              "grail": "1.2",
+              "id": "deploy-1793727791",
+              "scope": "studio",
+              "graph": "studio",
+              "source": "builder",
+              "target": {
+                "participant": "deployer"
+              },
+              "kind": "tool.call",
+              "parents": [
+                "reviewer:1793727826472:b22b01ca4104"
+              ],
+              "payload": {
+                "action": "release",
+                "auth": {
+                  "$secret": "deploy-key"
+                }
+              },
+              "sequence": 16,
+              "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+              "accepted": 1793727832100
+            },
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "deployer"
+              }
+            ],
+            "state": "submitted"
+          }
+        },
+        {
+          "operation": "pullDeliveries",
+          "as": "deployer",
+          "params": {
+            "scope": "studio",
+            "graph": "studio",
+            "participant": "deployer",
+            "after": 0,
+            "limit": 1000
+          },
+          "body": null,
+          "answer": {
+            "deliveries": [
+              {
+                "sequence": 16,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "deploy-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "deployer"
+                  },
+                  "kind": "tool.call",
+                  "parents": [
+                    "reviewer:1793727826472:b22b01ca4104"
+                  ],
+                  "payload": {
+                    "action": "release",
+                    "auth": "‹deploy-key›"
+                  },
+                  "sequence": 16,
+                  "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+                  "accepted": 1793727832100
+                }
+              }
+            ],
+            "cursor": 16
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "deployer",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "deployed-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "deployer",
+            "target": {
+              "participant": "builder"
+            },
+            "kind": "tool.result",
+            "parents": [
+              "deploy-1793727791"
+            ],
+            "payload": {
+              "text": "released slugify-0.1.0"
+            }
+          },
+          "answer": {
+            "id": "deployed-1793727791",
+            "sequence": 17,
+            "digest": "sha256:b15f4a194dc637156766d7a455b546e17a0139f9aa9d6dd839f3ec21057a38c0",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "builder"
+              }
+            ],
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "deployer",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "deploy-note-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "deployer",
+            "target": {
+              "participant": "general"
+            },
+            "kind": "observation",
+            "parents": [
+              "deployed-1793727791"
+            ],
+            "payload": {
+              "text": "released slugify-0.1.0"
+            }
+          },
+          "answer": {
+            "id": "deploy-note-1793727791",
+            "sequence": 18,
+            "digest": "sha256:8ee882a4235a9864cd405bec33658f9160019920831272ed8528998cbd62bc02",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "lead"
+              },
+              {
+                "graph": "studio",
+                "participant": "builder"
+              },
+              {
+                "graph": "studio",
+                "participant": "reviewer"
+              },
+              {
+                "graph": "studio",
+                "participant": "watcher"
+              }
+            ],
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "delegateToken",
+          "as": "lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "id": "careless-1793727791",
+            "audience": "lead",
+            "graph": "studio",
+            "abilities": [
+              "transfer.send"
+            ],
+            "expires": 1793731395000
+          },
+          "answer": {
+            "token": "‹token›",
+            "expires": 1793731395000
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "careless token delegated by the lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "leak-1793727791-32064",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "lead",
+            "target": {
+              "participant": "general"
+            },
+            "kind": "observation",
+            "parents": [],
+            "payload": {
+              "text": "for the record, the key is ‹deploy-key›"
+            }
+          },
+          "answer": {
+            "type": "urn:grail:problem:secret-exposed",
+            "title": "Secret exposed",
+            "status": 422,
+            "detail": "the envelope holds the value of a secret in custody; reference it by name instead",
+            "code": "grail.secret-exposed",
+            "strikes": 1
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "careless token delegated by the lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "leak-1793727791-22494",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "lead",
+            "target": {
+              "participant": "general"
+            },
+            "kind": "observation",
+            "parents": [],
+            "payload": {
+              "text": "encoded: ‹deploy-key in base64›"
+            }
+          },
+          "answer": {
+            "type": "urn:grail:problem:secret-exposed",
+            "title": "Secret exposed",
+            "status": 422,
+            "detail": "the envelope holds the value of a secret in custody; reference it by name instead",
+            "code": "grail.secret-exposed",
+            "strikes": 2
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "careless token delegated by the lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "leak-1793727791-28854",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "lead",
+            "target": {
+              "participant": "general"
+            },
+            "kind": "observation",
+            "parents": [],
+            "payload": {
+              "text": "first half: ‹half of deploy-key›"
+            }
+          },
+          "answer": {
+            "type": "urn:grail:problem:secret-exposed",
+            "title": "Secret exposed",
+            "status": 422,
+            "detail": "the envelope holds the value of a secret in custody; reference it by name instead",
+            "code": "grail.secret-exposed",
+            "strikes": 3
+          }
+        },
+        {
+          "operation": "inspectToken",
+          "as": "careless token delegated by the lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": null,
+          "answer": {
+            "type": "urn:grail:problem:unauthorized",
+            "title": "Unauthorized",
+            "status": 401,
+            "detail": "present a valid capability token for this scope",
+            "code": "grail.unauthorized"
+          }
+        },
+        {
+          "operation": "listSecrets",
+          "as": "owner",
+          "params": {
+            "scope": "studio"
+          },
+          "body": null,
+          "answer": {
+            "secrets": [
+              {
+                "name": "deploy-key",
+                "version": 1,
+                "graph": "studio",
+                "audience": [
+                  "deployer"
+                ],
+                "senders": [
+                  "builder"
+                ],
+                "kinds": [
+                  "tool.call"
+                ],
+                "description": "pushes a release",
+                "created": 1793727798776,
+                "reveals": 1,
+                "revealed": 1793727833438
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "step": 9,
+      "title": "Retrying with the same delivery key lands once",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "the same announcement sent twice is one ledger entry, #20"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "sendEnvelope",
+          "as": "lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "release-note-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "lead",
+            "target": {
+              "participant": "general"
+            },
+            "kind": "observation",
+            "parents": [
+              "deployed-1793727791"
+            ],
+            "payload": {
+              "text": "slugify 0.1.0 is out."
+            },
+            "delivery": {
+              "mode": "effectively-once",
+              "key": "release-1793727791"
+            }
+          },
+          "answer": {
+            "id": "release-note-1793727791",
+            "sequence": 20,
+            "digest": "sha256:d9b7f723a358ef71e7d6018672304f5978273e21f8a47bdb0a114c14e5b9e8ec",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "builder"
+              },
+              {
+                "graph": "studio",
+                "participant": "reviewer"
+              },
+              {
+                "graph": "studio",
+                "participant": "watcher"
+              }
+            ],
+            "duplicate": false
+          }
+        },
+        {
+          "operation": "sendEnvelope",
+          "as": "lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": {
+            "grail": "1.2",
+            "id": "release-note-1793727791",
+            "scope": "studio",
+            "graph": "studio",
+            "source": "lead",
+            "target": {
+              "participant": "general"
+            },
+            "kind": "observation",
+            "parents": [
+              "deployed-1793727791"
+            ],
+            "payload": {
+              "text": "slugify 0.1.0 is out."
+            },
+            "delivery": {
+              "mode": "effectively-once",
+              "key": "release-1793727791"
+            }
+          },
+          "answer": {
+            "id": "release-note-1793727791",
+            "sequence": 20,
+            "digest": "sha256:d9b7f723a358ef71e7d6018672304f5978273e21f8a47bdb0a114c14e5b9e8ec",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "builder"
+              },
+              {
+                "graph": "studio",
+                "participant": "reviewer"
+              },
+              {
+                "graph": "studio",
+                "participant": "watcher"
+              }
+            ],
+            "duplicate": true
+          }
+        }
+      ]
+    },
+    {
+      "step": 10,
+      "title": "A tool that speaks JSON-RPC joins through the bridge",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "a JSON-RPC request became envelope rpc-45be7df3b761f4edc38adcca7a7be1a3, with a lifecycle in state submitted"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "bridgeRpc",
+          "as": "lead",
+          "params": {
+            "scope": "studio",
+            "graph": "studio",
+            "participant": "search"
+          },
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 7,
+            "method": "tools/call",
+            "params": {
+              "name": "search",
+              "arguments": {
+                "query": "slugify unicode"
+              }
+            }
+          },
+          "answer": {
+            "id": "rpc-45be7df3b761f4edc38adcca7a7be1a3",
+            "sequence": 21,
+            "digest": "sha256:8f7d2d900a0e9c9811829483499be532b9d6341b24e819a2bcf0e29e98dd7f38",
+            "recipients": [
+              {
+                "graph": "studio",
+                "participant": "search"
+              }
+            ],
+            "state": "submitted",
+            "duplicate": false
+          }
+        }
+      ]
+    },
+    {
+      "step": 11,
+      "title": "Every result can answer: what produced this?",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "the deploy result traces back through the deploy, the verdict, the review request, and the build log"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "traceTransfer",
+          "as": "lead",
+          "params": {
+            "scope": "studio",
+            "transfer": "deployed-1793727791"
+          },
+          "body": null,
+          "answer": {
+            "of": "deployed-1793727791",
+            "entries": [
+              {
+                "id": "log-1793727791",
+                "sequence": 7,
+                "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+                "erased": false,
+                "hidden": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "log-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "builds"
+                  },
+                  "kind": "stream.open",
+                  "parents": [],
+                  "payload": {
+                    "text": "build log for slugify"
+                  },
+                  "sequence": 7,
+                  "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+                  "accepted": 1793727800840
+                }
+              },
+              {
+                "id": "review-1793727791",
+                "sequence": 12,
+                "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+                "erased": false,
+                "hidden": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "review-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "reviews"
+                  },
+                  "kind": "task",
+                  "parents": [
+                    "log-1793727791"
+                  ],
+                  "payload": {
+                    "text": "Please review:\n\n```python\nimport re\nimport unicodedata\n\n\ndef slugify(title: str) -> str:\n    normalized = unicodedata.normalize(\"NFKD\", title).lower()\n    unaccented = \"\".join(c for c in normalized if not unicodedata.combining(c))\n    return re.sub(r\"[\\W_]+\", \"-\", unaccented).strip(\"-\")\n```\n\nAt most three findings, or approve."
+                  },
+                  "sequence": 12,
+                  "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+                  "accepted": 1793727805012
+                }
+              },
+              {
+                "id": "reviewer:1793727826472:b22b01ca4104",
+                "sequence": 14,
+                "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+                "erased": false,
+                "hidden": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "reviewer:1793727826472:b22b01ca4104",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "reviewer",
+                  "target": {
+                    "participant": "builder"
+                  },
+                  "kind": "result",
+                  "parents": [
+                    "review-1793727791"
+                  ],
+                  "payload": {
+                    "text": "Approved. No correctness issues found for a Unicode-preserving slugifier that removes accents, collapses separators, and trims hyphens."
+                  },
+                  "delivery": {
+                    "mode": "effectively-once",
+                    "key": "reply:review-1793727791"
+                  },
+                  "sequence": 14,
+                  "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+                  "accepted": 1793727826479
+                }
+              },
+              {
+                "id": "deploy-1793727791",
+                "sequence": 16,
+                "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+                "erased": false,
+                "hidden": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "deploy-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "deployer"
+                  },
+                  "kind": "tool.call",
+                  "parents": [
+                    "reviewer:1793727826472:b22b01ca4104"
+                  ],
+                  "payload": {
+                    "action": "release",
+                    "auth": {
+                      "$secret": "deploy-key"
+                    }
+                  },
+                  "sequence": 16,
+                  "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+                  "accepted": 1793727832100
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "step": 12,
+      "title": "The ledger verifies from its own digests",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "21 links recomputed here with openssl, each from the one before it"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "readLedger",
+          "as": "owner",
+          "params": {
+            "scope": "studio",
+            "limit": 1000
+          },
+          "body": null,
+          "answer": {
+            "entries": [
+              {
+                "sequence": 1,
+                "id": "mutation:studio@1",
+                "digest": "sha256:72d6a1874bd0302aff018a7735dff0c6a3211a7347f95662ba65740f0824cb88",
+                "link": "b9437a9fdbb1cee8cd1c3b23bfc8615d9bb6629caa3ce36715a6b9160563c898"
+              },
+              {
+                "sequence": 2,
+                "id": "narration-1793727791-1",
+                "digest": "sha256:21e8a0bf468de616c8e6435d53df08262bcd43904020ca05fd176541b0238030",
+                "link": "16fe74128608ec66495dc127de427da281438e1c2d6b22dab759cd8cb0eb432f"
+              },
+              {
+                "sequence": 3,
+                "id": "narration-1793727791-2",
+                "digest": "sha256:f35f834e8f9f81be479daa328d21035e1801bfda1cf27ae5af02dc08577a4407",
+                "link": "6cce15f5c0d6ef471807219915504ce90b2b96d3b6dba656a13c94f8ebd14919"
+              },
+              {
+                "sequence": 4,
+                "id": "hello-1793727791",
+                "digest": "sha256:be5cf706132d1e8e3ee6f057927f800d515c6477ac49e7740c726d5d3a4e442c",
+                "link": "431f4e72fea22a376d1f6219d71598c258ed8aaff59b0e74a9ebc6cface0c88c"
+              },
+              {
+                "sequence": 5,
+                "id": "narration-1793727791-4",
+                "digest": "sha256:25475339f6e642f4b7b935d336d58722d8d6fad0aafea9818ae98da41c5f4d9d",
+                "link": "dee34ab9faaff4eb5fb75e1fd9b71f0086d7c2978210c91d4c9ac0d835ab4282"
+              },
+              {
+                "sequence": 6,
+                "id": "narration-1793727791-5",
+                "digest": "sha256:65945abff99694c82ad03973d9ca0139c85111a361029f7ec51282cbcd779272",
+                "link": "cc290a907cc42dd19b390dececf4f2be6d7f77fd7eb160e733a4027d02986715"
+              },
+              {
+                "sequence": 7,
+                "id": "log-1793727791",
+                "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+                "link": "6bbff6ee011b99a7cbe8136937f81dfd58039e8eff572736a6792b510a0cca78"
+              },
+              {
+                "sequence": 8,
+                "id": "log-1793727791-28428",
+                "digest": "sha256:0521a8f843aba310996ce703da46128442a5d2d016af5c732a89d5deac80ff29",
+                "link": "ec78b2e895eb09011372d6b68b4453f82e90cf12080dcdd644ae10e2e864bcfb"
+              },
+              {
+                "sequence": 9,
+                "id": "log-1793727791-18858",
+                "digest": "sha256:753d44ce4a67a2932e8c9a13355672b8fede1e48859d68679539ad34e881ea36",
+                "link": "ce8ba367fb51a7a12d239a18b86e98db88dbb2c8421568215bb0bb4e7b6c8dcc"
+              },
+              {
+                "sequence": 10,
+                "id": "log-1793727791-25161",
+                "digest": "sha256:c176bfef976850265fa9165f34f0b9f7f89259747aa41feb428f570eb3d84e06",
+                "link": "427c5199a84b604549f679a0601769c7516cbaa931458fbf7249ba62a4498f3d"
+              },
+              {
+                "sequence": 11,
+                "id": "log-1793727791-close",
+                "digest": "sha256:963e61a94740f2e1893714c670a37d906468a434b3882f86f7c20c0fc2ffdad1",
+                "link": "bcdf5d8aebdf90c80b5e1223bd7db680bf88243a4f4b698e0321292c603e9f73"
+              },
+              {
+                "sequence": 12,
+                "id": "review-1793727791",
+                "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+                "link": "a6d8a8a7bb5dad2ced6412c33763690bc280e48e8d3254034ce8c1f49a258581"
+              },
+              {
+                "sequence": 13,
+                "id": "reviewer:1793727805070:6e90ec5bbf3a",
+                "digest": "sha256:6339a918983976080f45dafe202667a6a6c8e5db077d7783a969bdccf6ebb718",
+                "link": "85dbd4b25606ecd80702521672af910d6efecd8a567cb3df085834a419720603"
+              },
+              {
+                "sequence": 14,
+                "id": "reviewer:1793727826472:b22b01ca4104",
+                "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+                "link": "a7e5579dc6bdd1f820dd37417ff7cb11d945934e86a078a412e911910a34c97c"
+              },
+              {
+                "sequence": 15,
+                "id": "narration-1793727791-7",
+                "digest": "sha256:3cf24c1a5d079a907429370f058b2cc2945b8fc0752bf9631b47094209506131",
+                "link": "4de49085a07e9a176e79bbdd5b7300f4e947ed56476517c87461c3d2be3c7187"
+              },
+              {
+                "sequence": 16,
+                "id": "deploy-1793727791",
+                "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+                "link": "2df374d1731bca289a5482c1fc6660552f0678d2efc5c00ab237d87b37fcff9c"
+              },
+              {
+                "sequence": 17,
+                "id": "deployed-1793727791",
+                "digest": "sha256:b15f4a194dc637156766d7a455b546e17a0139f9aa9d6dd839f3ec21057a38c0",
+                "link": "af493f093a26a2050eb84f445ff782b80e8dba5037e44c718b36e84a709e9133"
+              },
+              {
+                "sequence": 18,
+                "id": "deploy-note-1793727791",
+                "digest": "sha256:8ee882a4235a9864cd405bec33658f9160019920831272ed8528998cbd62bc02",
+                "link": "efb2d77ab9f34e3225cede4dc5c58a41f529f2ddc47177b10bc98c278de85dbc"
+              },
+              {
+                "sequence": 19,
+                "id": "narration-1793727791-8",
+                "digest": "sha256:93191f802cb74ead29e5ec23657398aa279572dcdc83705cceb795f47af07ba8",
+                "link": "0e53895eb20ab7382ecfe07932184e1fdabad917c1f2a77b2fd3f428ec5ac77c"
+              },
+              {
+                "sequence": 20,
+                "id": "release-note-1793727791",
+                "digest": "sha256:d9b7f723a358ef71e7d6018672304f5978273e21f8a47bdb0a114c14e5b9e8ec",
+                "link": "8f0c3a8ea76e6c6c1605c8714f1141ebeb18428cd4a55f7f669f51f09454123f"
+              },
+              {
+                "sequence": 21,
+                "id": "rpc-45be7df3b761f4edc38adcca7a7be1a3",
+                "digest": "sha256:8f7d2d900a0e9c9811829483499be532b9d6341b24e819a2bcf0e29e98dd7f38",
+                "link": "a64a743239a9f4d6a248dad25c96f944a7338f7ac264249a8698ab7458acfb0d"
+              }
+            ],
+            "cursor": 21
+          }
+        }
+      ]
+    },
+    {
+      "step": 13,
+      "title": "Erasing content keeps the record that it existed",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "the morning post's payload is gone; its digest stays, and the chain still ends at a64a743239a9f4d6…"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "eraseTransfer",
+          "as": "lead",
+          "params": {
+            "scope": "studio",
+            "transfer": "hello-1793727791"
+          },
+          "body": null,
+          "answer": {
+            "id": "hello-1793727791",
+            "sequence": 4,
+            "digest": "sha256:be5cf706132d1e8e3ee6f057927f800d515c6477ac49e7740c726d5d3a4e442c",
+            "erased": true
+          }
+        },
+        {
+          "operation": "readLedger",
+          "as": "owner",
+          "params": {
+            "scope": "studio",
+            "limit": 1000
+          },
+          "body": null,
+          "answer": {
+            "entries": [
+              {
+                "sequence": 1,
+                "id": "mutation:studio@1",
+                "digest": "sha256:72d6a1874bd0302aff018a7735dff0c6a3211a7347f95662ba65740f0824cb88",
+                "link": "b9437a9fdbb1cee8cd1c3b23bfc8615d9bb6629caa3ce36715a6b9160563c898"
+              },
+              {
+                "sequence": 2,
+                "id": "narration-1793727791-1",
+                "digest": "sha256:21e8a0bf468de616c8e6435d53df08262bcd43904020ca05fd176541b0238030",
+                "link": "16fe74128608ec66495dc127de427da281438e1c2d6b22dab759cd8cb0eb432f"
+              },
+              {
+                "sequence": 3,
+                "id": "narration-1793727791-2",
+                "digest": "sha256:f35f834e8f9f81be479daa328d21035e1801bfda1cf27ae5af02dc08577a4407",
+                "link": "6cce15f5c0d6ef471807219915504ce90b2b96d3b6dba656a13c94f8ebd14919"
+              },
+              {
+                "sequence": 4,
+                "id": "hello-1793727791",
+                "digest": "sha256:be5cf706132d1e8e3ee6f057927f800d515c6477ac49e7740c726d5d3a4e442c",
+                "link": "431f4e72fea22a376d1f6219d71598c258ed8aaff59b0e74a9ebc6cface0c88c"
+              },
+              {
+                "sequence": 5,
+                "id": "narration-1793727791-4",
+                "digest": "sha256:25475339f6e642f4b7b935d336d58722d8d6fad0aafea9818ae98da41c5f4d9d",
+                "link": "dee34ab9faaff4eb5fb75e1fd9b71f0086d7c2978210c91d4c9ac0d835ab4282"
+              },
+              {
+                "sequence": 6,
+                "id": "narration-1793727791-5",
+                "digest": "sha256:65945abff99694c82ad03973d9ca0139c85111a361029f7ec51282cbcd779272",
+                "link": "cc290a907cc42dd19b390dececf4f2be6d7f77fd7eb160e733a4027d02986715"
+              },
+              {
+                "sequence": 7,
+                "id": "log-1793727791",
+                "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+                "link": "6bbff6ee011b99a7cbe8136937f81dfd58039e8eff572736a6792b510a0cca78"
+              },
+              {
+                "sequence": 8,
+                "id": "log-1793727791-28428",
+                "digest": "sha256:0521a8f843aba310996ce703da46128442a5d2d016af5c732a89d5deac80ff29",
+                "link": "ec78b2e895eb09011372d6b68b4453f82e90cf12080dcdd644ae10e2e864bcfb"
+              },
+              {
+                "sequence": 9,
+                "id": "log-1793727791-18858",
+                "digest": "sha256:753d44ce4a67a2932e8c9a13355672b8fede1e48859d68679539ad34e881ea36",
+                "link": "ce8ba367fb51a7a12d239a18b86e98db88dbb2c8421568215bb0bb4e7b6c8dcc"
+              },
+              {
+                "sequence": 10,
+                "id": "log-1793727791-25161",
+                "digest": "sha256:c176bfef976850265fa9165f34f0b9f7f89259747aa41feb428f570eb3d84e06",
+                "link": "427c5199a84b604549f679a0601769c7516cbaa931458fbf7249ba62a4498f3d"
+              },
+              {
+                "sequence": 11,
+                "id": "log-1793727791-close",
+                "digest": "sha256:963e61a94740f2e1893714c670a37d906468a434b3882f86f7c20c0fc2ffdad1",
+                "link": "bcdf5d8aebdf90c80b5e1223bd7db680bf88243a4f4b698e0321292c603e9f73"
+              },
+              {
+                "sequence": 12,
+                "id": "review-1793727791",
+                "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+                "link": "a6d8a8a7bb5dad2ced6412c33763690bc280e48e8d3254034ce8c1f49a258581"
+              },
+              {
+                "sequence": 13,
+                "id": "reviewer:1793727805070:6e90ec5bbf3a",
+                "digest": "sha256:6339a918983976080f45dafe202667a6a6c8e5db077d7783a969bdccf6ebb718",
+                "link": "85dbd4b25606ecd80702521672af910d6efecd8a567cb3df085834a419720603"
+              },
+              {
+                "sequence": 14,
+                "id": "reviewer:1793727826472:b22b01ca4104",
+                "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+                "link": "a7e5579dc6bdd1f820dd37417ff7cb11d945934e86a078a412e911910a34c97c"
+              },
+              {
+                "sequence": 15,
+                "id": "narration-1793727791-7",
+                "digest": "sha256:3cf24c1a5d079a907429370f058b2cc2945b8fc0752bf9631b47094209506131",
+                "link": "4de49085a07e9a176e79bbdd5b7300f4e947ed56476517c87461c3d2be3c7187"
+              },
+              {
+                "sequence": 16,
+                "id": "deploy-1793727791",
+                "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+                "link": "2df374d1731bca289a5482c1fc6660552f0678d2efc5c00ab237d87b37fcff9c"
+              },
+              {
+                "sequence": 17,
+                "id": "deployed-1793727791",
+                "digest": "sha256:b15f4a194dc637156766d7a455b546e17a0139f9aa9d6dd839f3ec21057a38c0",
+                "link": "af493f093a26a2050eb84f445ff782b80e8dba5037e44c718b36e84a709e9133"
+              },
+              {
+                "sequence": 18,
+                "id": "deploy-note-1793727791",
+                "digest": "sha256:8ee882a4235a9864cd405bec33658f9160019920831272ed8528998cbd62bc02",
+                "link": "efb2d77ab9f34e3225cede4dc5c58a41f529f2ddc47177b10bc98c278de85dbc"
+              },
+              {
+                "sequence": 19,
+                "id": "narration-1793727791-8",
+                "digest": "sha256:93191f802cb74ead29e5ec23657398aa279572dcdc83705cceb795f47af07ba8",
+                "link": "0e53895eb20ab7382ecfe07932184e1fdabad917c1f2a77b2fd3f428ec5ac77c"
+              },
+              {
+                "sequence": 20,
+                "id": "release-note-1793727791",
+                "digest": "sha256:d9b7f723a358ef71e7d6018672304f5978273e21f8a47bdb0a114c14e5b9e8ec",
+                "link": "8f0c3a8ea76e6c6c1605c8714f1141ebeb18428cd4a55f7f669f51f09454123f"
+              },
+              {
+                "sequence": 21,
+                "id": "rpc-45be7df3b761f4edc38adcca7a7be1a3",
+                "digest": "sha256:8f7d2d900a0e9c9811829483499be532b9d6341b24e819a2bcf0e29e98dd7f38",
+                "link": "a64a743239a9f4d6a248dad25c96f944a7338f7ac264249a8698ab7458acfb0d"
+              }
+            ],
+            "cursor": 21
+          }
+        }
+      ]
+    },
+    {
+      "step": 14,
+      "title": "The builder's work moves to a fabric run by someone else",
+      "notes": [
+        {
+          "mark": "held",
+          "text": "exported from studio, attested by it, and imported into desk with 5 entries, every digest checked by desk itself"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "exportHandoff",
+          "as": "builder",
+          "params": {
+            "scope": "studio",
+            "graph": "studio",
+            "participant": "builder",
+            "handoff": "move-1793727791"
+          },
+          "body": {
+            "id": "move-1793727791",
+            "transfers": [
+              "deployed-1793727791"
+            ]
+          },
+          "answer": {
+            "grail": "1.2",
+            "handoff": "move-1793727791",
+            "origin": {
+              "fabric": "studio-local",
+              "scope": "studio",
+              "graph": "studio",
+              "participant": "builder"
+            },
+            "participant": {
+              "id": "builder",
+              "kind": "agent",
+              "roles": [],
+              "abilities": []
+            },
+            "anchors": [
+              "deployed-1793727791"
+            ],
+            "entries": [
+              {
+                "sequence": 7,
+                "id": "log-1793727791",
+                "previous": "cc290a907cc42dd19b390dececf4f2be6d7f77fd7eb160e733a4027d02986715",
+                "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+                "link": "6bbff6ee011b99a7cbe8136937f81dfd58039e8eff572736a6792b510a0cca78",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "log-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "builds"
+                  },
+                  "kind": "stream.open",
+                  "parents": [],
+                  "payload": {
+                    "text": "build log for slugify"
+                  }
+                }
+              },
+              {
+                "sequence": 12,
+                "id": "review-1793727791",
+                "previous": "bcdf5d8aebdf90c80b5e1223bd7db680bf88243a4f4b698e0321292c603e9f73",
+                "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+                "link": "a6d8a8a7bb5dad2ced6412c33763690bc280e48e8d3254034ce8c1f49a258581",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "review-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "reviews"
+                  },
+                  "kind": "task",
+                  "parents": [
+                    "log-1793727791"
+                  ],
+                  "payload": {
+                    "text": "Please review:\n\n```python\nimport re\nimport unicodedata\n\n\ndef slugify(title: str) -> str:\n    normalized = unicodedata.normalize(\"NFKD\", title).lower()\n    unaccented = \"\".join(c for c in normalized if not unicodedata.combining(c))\n    return re.sub(r\"[\\W_]+\", \"-\", unaccented).strip(\"-\")\n```\n\nAt most three findings, or approve."
+                  }
+                }
+              },
+              {
+                "sequence": 14,
+                "id": "reviewer:1793727826472:b22b01ca4104",
+                "previous": "85dbd4b25606ecd80702521672af910d6efecd8a567cb3df085834a419720603",
+                "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+                "link": "a7e5579dc6bdd1f820dd37417ff7cb11d945934e86a078a412e911910a34c97c",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "reviewer:1793727826472:b22b01ca4104",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "reviewer",
+                  "target": {
+                    "participant": "builder"
+                  },
+                  "kind": "result",
+                  "parents": [
+                    "review-1793727791"
+                  ],
+                  "payload": {
+                    "text": "Approved. No correctness issues found for a Unicode-preserving slugifier that removes accents, collapses separators, and trims hyphens."
+                  },
+                  "delivery": {
+                    "mode": "effectively-once",
+                    "key": "reply:review-1793727791"
+                  }
+                }
+              },
+              {
+                "sequence": 16,
+                "id": "deploy-1793727791",
+                "previous": "4de49085a07e9a176e79bbdd5b7300f4e947ed56476517c87461c3d2be3c7187",
+                "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+                "link": "2df374d1731bca289a5482c1fc6660552f0678d2efc5c00ab237d87b37fcff9c",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "deploy-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "deployer"
+                  },
+                  "kind": "tool.call",
+                  "parents": [
+                    "reviewer:1793727826472:b22b01ca4104"
+                  ],
+                  "payload": {
+                    "action": "release",
+                    "auth": {
+                      "$secret": "deploy-key"
+                    }
+                  }
+                }
+              },
+              {
+                "sequence": 17,
+                "id": "deployed-1793727791",
+                "previous": "2df374d1731bca289a5482c1fc6660552f0678d2efc5c00ab237d87b37fcff9c",
+                "digest": "sha256:b15f4a194dc637156766d7a455b546e17a0139f9aa9d6dd839f3ec21057a38c0",
+                "link": "af493f093a26a2050eb84f445ff782b80e8dba5037e44c718b36e84a709e9133",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "deployed-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "deployer",
+                  "target": {
+                    "participant": "builder"
+                  },
+                  "kind": "tool.result",
+                  "parents": [
+                    "deploy-1793727791"
+                  ],
+                  "payload": {
+                    "text": "released slugify-0.1.0"
+                  }
+                }
+              }
+            ],
+            "needs": [
+              "deploy-key"
+            ],
+            "issued": 1793727848315,
+            "expires": 1793814248315,
+            "digest": "sha256:1da92036d5cc3450c8751dc38b42924d318615bb51bbd7f5a678c369900d356d",
+            "seal": "h7aDL4ZY_XTXE6IpaI5tjDD1zS4viPbPcNJQQzdRbMY"
+          }
+        },
+        {
+          "operation": "verifyHandoff",
+          "as": "anyone",
+          "params": {
+            "scope": "studio",
+            "graph": "studio",
+            "participant": "builder",
+            "handoff": "move-1793727791"
+          },
+          "body": {
+            "grail": "1.2",
+            "handoff": "move-1793727791",
+            "origin": {
+              "fabric": "studio-local",
+              "scope": "studio",
+              "graph": "studio",
+              "participant": "builder"
+            },
+            "participant": {
+              "id": "builder",
+              "kind": "agent",
+              "roles": [],
+              "abilities": []
+            },
+            "anchors": [
+              "deployed-1793727791"
+            ],
+            "entries": [
+              {
+                "sequence": 7,
+                "id": "log-1793727791",
+                "previous": "cc290a907cc42dd19b390dececf4f2be6d7f77fd7eb160e733a4027d02986715",
+                "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+                "link": "6bbff6ee011b99a7cbe8136937f81dfd58039e8eff572736a6792b510a0cca78",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "log-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "builds"
+                  },
+                  "kind": "stream.open",
+                  "parents": [],
+                  "payload": {
+                    "text": "build log for slugify"
+                  }
+                }
+              },
+              {
+                "sequence": 12,
+                "id": "review-1793727791",
+                "previous": "bcdf5d8aebdf90c80b5e1223bd7db680bf88243a4f4b698e0321292c603e9f73",
+                "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+                "link": "a6d8a8a7bb5dad2ced6412c33763690bc280e48e8d3254034ce8c1f49a258581",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "review-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "reviews"
+                  },
+                  "kind": "task",
+                  "parents": [
+                    "log-1793727791"
+                  ],
+                  "payload": {
+                    "text": "Please review:\n\n```python\nimport re\nimport unicodedata\n\n\ndef slugify(title: str) -> str:\n    normalized = unicodedata.normalize(\"NFKD\", title).lower()\n    unaccented = \"\".join(c for c in normalized if not unicodedata.combining(c))\n    return re.sub(r\"[\\W_]+\", \"-\", unaccented).strip(\"-\")\n```\n\nAt most three findings, or approve."
+                  }
+                }
+              },
+              {
+                "sequence": 14,
+                "id": "reviewer:1793727826472:b22b01ca4104",
+                "previous": "85dbd4b25606ecd80702521672af910d6efecd8a567cb3df085834a419720603",
+                "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+                "link": "a7e5579dc6bdd1f820dd37417ff7cb11d945934e86a078a412e911910a34c97c",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "reviewer:1793727826472:b22b01ca4104",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "reviewer",
+                  "target": {
+                    "participant": "builder"
+                  },
+                  "kind": "result",
+                  "parents": [
+                    "review-1793727791"
+                  ],
+                  "payload": {
+                    "text": "Approved. No correctness issues found for a Unicode-preserving slugifier that removes accents, collapses separators, and trims hyphens."
+                  },
+                  "delivery": {
+                    "mode": "effectively-once",
+                    "key": "reply:review-1793727791"
+                  }
+                }
+              },
+              {
+                "sequence": 16,
+                "id": "deploy-1793727791",
+                "previous": "4de49085a07e9a176e79bbdd5b7300f4e947ed56476517c87461c3d2be3c7187",
+                "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+                "link": "2df374d1731bca289a5482c1fc6660552f0678d2efc5c00ab237d87b37fcff9c",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "deploy-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "deployer"
+                  },
+                  "kind": "tool.call",
+                  "parents": [
+                    "reviewer:1793727826472:b22b01ca4104"
+                  ],
+                  "payload": {
+                    "action": "release",
+                    "auth": {
+                      "$secret": "deploy-key"
+                    }
+                  }
+                }
+              },
+              {
+                "sequence": 17,
+                "id": "deployed-1793727791",
+                "previous": "2df374d1731bca289a5482c1fc6660552f0678d2efc5c00ab237d87b37fcff9c",
+                "digest": "sha256:b15f4a194dc637156766d7a455b546e17a0139f9aa9d6dd839f3ec21057a38c0",
+                "link": "af493f093a26a2050eb84f445ff782b80e8dba5037e44c718b36e84a709e9133",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "deployed-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "deployer",
+                  "target": {
+                    "participant": "builder"
+                  },
+                  "kind": "tool.result",
+                  "parents": [
+                    "deploy-1793727791"
+                  ],
+                  "payload": {
+                    "text": "released slugify-0.1.0"
+                  }
+                }
+              }
+            ],
+            "needs": [
+              "deploy-key"
+            ],
+            "issued": 1793727848315,
+            "expires": 1793814248315,
+            "digest": "sha256:1da92036d5cc3450c8751dc38b42924d318615bb51bbd7f5a678c369900d356d",
+            "seal": "h7aDL4ZY_XTXE6IpaI5tjDD1zS4viPbPcNJQQzdRbMY"
+          },
+          "answer": {
+            "handoff": "move-1793727791",
+            "digest": "sha256:1da92036d5cc3450c8751dc38b42924d318615bb51bbd7f5a678c369900d356d",
+            "intact": true,
+            "attested": true,
+            "expired": false
+          }
+        },
+        {
+          "operation": "importHandoff",
+          "as": "desk owner",
+          "params": {
+            "scope": "support",
+            "graph": "desk",
+            "participant": "assistant",
+            "handoff": "move-1793727791"
+          },
+          "body": {
+            "grail": "1.2",
+            "handoff": "move-1793727791",
+            "origin": {
+              "fabric": "studio-local",
+              "scope": "studio",
+              "graph": "studio",
+              "participant": "builder"
+            },
+            "participant": {
+              "id": "builder",
+              "kind": "agent",
+              "roles": [],
+              "abilities": []
+            },
+            "anchors": [
+              "deployed-1793727791"
+            ],
+            "entries": [
+              {
+                "sequence": 7,
+                "id": "log-1793727791",
+                "previous": "cc290a907cc42dd19b390dececf4f2be6d7f77fd7eb160e733a4027d02986715",
+                "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+                "link": "6bbff6ee011b99a7cbe8136937f81dfd58039e8eff572736a6792b510a0cca78",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "log-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "builds"
+                  },
+                  "kind": "stream.open",
+                  "parents": [],
+                  "payload": {
+                    "text": "build log for slugify"
+                  }
+                }
+              },
+              {
+                "sequence": 12,
+                "id": "review-1793727791",
+                "previous": "bcdf5d8aebdf90c80b5e1223bd7db680bf88243a4f4b698e0321292c603e9f73",
+                "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+                "link": "a6d8a8a7bb5dad2ced6412c33763690bc280e48e8d3254034ce8c1f49a258581",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "review-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "reviews"
+                  },
+                  "kind": "task",
+                  "parents": [
+                    "log-1793727791"
+                  ],
+                  "payload": {
+                    "text": "Please review:\n\n```python\nimport re\nimport unicodedata\n\n\ndef slugify(title: str) -> str:\n    normalized = unicodedata.normalize(\"NFKD\", title).lower()\n    unaccented = \"\".join(c for c in normalized if not unicodedata.combining(c))\n    return re.sub(r\"[\\W_]+\", \"-\", unaccented).strip(\"-\")\n```\n\nAt most three findings, or approve."
+                  }
+                }
+              },
+              {
+                "sequence": 14,
+                "id": "reviewer:1793727826472:b22b01ca4104",
+                "previous": "85dbd4b25606ecd80702521672af910d6efecd8a567cb3df085834a419720603",
+                "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+                "link": "a7e5579dc6bdd1f820dd37417ff7cb11d945934e86a078a412e911910a34c97c",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "reviewer:1793727826472:b22b01ca4104",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "reviewer",
+                  "target": {
+                    "participant": "builder"
+                  },
+                  "kind": "result",
+                  "parents": [
+                    "review-1793727791"
+                  ],
+                  "payload": {
+                    "text": "Approved. No correctness issues found for a Unicode-preserving slugifier that removes accents, collapses separators, and trims hyphens."
+                  },
+                  "delivery": {
+                    "mode": "effectively-once",
+                    "key": "reply:review-1793727791"
+                  }
+                }
+              },
+              {
+                "sequence": 16,
+                "id": "deploy-1793727791",
+                "previous": "4de49085a07e9a176e79bbdd5b7300f4e947ed56476517c87461c3d2be3c7187",
+                "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+                "link": "2df374d1731bca289a5482c1fc6660552f0678d2efc5c00ab237d87b37fcff9c",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "deploy-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "builder",
+                  "target": {
+                    "participant": "deployer"
+                  },
+                  "kind": "tool.call",
+                  "parents": [
+                    "reviewer:1793727826472:b22b01ca4104"
+                  ],
+                  "payload": {
+                    "action": "release",
+                    "auth": {
+                      "$secret": "deploy-key"
+                    }
+                  }
+                }
+              },
+              {
+                "sequence": 17,
+                "id": "deployed-1793727791",
+                "previous": "2df374d1731bca289a5482c1fc6660552f0678d2efc5c00ab237d87b37fcff9c",
+                "digest": "sha256:b15f4a194dc637156766d7a455b546e17a0139f9aa9d6dd839f3ec21057a38c0",
+                "link": "af493f093a26a2050eb84f445ff782b80e8dba5037e44c718b36e84a709e9133",
+                "erased": false,
+                "withheld": false,
+                "envelope": {
+                  "grail": "1.2",
+                  "id": "deployed-1793727791",
+                  "scope": "studio",
+                  "graph": "studio",
+                  "source": "deployer",
+                  "target": {
+                    "participant": "builder"
+                  },
+                  "kind": "tool.result",
+                  "parents": [
+                    "deploy-1793727791"
+                  ],
+                  "payload": {
+                    "text": "released slugify-0.1.0"
+                  }
+                }
+              }
+            ],
+            "needs": [
+              "deploy-key"
+            ],
+            "issued": 1793727848315,
+            "expires": 1793814248315,
+            "digest": "sha256:1da92036d5cc3450c8751dc38b42924d318615bb51bbd7f5a678c369900d356d",
+            "seal": "h7aDL4ZY_XTXE6IpaI5tjDD1zS4viPbPcNJQQzdRbMY"
+          },
+          "answer": {
+            "handoff": "move-1793727791",
+            "id": "move-1793727791",
+            "sequence": 2,
+            "digest": "sha256:1da92036d5cc3450c8751dc38b42924d318615bb51bbd7f5a678c369900d356d",
+            "entries": 5,
+            "duplicate": false
+          }
+        }
+      ]
+    },
+    {
+      "step": 15,
+      "title": "A revoked token stops working on its very next call",
+      "notes": [
+        {
+          "mark": "refused",
+          "text": "the helper token after revocation: grail.unauthorized"
+        }
+      ],
+      "calls": [
+        {
+          "operation": "revokeToken",
+          "as": "lead",
+          "params": {
+            "scope": "studio",
+            "token": "helper-1793727791"
+          },
+          "body": null,
+          "answer": {
+            "token": "‹token›",
+            "revoked": true
+          }
+        },
+        {
+          "operation": "inspectToken",
+          "as": "helper token delegated by the lead",
+          "params": {
+            "scope": "studio"
+          },
+          "body": null,
+          "answer": {
+            "type": "urn:grail:problem:unauthorized",
+            "title": "Unauthorized",
+            "status": 401,
+            "detail": "present a valid capability token for this scope",
+            "code": "grail.unauthorized"
+          }
+        }
+      ]
     }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 3,
-    "envelope": {
-     "grail": "1.2",
-     "id": "narration-1793724761-2",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [],
-     "payload": {
-      "text": "The studio has a lead, a builder, a reviewer, a deployer tool, a search tool, a watcher, and three channels. Deploys wait for a review."
-     },
-     "sequence": 3,
-     "digest": "sha256:660711bedbdd8e7a212bcb38ad4a254200946d51a145abd0485e3c38a60a6ad9",
-     "accepted": 1793724763095
+  ],
+  "posts": [
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 2,
+        "envelope": {
+          "grail": "1.2",
+          "id": "narration-1793727791-1",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [],
+          "payload": {
+            "text": "Showcase run 1793727791 starting. Everything below is the fabric answering real requests."
+          },
+          "sequence": 2,
+          "digest": "sha256:21e8a0bf468de616c8e6435d53df08262bcd43904020ca05fd176541b0238030",
+          "accepted": 1793727792318
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 3,
+        "envelope": {
+          "grail": "1.2",
+          "id": "narration-1793727791-2",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [],
+          "payload": {
+            "text": "The studio has a lead, a builder, a reviewer, a deployer tool, a search tool, a watcher, and three channels. Deploys wait for a review."
+          },
+          "sequence": 3,
+          "digest": "sha256:f35f834e8f9f81be479daa328d21035e1801bfda1cf27ae5af02dc08577a4407",
+          "accepted": 1793727793857
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 4,
+        "envelope": {
+          "grail": "1.2",
+          "id": "hello-1793727791",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [],
+          "sequence": 4,
+          "digest": "sha256:be5cf706132d1e8e3ee6f057927f800d515c6477ac49e7740c726d5d3a4e442c",
+          "accepted": 1793727794570,
+          "payload": null
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 5,
+        "envelope": {
+          "grail": "1.2",
+          "id": "narration-1793727791-4",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [],
+          "payload": {
+            "text": "Delegation: the lead handed the builder a receive-only token and could not hand out more than it holds."
+          },
+          "sequence": 5,
+          "digest": "sha256:25475339f6e642f4b7b935d336d58722d8d6fad0aafea9818ae98da41c5f4d9d",
+          "accepted": 1793727798087
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 6,
+        "envelope": {
+          "grail": "1.2",
+          "id": "narration-1793727791-5",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [],
+          "payload": {
+            "text": "The builder tried to deploy before any review. The graph refused it: deploys depend on a result from the reviewer."
+          },
+          "sequence": 6,
+          "digest": "sha256:65945abff99694c82ad03973d9ca0139c85111a361029f7ec51282cbcd779272",
+          "accepted": 1793727800153
+        }
+      }
+    },
+    {
+      "channel": "builds",
+      "entry": {
+        "sequence": 7,
+        "envelope": {
+          "grail": "1.2",
+          "id": "log-1793727791",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "builder",
+          "target": {
+            "participant": "builds"
+          },
+          "kind": "stream.open",
+          "parents": [],
+          "payload": {
+            "text": "build log for slugify"
+          },
+          "sequence": 7,
+          "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+          "accepted": 1793727800840
+        }
+      }
+    },
+    {
+      "channel": "builds",
+      "entry": {
+        "sequence": 8,
+        "envelope": {
+          "grail": "1.2",
+          "id": "log-1793727791-28428",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "builder",
+          "target": {
+            "participant": "builds"
+          },
+          "kind": "stream.chunk",
+          "parents": [
+            "log-1793727791"
+          ],
+          "payload": {
+            "text": "collecting 14 tests"
+          },
+          "sequence": 8,
+          "digest": "sha256:0521a8f843aba310996ce703da46128442a5d2d016af5c732a89d5deac80ff29",
+          "accepted": 1793727801536
+        }
+      }
+    },
+    {
+      "channel": "builds",
+      "entry": {
+        "sequence": 9,
+        "envelope": {
+          "grail": "1.2",
+          "id": "log-1793727791-18858",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "builder",
+          "target": {
+            "participant": "builds"
+          },
+          "kind": "stream.chunk",
+          "parents": [
+            "log-1793727791"
+          ],
+          "payload": {
+            "text": "14 passed in 0.21s"
+          },
+          "sequence": 9,
+          "digest": "sha256:753d44ce4a67a2932e8c9a13355672b8fede1e48859d68679539ad34e881ea36",
+          "accepted": 1793727802237
+        }
+      }
+    },
+    {
+      "channel": "builds",
+      "entry": {
+        "sequence": 10,
+        "envelope": {
+          "grail": "1.2",
+          "id": "log-1793727791-25161",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "builder",
+          "target": {
+            "participant": "builds"
+          },
+          "kind": "stream.chunk",
+          "parents": [
+            "log-1793727791"
+          ],
+          "payload": {
+            "text": "wheel built: slugify-0.1.0"
+          },
+          "sequence": 10,
+          "digest": "sha256:c176bfef976850265fa9165f34f0b9f7f89259747aa41feb428f570eb3d84e06",
+          "accepted": 1793727802924
+        }
+      }
+    },
+    {
+      "channel": "builds",
+      "entry": {
+        "sequence": 11,
+        "envelope": {
+          "grail": "1.2",
+          "id": "log-1793727791-close",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "builder",
+          "target": {
+            "participant": "builds"
+          },
+          "kind": "stream.close",
+          "parents": [
+            "log-1793727791"
+          ],
+          "payload": {
+            "text": "build finished"
+          },
+          "sequence": 11,
+          "digest": "sha256:963e61a94740f2e1893714c670a37d906468a434b3882f86f7c20c0fc2ffdad1",
+          "accepted": 1793727803630
+        }
+      }
+    },
+    {
+      "channel": "reviews",
+      "entry": {
+        "sequence": 12,
+        "envelope": {
+          "grail": "1.2",
+          "id": "review-1793727791",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "builder",
+          "target": {
+            "participant": "reviews"
+          },
+          "kind": "task",
+          "parents": [
+            "log-1793727791"
+          ],
+          "payload": {
+            "text": "Please review:\n\n```python\nimport re\nimport unicodedata\n\n\ndef slugify(title: str) -> str:\n    normalized = unicodedata.normalize(\"NFKD\", title).lower()\n    unaccented = \"\".join(c for c in normalized if not unicodedata.combining(c))\n    return re.sub(r\"[\\W_]+\", \"-\", unaccented).strip(\"-\")\n```\n\nAt most three findings, or approve."
+          },
+          "sequence": 12,
+          "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+          "accepted": 1793727805012
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 15,
+        "envelope": {
+          "grail": "1.2",
+          "id": "narration-1793727791-7",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [],
+          "payload": {
+            "text": "Review done in #reviews. The first reviewer to start the task took it, and nobody else could answer it after that. The verdict: Approved. No correctness issues found for a Unicode-preserving slugifier that removes accents, collapses separators, and trims hyphens."
+          },
+          "sequence": 15,
+          "digest": "sha256:3cf24c1a5d079a907429370f058b2cc2945b8fc0752bf9631b47094209506131",
+          "accepted": 1793727831415
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 18,
+        "envelope": {
+          "grail": "1.2",
+          "id": "deploy-note-1793727791",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "deployer",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [
+            "deployed-1793727791"
+          ],
+          "payload": {
+            "text": "released slugify-0.1.0"
+          },
+          "sequence": 18,
+          "digest": "sha256:8ee882a4235a9864cd405bec33658f9160019920831272ed8528998cbd62bc02",
+          "accepted": 1793727834859
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 19,
+        "envelope": {
+          "grail": "1.2",
+          "id": "narration-1793727791-8",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [],
+          "payload": {
+            "text": "Deployed. The builder used deploy-key by name; only the deployer's delivery held its value, and a post holding the value was refused."
+          },
+          "sequence": 19,
+          "digest": "sha256:93191f802cb74ead29e5ec23657398aa279572dcdc83705cceb795f47af07ba8",
+          "accepted": 1793727839682
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 20,
+        "envelope": {
+          "grail": "1.2",
+          "id": "release-note-1793727791",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [
+            "deployed-1793727791"
+          ],
+          "payload": {
+            "text": "slugify 0.1.0 is out."
+          },
+          "delivery": {
+            "mode": "effectively-once",
+            "key": "release-1793727791"
+          },
+          "sequence": 20,
+          "digest": "sha256:d9b7f723a358ef71e7d6018672304f5978273e21f8a47bdb0a114c14e5b9e8ec",
+          "accepted": 1793727840393
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 22,
+        "envelope": {
+          "grail": "1.2",
+          "id": "narration-1793727791-13",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [],
+          "payload": {
+            "text": "Trace, ledger, and erasure checked: the deploy traces back to the review, every link recomputes, and erasing a post kept its place in the chain."
+          },
+          "sequence": 22,
+          "digest": "sha256:d547d561a14324a5302ef96180e53fb2e0b58ea247b4ffb661d1d8d34ac887b4",
+          "accepted": 1793727845514
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 24,
+        "envelope": {
+          "grail": "1.2",
+          "id": "narration-1793727791-14",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [],
+          "payload": {
+            "text": "The builder's context moved to another fabric with its whole history. The other side checked every digest without trusting this one."
+          },
+          "sequence": 24,
+          "digest": "sha256:0f8889430bbff517c97230845b3ad49b940dba1730b403e06587571694f025b5",
+          "accepted": 1793727849104
+        }
+      }
+    },
+    {
+      "channel": "general",
+      "entry": {
+        "sequence": 25,
+        "envelope": {
+          "grail": "1.2",
+          "id": "narration-1793727791-15",
+          "scope": "studio",
+          "graph": "studio",
+          "source": "lead",
+          "target": {
+            "participant": "general"
+          },
+          "kind": "observation",
+          "parents": [],
+          "payload": {
+            "text": "Showcase run 1793727791 finished. Every step above was checked against the fabric's answers."
+          },
+          "sequence": 25,
+          "digest": "sha256:f639618c6731a0a5abb54cfd1e846ef6ff3f988fdccc636154c9fe4ab72e8f9d",
+          "accepted": 1793727851155
+        }
+      }
     }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 4,
-    "envelope": {
-     "grail": "1.2",
-     "id": "hello-1793724761",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [],
-     "sequence": 4,
-     "digest": "sha256:a120355830ac23ca788739ced339424e146861eb49d798901cb129b2d9ca3de7",
-     "accepted": 1793724763764,
-     "payload": null
+  ],
+  "ledger": [
+    {
+      "sequence": 1,
+      "id": "mutation:studio@1",
+      "digest": "sha256:72d6a1874bd0302aff018a7735dff0c6a3211a7347f95662ba65740f0824cb88",
+      "link": "b9437a9fdbb1cee8cd1c3b23bfc8615d9bb6629caa3ce36715a6b9160563c898",
+      "envelope": {
+        "grail": "1.2",
+        "id": "mutation:studio@1",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "owner",
+        "target": {
+          "participant": "owner"
+        },
+        "kind": "graph.mutation",
+        "payload": {
+          "expectedRevision": 0,
+          "operations": [
+            {
+              "op": "add-participant",
+              "participant": {
+                "id": "lead",
+                "kind": "human",
+                "roles": [],
+                "abilities": []
+              }
+            },
+            {
+              "op": "add-participant",
+              "participant": {
+                "id": "builder",
+                "kind": "agent",
+                "roles": [],
+                "abilities": []
+              }
+            },
+            {
+              "op": "add-participant",
+              "participant": {
+                "id": "reviewer",
+                "kind": "agent",
+                "roles": [],
+                "abilities": []
+              }
+            },
+            {
+              "op": "add-participant",
+              "participant": {
+                "id": "deployer",
+                "kind": "tool",
+                "roles": [],
+                "abilities": []
+              }
+            },
+            {
+              "op": "add-participant",
+              "participant": {
+                "id": "search",
+                "kind": "tool",
+                "roles": [],
+                "abilities": []
+              }
+            },
+            {
+              "op": "add-participant",
+              "participant": {
+                "id": "watcher",
+                "kind": "service",
+                "roles": [],
+                "abilities": []
+              }
+            },
+            {
+              "op": "add-participant",
+              "participant": {
+                "id": "general",
+                "kind": "channel",
+                "roles": [],
+                "abilities": []
+              }
+            },
+            {
+              "op": "add-participant",
+              "participant": {
+                "id": "reviews",
+                "kind": "channel",
+                "roles": [],
+                "abilities": []
+              }
+            },
+            {
+              "op": "add-participant",
+              "participant": {
+                "id": "builds",
+                "kind": "channel",
+                "roles": [],
+                "abilities": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "lead-posts-general",
+                "from": "lead",
+                "to": "general",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "builder-posts-general",
+                "from": "builder",
+                "to": "general",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "reviewer-posts-general",
+                "from": "reviewer",
+                "to": "general",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "deployer-posts-general",
+                "from": "deployer",
+                "to": "general",
+                "relation": "flow",
+                "kinds": [
+                  "observation"
+                ]
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "general-to-lead",
+                "from": "general",
+                "to": "lead",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "general-to-builder",
+                "from": "general",
+                "to": "builder",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "general-to-reviewer",
+                "from": "general",
+                "to": "reviewer",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "general-to-watcher",
+                "from": "general",
+                "to": "watcher",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "builder-posts-reviews",
+                "from": "builder",
+                "to": "reviews",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "reviews-to-reviewer",
+                "from": "reviews",
+                "to": "reviewer",
+                "relation": "flow",
+                "kinds": [
+                  "task"
+                ]
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "reviews-to-lead",
+                "from": "reviews",
+                "to": "lead",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "reviews-to-watcher",
+                "from": "reviews",
+                "to": "watcher",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "builder-streams-builds",
+                "from": "builder",
+                "to": "builds",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "builds-to-lead",
+                "from": "builds",
+                "to": "lead",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "builds-to-watcher",
+                "from": "builds",
+                "to": "watcher",
+                "relation": "flow",
+                "kinds": []
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "lead-asks-builder",
+                "from": "lead",
+                "to": "builder",
+                "relation": "flow",
+                "kinds": [
+                  "task",
+                  "cancel"
+                ]
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "lead-asks-reviewer",
+                "from": "lead",
+                "to": "reviewer",
+                "relation": "flow",
+                "kinds": [
+                  "task"
+                ]
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "builder-calls-deployer",
+                "from": "builder",
+                "to": "deployer",
+                "relation": "flow",
+                "kinds": [
+                  "tool.call"
+                ]
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "lead-bridges-search",
+                "from": "lead",
+                "to": "search",
+                "relation": "flow",
+                "kinds": [
+                  "bridge.rpc"
+                ]
+              }
+            },
+            {
+              "op": "add-edge",
+              "edge": {
+                "id": "deploys-need-review",
+                "from": "reviewer",
+                "to": "deployer",
+                "relation": "dependency",
+                "kinds": []
+              }
+            }
+          ]
+        },
+        "sequence": 1,
+        "digest": "sha256:72d6a1874bd0302aff018a7735dff0c6a3211a7347f95662ba65740f0824cb88",
+        "accepted": 1793727785339
+      }
+    },
+    {
+      "sequence": 2,
+      "id": "narration-1793727791-1",
+      "digest": "sha256:21e8a0bf468de616c8e6435d53df08262bcd43904020ca05fd176541b0238030",
+      "link": "16fe74128608ec66495dc127de427da281438e1c2d6b22dab759cd8cb0eb432f",
+      "envelope": {
+        "grail": "1.2",
+        "id": "narration-1793727791-1",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [],
+        "payload": {
+          "text": "Showcase run 1793727791 starting. Everything below is the fabric answering real requests."
+        },
+        "sequence": 2,
+        "digest": "sha256:21e8a0bf468de616c8e6435d53df08262bcd43904020ca05fd176541b0238030",
+        "accepted": 1793727792318
+      }
+    },
+    {
+      "sequence": 3,
+      "id": "narration-1793727791-2",
+      "digest": "sha256:f35f834e8f9f81be479daa328d21035e1801bfda1cf27ae5af02dc08577a4407",
+      "link": "6cce15f5c0d6ef471807219915504ce90b2b96d3b6dba656a13c94f8ebd14919",
+      "envelope": {
+        "grail": "1.2",
+        "id": "narration-1793727791-2",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [],
+        "payload": {
+          "text": "The studio has a lead, a builder, a reviewer, a deployer tool, a search tool, a watcher, and three channels. Deploys wait for a review."
+        },
+        "sequence": 3,
+        "digest": "sha256:f35f834e8f9f81be479daa328d21035e1801bfda1cf27ae5af02dc08577a4407",
+        "accepted": 1793727793857
+      }
+    },
+    {
+      "sequence": 4,
+      "id": "hello-1793727791",
+      "digest": "sha256:be5cf706132d1e8e3ee6f057927f800d515c6477ac49e7740c726d5d3a4e442c",
+      "link": "431f4e72fea22a376d1f6219d71598c258ed8aaff59b0e74a9ebc6cface0c88c",
+      "envelope": {
+        "grail": "1.2",
+        "id": "hello-1793727791",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [],
+        "sequence": 4,
+        "digest": "sha256:be5cf706132d1e8e3ee6f057927f800d515c6477ac49e7740c726d5d3a4e442c",
+        "accepted": 1793727794570,
+        "payload": null
+      }
+    },
+    {
+      "sequence": 5,
+      "id": "narration-1793727791-4",
+      "digest": "sha256:25475339f6e642f4b7b935d336d58722d8d6fad0aafea9818ae98da41c5f4d9d",
+      "link": "dee34ab9faaff4eb5fb75e1fd9b71f0086d7c2978210c91d4c9ac0d835ab4282",
+      "envelope": {
+        "grail": "1.2",
+        "id": "narration-1793727791-4",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [],
+        "payload": {
+          "text": "Delegation: the lead handed the builder a receive-only token and could not hand out more than it holds."
+        },
+        "sequence": 5,
+        "digest": "sha256:25475339f6e642f4b7b935d336d58722d8d6fad0aafea9818ae98da41c5f4d9d",
+        "accepted": 1793727798087
+      }
+    },
+    {
+      "sequence": 6,
+      "id": "narration-1793727791-5",
+      "digest": "sha256:65945abff99694c82ad03973d9ca0139c85111a361029f7ec51282cbcd779272",
+      "link": "cc290a907cc42dd19b390dececf4f2be6d7f77fd7eb160e733a4027d02986715",
+      "envelope": {
+        "grail": "1.2",
+        "id": "narration-1793727791-5",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [],
+        "payload": {
+          "text": "The builder tried to deploy before any review. The graph refused it: deploys depend on a result from the reviewer."
+        },
+        "sequence": 6,
+        "digest": "sha256:65945abff99694c82ad03973d9ca0139c85111a361029f7ec51282cbcd779272",
+        "accepted": 1793727800153
+      }
+    },
+    {
+      "sequence": 7,
+      "id": "log-1793727791",
+      "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+      "link": "6bbff6ee011b99a7cbe8136937f81dfd58039e8eff572736a6792b510a0cca78",
+      "envelope": {
+        "grail": "1.2",
+        "id": "log-1793727791",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "builder",
+        "target": {
+          "participant": "builds"
+        },
+        "kind": "stream.open",
+        "parents": [],
+        "payload": {
+          "text": "build log for slugify"
+        },
+        "sequence": 7,
+        "digest": "sha256:29168652c9d7afd147fcf7cb54c469845dc5c920b2c8ab92375414dad50641cb",
+        "accepted": 1793727800840
+      }
+    },
+    {
+      "sequence": 8,
+      "id": "log-1793727791-28428",
+      "digest": "sha256:0521a8f843aba310996ce703da46128442a5d2d016af5c732a89d5deac80ff29",
+      "link": "ec78b2e895eb09011372d6b68b4453f82e90cf12080dcdd644ae10e2e864bcfb",
+      "envelope": {
+        "grail": "1.2",
+        "id": "log-1793727791-28428",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "builder",
+        "target": {
+          "participant": "builds"
+        },
+        "kind": "stream.chunk",
+        "parents": [
+          "log-1793727791"
+        ],
+        "payload": {
+          "text": "collecting 14 tests"
+        },
+        "sequence": 8,
+        "digest": "sha256:0521a8f843aba310996ce703da46128442a5d2d016af5c732a89d5deac80ff29",
+        "accepted": 1793727801536
+      }
+    },
+    {
+      "sequence": 9,
+      "id": "log-1793727791-18858",
+      "digest": "sha256:753d44ce4a67a2932e8c9a13355672b8fede1e48859d68679539ad34e881ea36",
+      "link": "ce8ba367fb51a7a12d239a18b86e98db88dbb2c8421568215bb0bb4e7b6c8dcc",
+      "envelope": {
+        "grail": "1.2",
+        "id": "log-1793727791-18858",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "builder",
+        "target": {
+          "participant": "builds"
+        },
+        "kind": "stream.chunk",
+        "parents": [
+          "log-1793727791"
+        ],
+        "payload": {
+          "text": "14 passed in 0.21s"
+        },
+        "sequence": 9,
+        "digest": "sha256:753d44ce4a67a2932e8c9a13355672b8fede1e48859d68679539ad34e881ea36",
+        "accepted": 1793727802237
+      }
+    },
+    {
+      "sequence": 10,
+      "id": "log-1793727791-25161",
+      "digest": "sha256:c176bfef976850265fa9165f34f0b9f7f89259747aa41feb428f570eb3d84e06",
+      "link": "427c5199a84b604549f679a0601769c7516cbaa931458fbf7249ba62a4498f3d",
+      "envelope": {
+        "grail": "1.2",
+        "id": "log-1793727791-25161",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "builder",
+        "target": {
+          "participant": "builds"
+        },
+        "kind": "stream.chunk",
+        "parents": [
+          "log-1793727791"
+        ],
+        "payload": {
+          "text": "wheel built: slugify-0.1.0"
+        },
+        "sequence": 10,
+        "digest": "sha256:c176bfef976850265fa9165f34f0b9f7f89259747aa41feb428f570eb3d84e06",
+        "accepted": 1793727802924
+      }
+    },
+    {
+      "sequence": 11,
+      "id": "log-1793727791-close",
+      "digest": "sha256:963e61a94740f2e1893714c670a37d906468a434b3882f86f7c20c0fc2ffdad1",
+      "link": "bcdf5d8aebdf90c80b5e1223bd7db680bf88243a4f4b698e0321292c603e9f73",
+      "envelope": {
+        "grail": "1.2",
+        "id": "log-1793727791-close",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "builder",
+        "target": {
+          "participant": "builds"
+        },
+        "kind": "stream.close",
+        "parents": [
+          "log-1793727791"
+        ],
+        "payload": {
+          "text": "build finished"
+        },
+        "sequence": 11,
+        "digest": "sha256:963e61a94740f2e1893714c670a37d906468a434b3882f86f7c20c0fc2ffdad1",
+        "accepted": 1793727803630
+      }
+    },
+    {
+      "sequence": 12,
+      "id": "review-1793727791",
+      "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+      "link": "a6d8a8a7bb5dad2ced6412c33763690bc280e48e8d3254034ce8c1f49a258581",
+      "envelope": {
+        "grail": "1.2",
+        "id": "review-1793727791",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "builder",
+        "target": {
+          "participant": "reviews"
+        },
+        "kind": "task",
+        "parents": [
+          "log-1793727791"
+        ],
+        "payload": {
+          "text": "Please review:\n\n```python\nimport re\nimport unicodedata\n\n\ndef slugify(title: str) -> str:\n    normalized = unicodedata.normalize(\"NFKD\", title).lower()\n    unaccented = \"\".join(c for c in normalized if not unicodedata.combining(c))\n    return re.sub(r\"[\\W_]+\", \"-\", unaccented).strip(\"-\")\n```\n\nAt most three findings, or approve."
+        },
+        "sequence": 12,
+        "digest": "sha256:dc99e3b48b86d73573d065a76245f47b992ca5bd788dfeea222a4a9d989a6278",
+        "accepted": 1793727805012
+      }
+    },
+    {
+      "sequence": 13,
+      "id": "reviewer:1793727805070:6e90ec5bbf3a",
+      "digest": "sha256:6339a918983976080f45dafe202667a6a6c8e5db077d7783a969bdccf6ebb718",
+      "link": "85dbd4b25606ecd80702521672af910d6efecd8a567cb3df085834a419720603",
+      "envelope": {
+        "grail": "1.2",
+        "id": "reviewer:1793727805070:6e90ec5bbf3a",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "reviewer",
+        "target": {
+          "participant": "builder"
+        },
+        "kind": "progress",
+        "parents": [
+          "review-1793727791"
+        ],
+        "payload": {
+          "text": "started by the runner"
+        },
+        "sequence": 13,
+        "digest": "sha256:6339a918983976080f45dafe202667a6a6c8e5db077d7783a969bdccf6ebb718",
+        "accepted": 1793727805079
+      }
+    },
+    {
+      "sequence": 14,
+      "id": "reviewer:1793727826472:b22b01ca4104",
+      "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+      "link": "a7e5579dc6bdd1f820dd37417ff7cb11d945934e86a078a412e911910a34c97c",
+      "envelope": {
+        "grail": "1.2",
+        "id": "reviewer:1793727826472:b22b01ca4104",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "reviewer",
+        "target": {
+          "participant": "builder"
+        },
+        "kind": "result",
+        "parents": [
+          "review-1793727791"
+        ],
+        "payload": {
+          "text": "Approved. No correctness issues found for a Unicode-preserving slugifier that removes accents, collapses separators, and trims hyphens."
+        },
+        "delivery": {
+          "mode": "effectively-once",
+          "key": "reply:review-1793727791"
+        },
+        "sequence": 14,
+        "digest": "sha256:a0ffdea7fe2f2d4537ae9c00eeeca3dc7289ef85d9c23a8416045ae6dbadbf12",
+        "accepted": 1793727826479
+      }
+    },
+    {
+      "sequence": 15,
+      "id": "narration-1793727791-7",
+      "digest": "sha256:3cf24c1a5d079a907429370f058b2cc2945b8fc0752bf9631b47094209506131",
+      "link": "4de49085a07e9a176e79bbdd5b7300f4e947ed56476517c87461c3d2be3c7187",
+      "envelope": {
+        "grail": "1.2",
+        "id": "narration-1793727791-7",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [],
+        "payload": {
+          "text": "Review done in #reviews. The first reviewer to start the task took it, and nobody else could answer it after that. The verdict: Approved. No correctness issues found for a Unicode-preserving slugifier that removes accents, collapses separators, and trims hyphens."
+        },
+        "sequence": 15,
+        "digest": "sha256:3cf24c1a5d079a907429370f058b2cc2945b8fc0752bf9631b47094209506131",
+        "accepted": 1793727831415
+      }
+    },
+    {
+      "sequence": 16,
+      "id": "deploy-1793727791",
+      "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+      "link": "2df374d1731bca289a5482c1fc6660552f0678d2efc5c00ab237d87b37fcff9c",
+      "envelope": {
+        "grail": "1.2",
+        "id": "deploy-1793727791",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "builder",
+        "target": {
+          "participant": "deployer"
+        },
+        "kind": "tool.call",
+        "parents": [
+          "reviewer:1793727826472:b22b01ca4104"
+        ],
+        "payload": {
+          "action": "release",
+          "auth": {
+            "$secret": "deploy-key"
+          }
+        },
+        "sequence": 16,
+        "digest": "sha256:2159dbeaf41b11eb57ef4b1bc9bbfaadb657d316bfb5c53f6fefde03199cc1b8",
+        "accepted": 1793727832100
+      }
+    },
+    {
+      "sequence": 17,
+      "id": "deployed-1793727791",
+      "digest": "sha256:b15f4a194dc637156766d7a455b546e17a0139f9aa9d6dd839f3ec21057a38c0",
+      "link": "af493f093a26a2050eb84f445ff782b80e8dba5037e44c718b36e84a709e9133",
+      "envelope": {
+        "grail": "1.2",
+        "id": "deployed-1793727791",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "deployer",
+        "target": {
+          "participant": "builder"
+        },
+        "kind": "tool.result",
+        "parents": [
+          "deploy-1793727791"
+        ],
+        "payload": {
+          "text": "released slugify-0.1.0"
+        },
+        "sequence": 17,
+        "digest": "sha256:b15f4a194dc637156766d7a455b546e17a0139f9aa9d6dd839f3ec21057a38c0",
+        "accepted": 1793727834155
+      }
+    },
+    {
+      "sequence": 18,
+      "id": "deploy-note-1793727791",
+      "digest": "sha256:8ee882a4235a9864cd405bec33658f9160019920831272ed8528998cbd62bc02",
+      "link": "efb2d77ab9f34e3225cede4dc5c58a41f529f2ddc47177b10bc98c278de85dbc",
+      "envelope": {
+        "grail": "1.2",
+        "id": "deploy-note-1793727791",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "deployer",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [
+          "deployed-1793727791"
+        ],
+        "payload": {
+          "text": "released slugify-0.1.0"
+        },
+        "sequence": 18,
+        "digest": "sha256:8ee882a4235a9864cd405bec33658f9160019920831272ed8528998cbd62bc02",
+        "accepted": 1793727834859
+      }
+    },
+    {
+      "sequence": 19,
+      "id": "narration-1793727791-8",
+      "digest": "sha256:93191f802cb74ead29e5ec23657398aa279572dcdc83705cceb795f47af07ba8",
+      "link": "0e53895eb20ab7382ecfe07932184e1fdabad917c1f2a77b2fd3f428ec5ac77c",
+      "envelope": {
+        "grail": "1.2",
+        "id": "narration-1793727791-8",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [],
+        "payload": {
+          "text": "Deployed. The builder used deploy-key by name; only the deployer's delivery held its value, and a post holding the value was refused."
+        },
+        "sequence": 19,
+        "digest": "sha256:93191f802cb74ead29e5ec23657398aa279572dcdc83705cceb795f47af07ba8",
+        "accepted": 1793727839682
+      }
+    },
+    {
+      "sequence": 20,
+      "id": "release-note-1793727791",
+      "digest": "sha256:d9b7f723a358ef71e7d6018672304f5978273e21f8a47bdb0a114c14e5b9e8ec",
+      "link": "8f0c3a8ea76e6c6c1605c8714f1141ebeb18428cd4a55f7f669f51f09454123f",
+      "envelope": {
+        "grail": "1.2",
+        "id": "release-note-1793727791",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [
+          "deployed-1793727791"
+        ],
+        "payload": {
+          "text": "slugify 0.1.0 is out."
+        },
+        "delivery": {
+          "mode": "effectively-once",
+          "key": "release-1793727791"
+        },
+        "sequence": 20,
+        "digest": "sha256:d9b7f723a358ef71e7d6018672304f5978273e21f8a47bdb0a114c14e5b9e8ec",
+        "accepted": 1793727840393
+      }
+    },
+    {
+      "sequence": 21,
+      "id": "rpc-45be7df3b761f4edc38adcca7a7be1a3",
+      "digest": "sha256:8f7d2d900a0e9c9811829483499be532b9d6341b24e819a2bcf0e29e98dd7f38",
+      "link": "a64a743239a9f4d6a248dad25c96f944a7338f7ac264249a8698ab7458acfb0d",
+      "envelope": {
+        "grail": "1.2",
+        "id": "rpc-45be7df3b761f4edc38adcca7a7be1a3",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "search"
+        },
+        "kind": "bridge.rpc",
+        "parents": [],
+        "schema": "jsonrpc:2.0",
+        "payload": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "method": "tools/call",
+          "params": {
+            "name": "search",
+            "arguments": {
+              "query": "slugify unicode"
+            }
+          }
+        },
+        "sequence": 21,
+        "digest": "sha256:8f7d2d900a0e9c9811829483499be532b9d6341b24e819a2bcf0e29e98dd7f38",
+        "accepted": 1793727841772
+      }
+    },
+    {
+      "sequence": 22,
+      "id": "narration-1793727791-13",
+      "digest": "sha256:d547d561a14324a5302ef96180e53fb2e0b58ea247b4ffb661d1d8d34ac887b4",
+      "link": "7474016bef21fcc6de3f46b53265be52c55527b6116675befa574eda98cd7172",
+      "envelope": {
+        "grail": "1.2",
+        "id": "narration-1793727791-13",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [],
+        "payload": {
+          "text": "Trace, ledger, and erasure checked: the deploy traces back to the review, every link recomputes, and erasing a post kept its place in the chain."
+        },
+        "sequence": 22,
+        "digest": "sha256:d547d561a14324a5302ef96180e53fb2e0b58ea247b4ffb661d1d8d34ac887b4",
+        "accepted": 1793727845514
+      }
+    },
+    {
+      "sequence": 23,
+      "id": "move-1793727791",
+      "digest": "sha256:e47447173dc8c8e4bd9683766cc1e6ad0af7917e3fdbfbeda6b53e59f755065c",
+      "link": "fe354c5a560448ea5c2672e79dffcb678fce17eab55021bed5f9494417fb8991",
+      "envelope": {
+        "grail": "1.2",
+        "id": "move-1793727791",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "builder",
+        "target": {
+          "participant": "builder"
+        },
+        "kind": "handoff.export",
+        "parents": [
+          "deployed-1793727791"
+        ],
+        "payload": {
+          "handoff": "move-1793727791",
+          "digest": "sha256:1da92036d5cc3450c8751dc38b42924d318615bb51bbd7f5a678c369900d356d",
+          "origin": {
+            "fabric": "studio-local",
+            "scope": "studio",
+            "graph": "studio",
+            "participant": "builder"
+          },
+          "anchors": [
+            "deployed-1793727791"
+          ],
+          "entries": 5,
+          "direction": "export"
+        },
+        "sequence": 23,
+        "digest": "sha256:e47447173dc8c8e4bd9683766cc1e6ad0af7917e3fdbfbeda6b53e59f755065c",
+        "accepted": 1793727848315
+      }
+    },
+    {
+      "sequence": 24,
+      "id": "narration-1793727791-14",
+      "digest": "sha256:0f8889430bbff517c97230845b3ad49b940dba1730b403e06587571694f025b5",
+      "link": "061138ef49afc99a83523027b69a4d471374b3df3b2be955caf99242c4f68799",
+      "envelope": {
+        "grail": "1.2",
+        "id": "narration-1793727791-14",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [],
+        "payload": {
+          "text": "The builder's context moved to another fabric with its whole history. The other side checked every digest without trusting this one."
+        },
+        "sequence": 24,
+        "digest": "sha256:0f8889430bbff517c97230845b3ad49b940dba1730b403e06587571694f025b5",
+        "accepted": 1793727849104
+      }
+    },
+    {
+      "sequence": 25,
+      "id": "narration-1793727791-15",
+      "digest": "sha256:f639618c6731a0a5abb54cfd1e846ef6ff3f988fdccc636154c9fe4ab72e8f9d",
+      "link": "7188a18a3aa7172607408fdf32cd6e2da75a9b36e03b9536ada670c6d5f9f4d6",
+      "envelope": {
+        "grail": "1.2",
+        "id": "narration-1793727791-15",
+        "scope": "studio",
+        "graph": "studio",
+        "source": "lead",
+        "target": {
+          "participant": "general"
+        },
+        "kind": "observation",
+        "parents": [],
+        "payload": {
+          "text": "Showcase run 1793727791 finished. Every step above was checked against the fabric's answers."
+        },
+        "sequence": 25,
+        "digest": "sha256:f639618c6731a0a5abb54cfd1e846ef6ff3f988fdccc636154c9fe4ab72e8f9d",
+        "accepted": 1793727851155
+      }
     }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 5,
-    "envelope": {
-     "grail": "1.2",
-     "id": "narration-1793724761-4",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [],
-     "payload": {
-      "text": "Delegation: the lead handed the builder a receive-only token and could not hand out more than it holds."
-     },
-     "sequence": 5,
-     "digest": "sha256:14e20b8a9551a4293e97b33c2a7abdadf4c21c9a4bed054681ba293bae29a9e9",
-     "accepted": 1793724767649
-    }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 6,
-    "envelope": {
-     "grail": "1.2",
-     "id": "narration-1793724761-5",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [],
-     "payload": {
-      "text": "The builder tried to deploy before any review. The graph refused it: deploys depend on a result from the reviewer."
-     },
-     "sequence": 6,
-     "digest": "sha256:61eda8e01c4cc841a9823d20740907dc7155a2ea5c8ef46b1ff304c3470a4569",
-     "accepted": 1793724770014
-    }
-   }
-  },
-  {
-   "channel": "builds",
-   "entry": {
-    "sequence": 7,
-    "envelope": {
-     "grail": "1.2",
-     "id": "log-1793724761",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "builder",
-     "target": {
-      "participant": "builds"
-     },
-     "kind": "stream.open",
-     "parents": [],
-     "payload": {
-      "text": "build log for slugify"
-     },
-     "sequence": 7,
-     "digest": "sha256:6caf0cdab3610ebe15f193691ecf41da0623634831fca302a880db28ed5d07a3",
-     "accepted": 1793724770734
-    }
-   }
-  },
-  {
-   "channel": "builds",
-   "entry": {
-    "sequence": 8,
-    "envelope": {
-     "grail": "1.2",
-     "id": "log-1793724761-9068",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "builder",
-     "target": {
-      "participant": "builds"
-     },
-     "kind": "stream.chunk",
-     "parents": [
-      "log-1793724761"
-     ],
-     "payload": {
-      "text": "collecting 14 tests"
-     },
-     "sequence": 8,
-     "digest": "sha256:f3e00bc059a9d15991630963e5d2b2497f1c10c6db3bbae21244884e3d60347c",
-     "accepted": 1793724771437
-    }
-   }
-  },
-  {
-   "channel": "builds",
-   "entry": {
-    "sequence": 9,
-    "envelope": {
-     "grail": "1.2",
-     "id": "log-1793724761-29541",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "builder",
-     "target": {
-      "participant": "builds"
-     },
-     "kind": "stream.chunk",
-     "parents": [
-      "log-1793724761"
-     ],
-     "payload": {
-      "text": "14 passed in 0.21s"
-     },
-     "sequence": 9,
-     "digest": "sha256:72b37d4ab4435b6ebafcc7643bcc14d976a4f496e9e07e31ee37e73aa5004ab3",
-     "accepted": 1793724772165
-    }
-   }
-  },
-  {
-   "channel": "builds",
-   "entry": {
-    "sequence": 10,
-    "envelope": {
-     "grail": "1.2",
-     "id": "log-1793724761-17246",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "builder",
-     "target": {
-      "participant": "builds"
-     },
-     "kind": "stream.chunk",
-     "parents": [
-      "log-1793724761"
-     ],
-     "payload": {
-      "text": "wheel built: slugify-0.1.0"
-     },
-     "sequence": 10,
-     "digest": "sha256:8e0b4124d84a40c4f6fc98720a763376cfe1e8e8a2a2035018a22195ecd5f378",
-     "accepted": 1793724772891
-    }
-   }
-  },
-  {
-   "channel": "builds",
-   "entry": {
-    "sequence": 11,
-    "envelope": {
-     "grail": "1.2",
-     "id": "log-1793724761-close",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "builder",
-     "target": {
-      "participant": "builds"
-     },
-     "kind": "stream.close",
-     "parents": [
-      "log-1793724761"
-     ],
-     "payload": {
-      "text": "build finished"
-     },
-     "sequence": 11,
-     "digest": "sha256:349bd734c175c37e790cee5706da008b5369a1022e79fb76c29067745c6d2a88",
-     "accepted": 1793724773653
-    }
-   }
-  },
-  {
-   "channel": "reviews",
-   "entry": {
-    "sequence": 12,
-    "envelope": {
-     "grail": "1.2",
-     "id": "review-1793724761",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "builder",
-     "target": {
-      "participant": "reviews"
-     },
-     "kind": "task",
-     "parents": [
-      "log-1793724761"
-     ],
-     "payload": {
-      "text": "Please review:\n\n```python\nimport re\nimport unicodedata\n\n\ndef slugify(title: str) -> str:\n    normalized = unicodedata.normalize(\"NFKD\", title).lower()\n    unaccented = \"\".join(c for c in normalized if not unicodedata.combining(c))\n    return re.sub(r\"[\\W_]+\", \"-\", unaccented).strip(\"-\")\n```\n\nAt most three findings, or approve."
-     },
-     "sequence": 12,
-     "digest": "sha256:22cea9c4823e564d0fcbff10440fc53da223dbba0f9406217d84d32089f3a668",
-     "accepted": 1793724775204
-    }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 15,
-    "envelope": {
-     "grail": "1.2",
-     "id": "narration-1793724761-7",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [],
-     "payload": {
-      "text": "Review done in #reviews. The first reviewer to start the task took it, and nobody else could answer it after that. The verdict: Approve. No concrete correctness issues found given the unspecified slug requirements."
-     },
-     "sequence": 15,
-     "digest": "sha256:4701e26a35dd2b949ba5d84c5f969b84f6558b9f0fa02561fd561a00db7b20d5",
-     "accepted": 1793724795799
-    }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 18,
-    "envelope": {
-     "grail": "1.2",
-     "id": "deploy-note-1793724761",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "deployer",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [
-      "deployed-1793724761"
-     ],
-     "payload": {
-      "text": "released slugify-0.1.0"
-     },
-     "sequence": 18,
-     "digest": "sha256:d9fee452650378b4f3e4de1055a31fccd84ac61b51f51f6fb23e3c15f9f25299",
-     "accepted": 1793724799240
-    }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 19,
-    "envelope": {
-     "grail": "1.2",
-     "id": "narration-1793724761-8",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [],
-     "payload": {
-      "text": "Deployed. The builder used deploy-key by name; only the deployer's delivery held its value, and a post holding the value was refused."
-     },
-     "sequence": 19,
-     "digest": "sha256:7d96791bc8f1553581ce906f1738592f7252d535086bfd91c210129e49e15305",
-     "accepted": 1793724804028
-    }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 20,
-    "envelope": {
-     "grail": "1.2",
-     "id": "release-note-1793724761",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [
-      "deployed-1793724761"
-     ],
-     "payload": {
-      "text": "slugify 0.1.0 is out."
-     },
-     "delivery": {
-      "mode": "effectively-once",
-      "key": "release-1793724761"
-     },
-     "sequence": 20,
-     "digest": "sha256:8e34cf938b7cb4f6d5bafacdee551b693e05672176a995f9088f81da36adfe10",
-     "accepted": 1793724804722
-    }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 22,
-    "envelope": {
-     "grail": "1.2",
-     "id": "narration-1793724761-13",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [],
-     "payload": {
-      "text": "Trace, ledger, and erasure checked: the deploy traces back to the review, every link recomputes, and erasing a post kept its place in the chain."
-     },
-     "sequence": 22,
-     "digest": "sha256:9d4a2e77a7ce97b671fb5a49b3c3668d2926cc60401a29108e9b9c16f54109ca",
-     "accepted": 1793724809787
-    }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 24,
-    "envelope": {
-     "grail": "1.2",
-     "id": "narration-1793724761-14",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [],
-     "payload": {
-      "text": "The builder's context moved to another fabric with its whole history. The other side checked every digest without trusting this one."
-     },
-     "sequence": 24,
-     "digest": "sha256:a630bd25bbd35f09557c9b97d844fd3ca408ed991155a9bdd799fde7c02f63c7",
-     "accepted": 1793724813313
-    }
-   }
-  },
-  {
-   "channel": "general",
-   "entry": {
-    "sequence": 25,
-    "envelope": {
-     "grail": "1.2",
-     "id": "narration-1793724761-15",
-     "scope": "studio",
-     "graph": "studio",
-     "source": "lead",
-     "target": {
-      "participant": "general"
-     },
-     "kind": "observation",
-     "parents": [],
-     "payload": {
-      "text": "Showcase run 1793724761 finished. Every step above was checked against the fabric's answers."
-     },
-     "sequence": 25,
-     "digest": "sha256:2ea1c789de410ee8386b51c169c6f13115580c1d4884c0f4ede9a3830a64cf7c",
-     "accepted": 1793724815396
-    }
-   }
-  }
- ]
+  ]
 }

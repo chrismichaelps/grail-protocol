@@ -6,12 +6,16 @@
 #   examples/channels/up.sh
 #   examples/channels/showcase.sh            # every participant played by this script
 #   AGENTS=1 examples/channels/showcase.sh   # the review is done by whatever agent is attached as the reviewer
+#   RECORD=run.json examples/channels/showcase.sh   # also write every request, answer, post, and ledger entry
+#
+# A recording holds what the channel viewer replays. Tokens are never written, and the deploy key is replaced in
+# every form the showcase uses it before anything reaches the file.
 #
 # Requires curl, jq, and openssl.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
-work="$root/build/channels"
+work="${GRAIL_CHANNELS_DIR:-$root/build/channels}"
 grail="${GRAIL_BIN:-$root/build/grail}"
 fabric="${GRAIL_FABRIC:-http://127.0.0.1:7420}"
 desk_port="${DESK_PORT:-7421}"
@@ -30,30 +34,99 @@ watcher="$(cat "$work/watcher.token")"
 
 bold=$'\033[1m'; dim=$'\033[2m'; green=$'\033[32m'; red=$'\033[31m'; reset=$'\033[0m'
 step=0
+record="${RECORD:-}"
+scratch=""
+calls=""
+desk_pid=""
+desk_owner=""
+cleanup() {
+  [ -z "$desk_pid" ] || kill "$desk_pid" 2>/dev/null || true
+  [ -z "$scratch" ] || rm -rf "$scratch"
+}
+trap cleanup EXIT
+if [ -n "$record" ]; then
+  umask 077
+  scratch="$(mktemp -d "$work/showcase.XXXXXX")"
+  calls="$scratch/calls.jsonl"
+fi
+key="$(cat "$work/deploy.key")"
+half=$(( ${#key} / 2 ))
+encoded="$(printf '%s' "$key" | base64)"
+helper=""
+careless=""
+
+[ -z "$record" ] || : > "$calls"
+
+# Text with the deploy key replaced in every form this script ever writes it, whole first, so nothing of it is left.
+redact() {
+  local text="$1" held_token
+  for held_token in "$owner" "$lead" "$builder" "$reviewer" "$deployer" "$watcher" "$helper" "$careless" "$desk_owner"; do
+    [ -z "$held_token" ] || text="${text//"$held_token"/‹token›}"
+  done
+  text="${text//"$key"/‹deploy-key›}"
+  text="${text//"$encoded"/‹deploy-key in base64›}"
+  printf '%s' "${text//"${key:0:$half}"/‹half of deploy-key›}"
+}
+
+# Appends one compact JSON value to the recording, redacted.
+remember() {
+  [ -n "$record" ] || return 0
+  printf '%s\n' "$(redact "$1")" >> "$calls"
+}
+
+# Who a token speaks for, by name, so a recording never holds the token itself.
+who() {
+  case "$1" in
+    "$owner") echo "owner" ;;
+    "$lead") echo "lead" ;;
+    "$builder") echo "builder" ;;
+    "$reviewer") echo "reviewer" ;;
+    "$deployer") echo "deployer" ;;
+    "$watcher") echo "watcher" ;;
+    "$helper") echo "helper token delegated by the lead" ;;
+    "$careless") echo "careless token delegated by the lead" ;;
+    "") echo "anyone" ;;
+    *) echo "another token" ;;
+  esac
+}
 
 heading() {
   step=$((step + 1))
   printf '\n%s%02d  %s%s\n' "$bold" "$step" "$1" "$reset"
+  remember "$(jq -cn --argjson step "$step" --arg title "$1" '{type: "step", step: $step, title: $title}')"
 }
 
-line() { printf '    %s\n' "$*"; }
-held() { printf '    %s✓%s %s\n' "$green" "$reset" "$*"; }
-refused() { printf '    %s✗%s %s\n' "$red" "$reset" "$*"; }
+noted() { remember "$(jq -cn --argjson step "$step" --arg mark "$1" --arg text "$2" '{type: "note", step: $step, mark: $mark, text: $text}')"; }
+line() { printf '    %s\n' "$*"; noted line "$*"; }
+held() { printf '    %s✓%s %s\n' "$green" "$reset" "$*"; noted held "$*"; }
+refused() { printf '    %s✗%s %s\n' "$red" "$reset" "$*"; noted refused "$*"; }
+
+# Records one request and its answer; delegated tokens in an answer are replaced before the line is written.
+exchanged() {
+  local operation="$1" as="$2" params="$3" body="$4" answer="$5"
+  [ -n "$record" ] || return 0
+  jq . <<< "$answer" >/dev/null 2>&1 || answer="$(jq -cn --arg text "$answer" '{text: $text}')"
+  remember "$(jq -cn --argjson step "$step" --arg operation "$operation" --arg as "$as" --argjson params "${params:-null}" --argjson body "${body:-null}" --argjson answer "$answer" \
+    '{type: "call", step: $step, operation: $operation, as: $as, params: $params, body: $body, answer: ($answer | walk(if type == "object" and has("token") then .token = "‹token›" else . end))}')"
+}
 
 fail() {
   printf '\n%sshowcase stopped:%s %s\n' "$red" "$reset" "$*" >&2
   exit 1
 }
 
-# One contract operation; prints the answer whatever its status.
+# One contract operation; prints the answer whatever its status, and records it unless QUIET is set.
 call() {
-  local operation="$1" token="$2" params="$3" body="${4:-}"
+  local operation="$1" token="$2" params="$3" body="${4:-}" answer
 
   if [ -n "$body" ]; then
-    "$grail" call "$operation" --fabric "$fabric" --token "$token" --params "$params" --body "$body" 2>/dev/null || true
+    answer="$("$grail" call "$operation" --fabric "$fabric" --token "$token" --params "$params" --body "$body" 2>/dev/null || true)"
   else
-    "$grail" call "$operation" --fabric "$fabric" --token "$token" --params "$params" 2>/dev/null || true
+    answer="$("$grail" call "$operation" --fabric "$fabric" --token "$token" --params "$params" 2>/dev/null || true)"
   fi
+
+  [ -n "${QUIET:-}" ] || exchanged "$operation" "$(who "$token")" "$params" "$body" "$answer"
+  printf '%s\n' "$answer"
 }
 
 # An envelope from a source to a participant or channel, as compact JSON.
@@ -84,11 +157,11 @@ heard_by() { jq -r '[.recipients[].participant] | join(", ")' <<< "$1"; }
 # The lead narrates each step in #general, so whoever watches the channel follows along.
 narrate() {
   local answer
-  answer="$(send "$lead" "$(envelope "narration-$run-$step" lead general observation "$(text "$1")")")"
+  answer="$(QUIET=1 send "$lead" "$(envelope "narration-$run-$step" lead general observation "$(text "$1")")")"
   expect_accepted "$answer" "narration"
 }
 
-state_of() { call readTransfer "$owner" "{\"scope\":\"$scope\",\"transfer\":\"$1\"}" | jq -r '.state // empty'; }
+state_of() { QUIET=1 call readTransfer "$owner" "{\"scope\":\"$scope\",\"transfer\":\"$1\"}" | jq -r '.state // empty'; }
 
 [ -x "$grail" ] || fail "build the executable first: pudu build src/Main.pudu -o build/grail"
 command -v jq >/dev/null || fail "jq is required"
@@ -98,6 +171,7 @@ printf '%sGrail studio showcase%s  %s  run %s\n' "$bold" "$reset" "$fabric" "$ru
 
 heading "Discovery says what this fabric speaks"
 discovered="$(curl -s "$fabric/.well-known/grail")"
+exchanged discover anyone '{}' '' "$discovered"
 line "protocol versions  $(jq -r '.grail | join(", ")' <<< "$discovered")"
 line "profiles           $(jq -r '.fabric.profiles | join(", ")' <<< "$discovered")"
 jq -e '.grail | index("1.2")' <<< "$discovered" >/dev/null || fail "the fabric does not speak 1.2"
@@ -129,7 +203,6 @@ refused "it cannot hand out graph.write, which it does not hold: $(code_of "$ans
 narrate "Delegation: the lead handed the builder a receive-only token and could not hand out more than it holds."
 
 heading "A deploy asked for before its review is refused by the graph"
-key="$(cat "$work/deploy.key")"
 deposit="$(jq -cn --arg value "$key" --arg graph "$graph" '{value: $value, graph: $graph, audience: ["deployer"], senders: ["builder"], kinds: ["tool.call"], description: "pushes a release"}')"
 answer="$(call putSecret "$owner" "{\"scope\":\"$scope\",\"secret\":\"deploy-key\"}" "$deposit")"
 [ "$(jq -r '.name // empty' <<< "$answer")" = "deploy-key" ] || fail "custody did not take the key: $answer"
@@ -194,14 +267,13 @@ stored="$(call readTransfer "$owner" "{\"scope\":\"$scope\",\"transfer\":\"deplo
 line "what the ledger stores for the key: $stored"
 revealed="$(call pullDeliveries "$deployer" "{\"scope\":\"$scope\",\"graph\":\"$graph\",\"participant\":\"deployer\",\"after\":0,\"limit\":1000}" | jq -r --arg id "deploy-$run" '.deliveries[] | select(.envelope.id == $id) | .envelope.payload.auth')"
 [ "$revealed" = "$key" ] || fail "the deployer's delivery did not carry the key"
-held "the deployer's own delivery carries the real value (${#revealed} characters, ${revealed:0:4}…), and nothing else does"
+held "the deployer's own delivery carries the real value (${#revealed} characters), and nothing else does"
 answer="$(send "$deployer" "$(envelope "deployed-$run" deployer builder tool.result '{"text":"released slugify-0.1.0"}' "[\"deploy-$run\"]")")"
 expect_accepted "$answer" "the deploy result"
 answer="$(send "$deployer" "$(envelope "deploy-note-$run" deployer general observation "$(text "released slugify-0.1.0")" "[\"deployed-$run\"]")")"
 expect_accepted "$answer" "the deployer's post"
 careless="$(call delegateToken "$lead" "{\"scope\":\"$scope\"}" "{\"id\":\"careless-$run\",\"audience\":\"lead\",\"graph\":\"$graph\",\"abilities\":[\"transfer.send\"],\"expires\":$expires}" | jq -r '.token // empty')"
 [ -n "$careless" ] || fail "the lead could not delegate a sending token"
-half=$(( ${#key} / 2 ))
 for disguise in "for the record, the key is $key" "encoded: $(printf '%s' "$key" | base64)" "first half: ${key:0:$half}"; do
   answer="$(send "$careless" "$(envelope "leak-$run-$RANDOM" lead general observation "$(text "$disguise")")")"
   expect_code "$answer" "grail.secret-exposed" "a leaked key"
@@ -254,7 +326,7 @@ heading "The builder's work moves to a fabric run by someone else"
 desk_secret="$(openssl rand -hex 32)"
 GRAIL_SECRET="$desk_secret" GRAIL_PORT="$desk_port" GRAIL_FABRIC_NAME=desk "$grail" serve > "$work/desk.log" 2>&1 &
 desk_pid=$!
-trap 'kill "$desk_pid" 2>/dev/null || true' EXIT
+
 for _ in $(seq 1 50); do curl -sf "$desk/v1/health" >/dev/null && break; sleep 0.1; done
 desk_owner="$(GRAIL_SECRET="$desk_secret" "$grail" token --scope support --id owner)"
 "$grail" call createGraph --fabric "$desk" --token "$desk_owner" --params '{"scope":"support","graph":"desk"}' \
@@ -262,6 +334,13 @@ desk_owner="$(GRAIL_SECRET="$desk_secret" "$grail" token --scope support --id ow
 carried="$("$grail" handoff --from "$fabric" --from-token "$builder" --scope "$scope" --graph "$graph" --participant builder \
   --to "$desk" --to-token "$desk_owner" --to-scope support --to-graph desk --to-participant assistant \
   --id "move-$run" --transfers "deployed-$run" 2>&1 || true)"
+origin="$(jq -cn --arg id "move-$run" '{scope: "studio", graph: "studio", participant: "builder", handoff: $id}')"
+destination="$(jq -cn --arg id "move-$run" '{scope: "support", graph: "desk", participant: "assistant", handoff: $id}')"
+asked="$(jq -cn --arg id "move-$run" --arg anchor "deployed-$run" '{id: $id, transfers: [$anchor]}')"
+bundle="$(grep '"step":"export"' <<< "$carried" | jq -c '.answer')"
+exchanged exportHandoff builder "$origin" "$asked" "$bundle"
+exchanged verifyHandoff anyone "$origin" "$bundle" "$(grep '"step":"verify"' <<< "$carried" | jq -c '.answer')"
+exchanged importHandoff "desk owner" "$destination" "$bundle" "$(grep '"step":"import"' <<< "$carried" | jq -c '.answer')"
 attested="$(grep '"step":"verify"' <<< "$carried" | jq -r '.answer.attested // false')"
 imported="$(grep '"step":"import"' <<< "$carried" | jq -r '.answer.entries // empty')"
 [ "$attested" = "true" ] && [ -n "$imported" ] || fail "the handoff did not arrive: $carried"
@@ -274,6 +353,41 @@ after="$(call inspectToken "$helper" "{\"scope\":\"$scope\"}")"
 expect_code "$after" "grail.unauthorized" "a revoked token"
 refused "the helper token after revocation: $(code_of "$after")"
 narrate "Showcase run $run finished. Every step above was checked against the fabric's answers."
+
+if [ -n "$record" ]; then
+  posts="$scratch/posts.jsonl"
+  : > "$posts"
+  for channel in general reviews builds; do
+    QUIET=1 call readChannel "$owner" "{\"scope\":\"$scope\",\"graph\":\"$graph\",\"channel\":\"$channel\",\"limit\":1000}" | jq -c --arg channel "$channel" '.deliveries[] | {channel: $channel, entry: .}' >> "$posts"
+  done
+  entries="$scratch/ledger.jsonl"
+  : > "$entries"
+  while IFS=$'\t' read -r sequence id digest link; do
+    QUIET=1 call readTransfer "$owner" "{\"scope\":\"$scope\",\"transfer\":\"$id\"}" | jq -c --argjson sequence "$sequence" --arg id "$id" --arg digest "$digest" --arg link "$link" \
+      '{sequence: $sequence, id: $id, digest: $digest, link: $link, envelope: .envelope}' >> "$entries"
+  done < <(QUIET=1 call readLedger "$owner" "{\"scope\":\"$scope\",\"limit\":1000}" | jq -r '.entries[] | [.sequence, .id, .digest, .link] | @tsv')
+  assembled="$(jq -n --slurpfile calls "$calls" --slurpfile posts "$posts" --slurpfile ledger "$entries" --arg recorded "$(date '+%-d %B %Y')" --arg agents "${AGENTS:-}" '
+    {
+      workspace: "studio",
+      channels: ["general", "reviews", "builds"],
+      recorded: $recorded,
+      note: ("Recorded on a local fabric with examples/channels/showcase.sh" + (if $agents == "1" then ". A hosted coding agent attached as the reviewer did the review itself; the script played the other participants through their own tokens." else ", every participant played through its own token." end) + " The recorded calls and channel posts came from this run; the ledger contains the accepted envelopes. Tokens were never recorded, and the deploy key is shown only as a placeholder."),
+      steps: [$calls[] | select(.type == "step") | {step, title}] | map(. as $s | . + {notes: [$calls[] | select(.type == "note" and .step == $s.step) | {mark, text}], calls: [$calls[] | select(.type == "call" and .step == $s.step) | del(.type, .step)]}),
+      posts: ($posts | sort_by(.entry.sequence)),
+      ledger: ($ledger | sort_by(.sequence))
+    }')"
+  assembled="$(redact "$assembled")"
+  for form in "$key" "$encoded" "${key:0:$half}"; do
+    [[ "$assembled" != *"$form"* ]] || fail "the recording would hold the deploy key; nothing was written"
+  done
+  for held_token in "$owner" "$lead" "$builder" "$reviewer" "$deployer" "$watcher" "$helper" "$careless"; do
+    [ -z "$held_token" ] || [[ "$assembled" != *"${held_token%%.*}"* ]] || fail "the recording would hold a token; nothing was written"
+  done
+  temporary="$(mktemp "${record}.XXXXXX")"
+  printf '%s\n' "$assembled" > "$temporary"
+  mv "$temporary" "$record"
+  held "recorded $(jq '.steps | length' <<< "$assembled") steps, $(jq '[.steps[].calls[]] | length' <<< "$assembled") requests, $(jq '.posts | length' <<< "$assembled") posts, and $(jq '.ledger | length' <<< "$assembled") ledger entries to $record"
+fi
 
 printf '\n%sAll %d steps held.%s Watch the story in the channel viewer, or read it back:\n' "$green" "$step" "$reset"
 printf '    %scurl -s "%s/v1/scopes/%s/graphs/%s/channels/general" -H "Authorization: Bearer $(cat build/channels/watcher.token)" | jq%s\n' "$dim" "$fabric" "$scope" "$graph" "$reset"

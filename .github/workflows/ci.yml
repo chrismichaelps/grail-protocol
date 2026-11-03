@@ -59,6 +59,8 @@ jobs:
         run: python3 tools/TestCustody.py
       - name: Documentation
         run: python3 tools/BuildDocs.py
+      - name: Published showcase recording
+        run: python3 tools/TestShowcase.py
       - name: Test
         run: pudu test test
       - name: Build
@@ -92,6 +94,8 @@ jobs:
           GRAIL_BIN: ${{ runner.temp }}/grail
         run: |
           set -euo pipefail
+          export GRAIL_CHANNELS_DIR="$(mktemp -d)"
+          trap 'kill "$(cat "$GRAIL_CHANNELS_DIR/fabric.pid")" 2>/dev/null || true; rm -rf "$GRAIL_CHANNELS_DIR"' EXIT
           examples/channels/up.sh
-          examples/channels/showcase.sh
-          kill "$(cat build/channels/fabric.pid)"
+          RECORD="$RUNNER_TEMP/showcase.json" examples/channels/showcase.sh
+          python3 tools/TestShowcase.py "$RUNNER_TEMP/showcase.json" --secrets-dir "$GRAIL_CHANNELS_DIR"

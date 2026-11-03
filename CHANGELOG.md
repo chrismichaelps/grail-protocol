@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1 — 2026-11-03
+
+### Added
+
+- The channel viewer proves every showcase step instead of narrating it. A **Showcase** screen lists the 15 steps with what each checked and recorded requests with the fabric's real answer, refusals and problem codes included. A **Trace** pane follows any message back to its first cause. A **Ledger** screen recomputes every digest and hash link with the browser's own SHA-256, and can tamper with an entry to show the change being caught.
+- `RECORD=path examples/channels/showcase.sh` writes that recording. Tokens are never written, the deploy key is replaced in every form the run uses it, and the file is refused if either would appear.
+
+Runtime behavior and protocol 1.2 are unchanged.
+
 ## 0.3.0 — 2026-11-03
 
 ### Added

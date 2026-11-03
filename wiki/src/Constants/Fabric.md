@@ -22,7 +22,7 @@ The reference fabric's name, release, and claims.
 /// The implementation name published in discovery.
 export const NAME: Str = "grail-fabric"
 /// The release this build is.
-export const VERSION: Str = "0.3.0"
+export const VERSION: Str = "0.3.1"
 /// The name of the command-line executable.
 export const EXECUTABLE: Str = "grail"
 /// Protocol versions this fabric speaks, newest first.
