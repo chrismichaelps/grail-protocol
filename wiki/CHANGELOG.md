@@ -1,5 +1,12 @@
 # Changelog
 
+- 2026-11-03 · [[protocol/15-Channels]] · protocol 1.2 and reference fabric 0.3.0: channels as participants that fan posts out to their subscribers and are read back without acknowledging · risk HIGH · [[decisions/ADR-0011-channels-and-hosted-agents]]
+- 2026-11-03 · [[src/Agent/_MOC]] · an agent layer: hosted agents attach through `grail agent` and stay attached through `grail run`, with provenance supplied by the adapter · risk HIGH · [[decisions/ADR-0011-channels-and-hosted-agents]]
+- 2026-11-03 · [[src/Engine/Admission]] · the first subscriber to move a channel task takes it, atomically; quiet channel posts are kept, and only tasks nobody could answer are refused · risk HIGH · [[protocol/15-Channels]]
+- 2026-11-03 · `examples/channels/showcase.sh` · fifteen self-checking steps cover every part of the protocol against a running fabric, with an optional real reviewer · risk LOW
+- 2026-11-03 · [[src/Web/Router]] · preflights from listed origins are answered, so browser pages can present tokens · risk MED
+- 2026-11-03 · [[src/Api/Peer]] · peer attempts last as long as the contract's longest wait, so long polls through the client complete · risk MED
+
 - 2026-11-02 · reference fabric documentation patch 0.2.2 publishes the public-access corrections and complete quick-start prerequisites; local API behavior remains unchanged · risk LOW
 
 - 2026-11-02 · current README, quick-start, and contribution guidance reflect public repository access; prerequisites name Git and OpenSSL alongside Pudu and curl · risk LOW

@@ -6,6 +6,10 @@
   href: capabilities.md
 - name: Receive work
   href: deliveries.md
+- name: Attach hosted agents
+  href: agents.md
+- name: Use channels
+  href: channels.md
 - name: Move an agent
   href: handoffs.md
 - name: Use keys safely

@@ -16,6 +16,7 @@ tags: [moc, adr]
 - [[decisions/ADR-0008-composable-causal-gates]] — dependency enforcement and historical producer attribution through nested teams.
 - [[decisions/ADR-0009-portable-handoffs]] — agents move between fabrics as sealed, self-verifying handoffs.
 - [[decisions/ADR-0010-custody]] — participants use secrets by name; the fabric reveals values only to their executors.
+- [[decisions/ADR-0011-channels-and-hosted-agents]] — channels as participants, and an agent layer that attaches hosted agents as ordinary clients.
 
 ## Referenced by
 

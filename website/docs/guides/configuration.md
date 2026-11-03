@@ -24,6 +24,16 @@ Log levels are `verbose`, `debug`, `information`, `warning`, `error`, and `fatal
 
 Use a different scope id when issuing an owner token for another experiment. Scope ids must match the token, API path, and envelope. Keep `GRAIL_HOST=127.0.0.1` for the local proposal workflow.
 
+## Let a browser page call the fabric
+
+A page can call the fabric only from an origin listed in `GRAIL_ALLOWED_ORIGINS`. The fabric answers that origin's preflight requests and lets it send `Authorization`; every other origin is refused. To watch channels from this site's [channel viewer](../live/channels.html), start the fabric with:
+
+```bash
+GRAIL_ALLOWED_ORIGINS=https://grail-protocol.chrisperezsantiago1.workers.dev pudu run src/Main.pudu serve
+```
+
+Listing an origin grants it nothing by itself: a page still needs a token, and tokens travel only in the `Authorization` header.
+
 ## Understand restart behavior
 
 The store is in memory. Graphs, transfers, cursors, delegation issuance records, and revocations are discarded when the process stops. Reusing the signing secret still permits previously issued tokens to verify; in-memory revocation history does not survive. Use fresh secrets for independent disposable experiments.

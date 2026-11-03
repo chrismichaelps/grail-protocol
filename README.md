@@ -11,6 +11,8 @@ Declare who can exchange information, which results a step depends on, and what 
 - **Composable teams:** nested graphs preserve dependency gates and producer identity.
 - **Keys by name:** agents reference secrets such as `{"$secret": "github"}`. The fabric reveals a value only in the delivery to the executor allowed to use it, and refuses any message that carries one, so a model can use a key it has never seen.
 - **Portable agents:** export an agent's context from one fabric, have its origin attest it, and import it into a fabric run by different software. The history keeps its digests, so the receiver can check it without trusting the sender.
+- **Channels:** agents, people, and dashboards share channels. A post reaches every subscriber its edges name, and anyone subscribed can read the history back without taking work from anyone.
+- **Real agents:** any coding agent that loads tools over standard input joins a graph with `grail agent`, and `grail run` keeps it answering every task it receives.
 
 ## See it run
 
@@ -56,6 +58,26 @@ curl http://127.0.0.1:7420/.well-known/grail
 
 The reference store is in memory. Restarting the server clears its graphs, transfers, handoffs, secrets, and token revocations. Keep the same secret while issuing tokens and running the server.
 
+## Attach real agents
+
+Start the channels example, then attach a hosted agent as each participant. `attach.sh` takes the participant and the agent's command line, and adds the Grail tools for that agent process only.
+
+```bash
+pudu build src/Main.pudu -o build/grail
+examples/channels/up.sh
+examples/channels/attach.sh builder <agent>
+examples/channels/attach.sh reviewer <agent>
+```
+
+To see the whole protocol at once, run the showcase. In 15 checked steps it covers discovery, channels, delegation, a dependency gate, a streamed build log, a review taken by the first agent to start it, a key used by name that only one tool ever sees, a leaked key refused three ways, effectively-once delivery, a bridged JSON-RPC tool, a trace, ledger verification, erasure, a handoff to a second fabric, and revocation. Each step is narrated into `#general`:
+
+```bash
+examples/channels/showcase.sh
+AGENTS=1 examples/channels/showcase.sh   # with an agent attached as the reviewer
+```
+
+Give the builder a task and it can ask the reviewer through `#reviews`, wait for the verdict, and post to `#general`. Open the [channel viewer](https://grail-protocol.chrisperezsantiago1.workers.dev/live/channels.html) to replay a recorded run of two agents doing this, or paste `build/channels/watcher.token` to watch your own fabric live. See [Attach hosted agents](website/docs/guides/agents.md) and [Use channels](website/docs/guides/channels.md).
+
 ## Explore
 
 | Start here | What it covers |
@@ -65,6 +87,8 @@ The reference store is in memory. Restarting the server clears its graphs, trans
 | [Command line](website/docs/guides/command-line.md) | Tokens, operation calls, and the line binding. |
 | [Move an agent](website/docs/guides/handoffs.md) | Export, attest, and import an agent's context between fabrics. |
 | [Use keys safely](website/docs/guides/secrets.md) | Give keys to custody and let agents use them by name. |
+| [Attach hosted agents](website/docs/guides/agents.md) | Run a coding agent as a participant that answers every task. |
+| [Use channels](website/docs/guides/channels.md) | Shared channels that agents, people, and observers subscribe to. |
 | [Protocol specification](wiki/protocol/_MOC.md) | The model, routing, causality, security, and conformance. |
 | [OpenAPI contract](schema/grail.openapi.json) | Every HTTP operation, schema, error, and limit. |
 | [Contributing](CONTRIBUTING.md) | Checks, dependency layers, and branch workflow. |

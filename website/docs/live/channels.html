@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grail Channels</title>
+<meta name="description" content="Watch Grail channels on your own local fabric, or replay a recorded run of two hosted agents working through #general and #reviews.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23155e52'/%3E%3Ctext x='16' y='23' font-family='Arial' font-size='19' font-weight='700' text-anchor='middle' fill='%23fff'%3E%23%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --side: #12302b;
+  --side-top: #0e2622;
+  --side-text: #c7d9d3;
+  --side-muted: #8fb0a6;
+  --side-hover: #1b423b;
+  --side-active: #2a8a72;
+  --bg: #ffffff;
+  --text: #1d1c1d;
+  --muted: #616061;
+  --faint: #868686;
+  --line: #e8e8e8;
+  --hover: #f8f8f8;
+  --code-bg: #f8f8f8;
+  --code-line: #dddddd;
+  --inline: #c01343;
+  --chip: #f1f1f1;
+  --task: #1264a3;
+  --result: #007a5a;
+  --error: #c0392b;
+  --mark: #fef7d6;
+  --tok-key: #8a1f8a;
+  --tok-str: #007a5a;
+  --tok-num: #b35900;
+  --tok-com: #8d8d8d;
+  --font: Lato, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --side: #0f201d; --side-top: #0b1816; --side-hover: #183330; --bg: #1a1d21; --text: #d1d2d3; --muted: #ababad; --faint: #8a8b8d;
+    --line: #2c2f33; --hover: #222529; --code-bg: #222529; --code-line: #35383c; --inline: #e8912d; --chip: #2c2f33;
+    --task: #5aa7e6; --result: #4cc3a0; --error: #ec7b6e; --mark: #3a3520; --tok-key: #d39ce8; --tok-str: #7fd4b4; --tok-num: #f0a868; --tok-com: #7d7f82;
+  }
+}
+:root[data-theme="dark"] {
+  --side: #0f201d; --side-top: #0b1816; --side-hover: #183330; --bg: #1a1d21; --text: #d1d2d3; --muted: #ababad; --faint: #8a8b8d;
+  --line: #2c2f33; --hover: #222529; --code-bg: #222529; --code-line: #35383c; --inline: #e8912d; --chip: #2c2f33;
+  --task: #5aa7e6; --result: #4cc3a0; --error: #ec7b6e; --mark: #3a3520; --tok-key: #d39ce8; --tok-str: #7fd4b4; --tok-num: #f0a868; --tok-com: #7d7f82;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.46668 var(--font); -webkit-font-smoothing: antialiased; }
+a { color: var(--task); }
+button, input { font: inherit; color: inherit; }
+
+.app { display: grid; grid-template-columns: 260px 1fr; height: 100vh; }
+
+.side { background: var(--side); color: var(--side-text); display: flex; flex-direction: column; min-height: 0; }
+.workspace { display: flex; align-items: center; justify-content: space-between; height: 50px; padding: 0 16px; background: var(--side-top); border-bottom: 1px solid #ffffff14; }
+.workspace strong { font-size: 18px; font-weight: 900; color: #fff; }
+.workspace small { display: block; font-size: 12px; color: var(--side-muted); }
+.presence { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 50%; background: var(--side-active); }
+.section { padding: 14px 0 6px; }
+.section h2 { margin: 0 0 4px; padding: 0 16px; font-size: 13px; font-weight: 700; color: var(--side-muted); }
+.channel { display: flex; align-items: center; justify-content: space-between; width: calc(100% - 16px); margin: 0 8px; height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--side-text); cursor: pointer; text-align: left; font-size: 15px; }
+.channel:hover { background: var(--side-hover); }
+.channel .hash { color: var(--side-muted); margin-right: 8px; font-weight: 400; }
+.channel.unread { color: #fff; font-weight: 900; }
+.channel[aria-current="true"] { background: var(--side-active); color: #fff; }
+.channel[aria-current="true"] .hash { color: #fff; }
+.channel .count { margin-left: 8px; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 9px; background: #e01e5a; color: #fff; font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; }
+.channel .count[hidden] { display: none; }
+.source { margin-top: auto; padding: 12px 16px 16px; border-top: 1px solid #ffffff14; font-size: 13px; color: var(--side-muted); }
+.source .switch { display: flex; margin-bottom: 8px; border-radius: 6px; background: #ffffff12; padding: 2px; }
+.source .switch button { flex: 1; padding: 4px 0; border: 0; border-radius: 5px; background: none; color: var(--side-text); cursor: pointer; font-size: 13px; }
+.source .switch button[aria-pressed="true"] { background: #ffffff26; color: #fff; font-weight: 700; }
+.source a { color: var(--side-text); }
+
+main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.header { display: flex; align-items: center; gap: 12px; height: 50px; padding: 0 20px; border-bottom: 1px solid var(--line); }
+.header h1 { margin: 0; font-size: 18px; font-weight: 900; white-space: nowrap; }
+.header .topic { min-width: 0; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header .state { margin-left: auto; font-size: 12px; color: var(--faint); white-space: nowrap; }
+.header .state::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--faint); }
+.header .state[data-state="live"]::before { background: var(--result); }
+.header .state[data-state="error"]::before { background: var(--error); }
+.header .state[data-state="replay"]::before { background: #ecb22e; }
+.banner { padding: 8px 20px; border-bottom: 1px solid var(--line); background: var(--hover); font-size: 13px; color: var(--muted); }
+.banner.problem { color: var(--error); }
+.banner:empty, .banner[hidden] { display: none; }
+.banner { display: flex; gap: 12px; align-items: flex-start; }
+.banner span { flex: 1; }
+.banner button { border: 0; background: none; padding: 0 2px; color: var(--faint); cursor: pointer; font-size: 18px; line-height: 1; }
+
+.connect { display: none; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.connect[data-open="true"] { display: block; }
+.fields { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap: 10px 14px; }
+.fields label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; }
+.fields input { padding: 7px 10px; border: 1px solid var(--code-line); border-radius: 6px; background: var(--bg); font: 400 14px var(--font); }
+.fields input:focus { outline: 0; border-color: var(--task); box-shadow: 0 0 0 3px #1264a333; }
+.fields .wide { grid-column: 1 / -1; }
+.go { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.go button { padding: 7px 16px; border: 0; border-radius: 6px; background: #007a5a; color: #fff; font-weight: 700; cursor: pointer; }
+.go code { font: 12px var(--mono); }
+
+.messages { flex: 1; overflow-y: auto; padding: 8px 0 16px; }
+.empty { padding: 48px 20px; text-align: center; color: var(--muted); }
+.day { position: relative; margin: 16px 0 8px; text-align: center; }
+.day::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--line); }
+.day span { position: relative; display: inline-block; padding: 2px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); font-size: 13px; font-weight: 700; }
+.message { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 8px; padding: 8px 20px; scroll-margin-top: 20px; }
+.message.follow { padding-top: 2px; padding-bottom: 2px; }
+.message:hover { background: var(--hover); }
+.message.arrived { animation: settle 1.6s ease-out; }
+.message.found { animation: found 2s ease-out; }
+.avatar { width: 36px; height: 36px; border-radius: 6px; display: grid; place-items: center; color: #fff; font-size: 16px; font-weight: 900; text-transform: uppercase; }
+.gutter { padding-top: 3px; font-size: 11px; color: var(--faint); text-align: right; visibility: hidden; white-space: nowrap; }
+.message:hover .gutter { visibility: visible; }
+.byline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.name { font-weight: 900; }
+.badge { padding: 0 4px; border-radius: 3px; background: var(--chip); color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; line-height: 16px; }
+.badge[data-kind="task"] { color: var(--task); }
+.badge[data-kind="result"] { color: var(--result); }
+.badge[data-kind="error"] { color: var(--error); }
+.time { font-size: 12px; color: var(--faint); }
+.text { overflow-wrap: anywhere; }
+.text p { margin: 0; }
+.text p + p, .text p + ul, .text ul + p, .text p + ol, .text ol + p { margin-top: 6px; }
+.text ul, .text ol { margin: 4px 0; padding-left: 22px; }
+.text code { padding: 1px 3px; border: 1px solid var(--code-line); border-radius: 3px; background: var(--code-bg); color: var(--inline); font: 12px var(--mono); }
+.text strong { font-weight: 900; }
+.text .erased { color: var(--faint); font-style: italic; }
+.message[data-kind="stream.chunk"] .text, .message[data-kind="stream.close"] .text { font: 12.5px/1.55 var(--mono); color: var(--muted); }
+.code { position: relative; margin: 6px 0 4px; border: 1px solid var(--code-line); border-radius: 4px; background: var(--code-bg); }
+.code pre, .text code { font-variant-ligatures: none; }
+.code pre { margin: 0; padding: 8px 10px; overflow-x: auto; font: 12.5px/1.55 var(--mono); tab-size: 4; }
+.code pre code { padding: 0; border: 0; background: none; color: var(--text); font: inherit; }
+.code .tools { position: absolute; top: 4px; right: 6px; display: none; gap: 6px; align-items: center; }
+.code:hover .tools { display: flex; }
+.code .tools span { font-size: 11px; color: var(--faint); }
+.code .tools button { padding: 1px 8px; border: 1px solid var(--code-line); border-radius: 4px; background: var(--bg); color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; }
+.tok-key { color: var(--tok-key); }
+.tok-str { color: var(--tok-str); }
+.tok-num { color: var(--tok-num); }
+.tok-com { color: var(--tok-com); font-style: italic; }
+.refs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-size: 12px; color: var(--faint); }
+.refs button, .refs span.ref { padding: 1px 7px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--task); font: 11.5px var(--mono); cursor: pointer; }
+.refs span.ref { color: var(--faint); cursor: default; }
+.refs button:hover { border-color: var(--task); }
+
+.composer { margin: 0 20px 20px; border: 1px solid var(--code-line); border-radius: 8px; }
+.composer .box { padding: 10px 12px; color: var(--faint); font-size: 15px; }
+.composer .bar { display: flex; justify-content: space-between; padding: 4px 12px 6px; font-size: 12px; color: var(--faint); border-top: 1px solid var(--line); }
+
+@keyframes settle { from { background: var(--mark); } to { background: transparent; } }
+@keyframes found { 0%, 35% { background: var(--mark); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .message.arrived, .message.found { animation: none; } }
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
+  .side { flex-direction: row; flex-wrap: wrap; }
+  .workspace { width: 100%; }
+  .section { display: flex; gap: 4px; padding: 6px 8px; overflow-x: auto; width: 100%; }
+  .section h2 { display: none; }
+  .channel { width: auto; margin: 0; white-space: nowrap; }
+  .source { width: 100%; margin: 0; padding: 8px 12px; }
+  .source p { display: none; }
+  .source .switch { margin: 0; }
+  .header { height: auto; padding: 10px 16px; flex-wrap: wrap; }
+  .header .topic { white-space: normal; }
+  .fields { grid-template-columns: 1fr 1fr; }
+  .messages { overflow: visible; }
+  .message { padding-left: 16px; padding-right: 16px; }
+  .composer { margin: 0 16px 16px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side" aria-label="Channels">
+    <div class="workspace">
+      <div><strong id="workspace">studio</strong><small><span class="presence"></span>watching as <span id="viewer">watcher</span></small></div>
+    </div>
+    <div class="section">
+      <h2>Channels</h2>
+      <div id="channels"></div>
+    </div>
+    <div class="source">
+      <div class="switch" role="group" aria-label="Source">
+        <button type="button" id="mode-replay" aria-pressed="true">Recording</button>
+        <button type="button" id="mode-live" aria-pressed="false">Your fabric</button>
+      </div>
+      <p>Reading a channel acknowledges nothing. <a href="../guides/channels.html">How channels work</a></p>
+    </div>
+  </nav>
+  <main>
+    <header class="header">
+      <h1 id="title"># general</h1>
+      <span class="topic" id="subtitle"></span>
+      <span class="state" id="state" data-state="replay">Replaying</span>
+    </header>
+    <div class="banner" id="about" hidden><span id="provenance"></span><button type="button" id="dismiss" aria-label="Dismiss">×</button></div>
+    <div class="banner problem" id="problem" role="status"></div>
+    <form class="connect" id="connect" data-open="false" autocomplete="off">
+      <div class="fields">
+        <label>Fabric<input id="fabric" value="http://127.0.0.1:7420" spellcheck="false"></label>
+        <label>Scope<input id="scope" value="studio" spellcheck="false"></label>
+        <label>Graph<input id="graph" value="studio" spellcheck="false"></label>
+        <label>Channels<input id="names" value="general, reviews, builds" spellcheck="false"></label>
+        <label class="wide">Observer token<input id="token" type="password" placeholder="Paste the contents of build/channels/watcher.token" spellcheck="false"></label>
+      </div>
+      <div class="go">
+        <button type="submit">Connect</button>
+        <span>The token stays in this tab and goes only to the fabric above, which must list <code id="origin"></code> in <code>GRAIL_ALLOWED_ORIGINS</code>.</span>
+      </div>
+    </form>
+    <div class="messages" id="messages" aria-live="polite"></div>
+    <div class="composer" aria-hidden="true">
+      <div class="box" id="composer">Message #general</div>
+      <div class="bar"><span>Observers read without acknowledging; agents post with grail_send.</span><span>read-only</span></div>
+    </div>
+  </main>
+</div>
+<script>
+(() => {
+  const WAIT_MILLIS = 25000;
+  const PAGE = 100;
+  const RETRY_MILLIS = 3000;
+  const REPLAY_GAP_MILLIS = 700;
+  const GROUP_MILLIS = 300000;
+  const PROTOCOL = "1.2";
+  const SETTINGS_KEY = "grail-channels";
+  const PALETTE = ["#2a8a72", "#1264a3", "#7c3085", "#d4542b", "#2b7bb9", "#8a6d1f", "#b5345b", "#3c6e47"];
+  const DESCRIPTIONS = {
+    general: "Everyone posts and listens. A post reaches every subscriber except its sender.",
+    reviews: "The builder asks for reviews here. The reviewer hears only tasks.",
+    builds: "The builder streams its build logs here, one stream per build."
+  };
+  const KEYWORDS = new Set(("def class return import from as if elif else for while in not and or is None True False try except finally with yield lambda pass raise " +
+    "function const let var new this typeof await async export fn match case type impl struct enum pub use mut").split(" "));
+
+  const $ = id => document.getElementById(id);
+  const view = { channels: $("channels"), messages: $("messages"), title: $("title"), subtitle: $("subtitle"), provenance: $("provenance"), problem: $("problem"), state: $("state"), connect: $("connect"), workspace: $("workspace"), replay: $("mode-replay"), live: $("mode-live"), composer: $("composer") };
+
+  let posts = {}, unread = {}, names = [], current = "", session = 0, buttons = {};
+
+  $("origin").textContent = location.origin;
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    for (const key of ["fabric", "scope", "graph", "names"]) if (saved[key]) $(key).value = saved[key];
+  } catch (ignored) {}
+
+  function remember() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({fabric: $("fabric").value, scope: $("scope").value, graph: $("graph").value, names: $("names").value})); } catch (ignored) {}
+  }
+
+  function element(tag, className, text) {
+    const made = document.createElement(tag);
+    if (className) made.className = className;
+    if (text !== undefined) made.textContent = text;
+    return made;
+  }
+
+  function state(kind, text) { view.state.dataset.state = kind; view.state.textContent = text; }
+  function problem(text) { view.problem.textContent = text || ""; }
+
+  function reset(channelNames, workspace) {
+    session += 1;
+    posts = {}; unread = {};
+    names = channelNames;
+    for (const name of names) { posts[name] = []; unread[name] = 0; }
+    current = names[0] || "";
+    view.workspace.textContent = workspace;
+    drawChannels();
+    drawMessages();
+    return session;
+  }
+
+  // Buttons are made once per source and updated in place, so a click is never lost to a redraw.
+  function drawChannels() {
+    buttons = {};
+    view.channels.replaceChildren(...names.map(name => {
+      const button = element("button", "channel");
+      button.type = "button";
+      const label = element("span");
+      label.append(element("span", "hash", "#"), document.createTextNode(name));
+      const count = element("span", "count");
+      button.append(label, count);
+      button.addEventListener("click", () => { current = name; unread[name] = 0; markChannels(); drawMessages(); });
+      buttons[name] = {button, count};
+      return button;
+    }));
+    markChannels();
+  }
+
+  function markChannels() {
+    for (const name of names) {
+      const held = buttons[name];
+      const waiting = unread[name] > 0 && name !== current;
+      held.button.setAttribute("aria-current", String(name === current));
+      held.button.classList.toggle("unread", waiting);
+      held.count.hidden = !waiting;
+      held.count.textContent = unread[name] || "";
+    }
+  }
+
+  function drawMessages() {
+    view.title.textContent = "# " + current;
+    view.subtitle.textContent = DESCRIPTIONS[current] || "A post reaches every subscriber except its sender.";
+    view.composer.textContent = "Message #" + current;
+    const shown = posts[current] || [];
+    if (!shown.length) {
+      view.messages.replaceChildren(element("div", "empty", "Nothing posted in #" + current + " yet. New posts appear as the fabric accepts them."));
+      return;
+    }
+    const rows = [];
+    shown.forEach((entry, at) => {
+      const before = shown[at - 1];
+      if (!before || dayOf(before) !== dayOf(entry)) rows.push(dayDivider(entry));
+      rows.push(messageOf(entry, before, false));
+    });
+    view.messages.replaceChildren(...rows);
+    view.messages.scrollTop = view.messages.scrollHeight;
+  }
+
+  function add(channel, entry) {
+    const list = posts[channel];
+    if (!list || list.some(held => held.envelope.id === entry.envelope.id)) return;
+    const before = list[list.length - 1];
+    list.push(entry);
+    if (channel !== current) { unread[channel] += 1; markChannels(); return; }
+    if (list.length === 1) view.messages.replaceChildren();
+    const near = view.messages.scrollHeight - view.messages.scrollTop - view.messages.clientHeight < 160;
+    if (!before || dayOf(before) !== dayOf(entry)) view.messages.append(dayDivider(entry));
+    view.messages.append(messageOf(entry, before, true));
+    if (near) view.messages.scrollTop = view.messages.scrollHeight;
+  }
+
+  function dayOf(entry) { return entry.envelope.accepted ? new Date(entry.envelope.accepted).toDateString() : ""; }
+
+  function dayDivider(entry) {
+    const divider = element("div", "day");
+    const accepted = entry.envelope.accepted;
+    const label = !accepted ? "Earlier" : new Date(accepted).toDateString() === new Date().toDateString() ? "Today" : new Date(accepted).toLocaleDateString([], {weekday: "long", month: "long", day: "numeric"});
+    divider.append(element("span", "", label));
+    return divider;
+  }
+
+  function colorOf(name) {
+    let hash = 0;
+    for (const character of name) hash = (hash * 31 + character.codePointAt(0)) >>> 0;
+    return PALETTE[hash % PALETTE.length];
+  }
+
+  function clock(millis) { return millis ? new Date(millis).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"}) : ""; }
+
+  // Consecutive posts by one sender within a few minutes read as one message, without repeating the name.
+  function messageOf(entry, before, fresh) {
+    const envelope = entry.envelope;
+    const source = envelope.source || "?";
+    const streamed = kind => kind.startsWith("stream.");
+    const follows = before && before.envelope.source === source && (before.envelope.kind === envelope.kind || (streamed(before.envelope.kind) && streamed(envelope.kind))) && (envelope.accepted - before.envelope.accepted) < GROUP_MILLIS;
+    const row = element("article", "message" + (follows ? " follow" : "") + (fresh ? " arrived" : ""));
+    row.id = "post-" + envelope.id;
+    row.dataset.kind = envelope.kind;
+    row.title = "#" + entry.sequence + "  " + (envelope.digest || "");
+
+    if (follows) {
+      row.append(element("div", "gutter", clock(envelope.accepted)));
+    } else {
+      const avatar = element("div", "avatar", source.slice(0, 1));
+      avatar.style.background = colorOf(source);
+      row.append(avatar);
+    }
+
+    const body = element("div");
+    if (!follows) {
+      const byline = element("div", "byline");
+      byline.append(element("span", "name", source));
+      if (envelope.kind !== "observation" && !envelope.kind.startsWith("stream.")) {
+        const badge = element("span", "badge", envelope.kind);
+        badge.dataset.kind = envelope.kind;
+        byline.append(badge);
+      }
+      const time = element("time", "time", clock(envelope.accepted));
+      if (envelope.accepted) time.dateTime = new Date(envelope.accepted).toISOString();
+      byline.append(time);
+      body.append(byline);
+    }
+    const text = element("div", "text");
+    const written = textOf(envelope.payload);
+    if (written === "\u0000erased") {
+      text.append(element("p", "erased", "This message was erased. Its digest and its place in the ledger remain."));
+    } else {
+      render(text, written);
+    }
+    body.append(text);
+    const parents = envelope.parents || [];
+    if (parents.length && !envelope.kind.startsWith("stream.")) body.append(referencesOf(parents));
+    row.append(body);
+    return row;
+  }
+
+  function referencesOf(parents) {
+    const refs = element("div", "refs");
+    refs.append(element("span", "", "↳ builds on"));
+    for (const parent of parents) {
+      const shown = (posts[current] || []).some(held => held.envelope.id === parent);
+      if (!shown) {
+        const plain = element("span", "ref", parent);
+        plain.title = "Not posted in this channel; trace it with grail_trace";
+        refs.append(plain);
+        continue;
+      }
+      const jump = element("button", "", parent);
+      jump.type = "button";
+      jump.title = "Jump to this post";
+      jump.addEventListener("click", () => {
+        const target = document.getElementById("post-" + parent);
+        if (!target) return;
+        target.classList.remove("found");
+        void target.offsetWidth;
+        target.classList.add("found");
+        target.scrollIntoView({block: "center", behavior: "smooth"});
+      });
+      refs.append(jump);
+    }
+    return refs;
+  }
+
+  function textOf(payload) {
+    if (payload === undefined) return "";
+    if (payload === null) return "\u0000erased";
+    if (typeof payload === "object" && typeof payload.text === "string") return payload.text;
+    return "```json\n" + JSON.stringify(payload, null, 2) + "\n```";
+  }
+
+  // Agent text is untrusted: everything below builds nodes and sets text, never markup.
+  function render(target, text) {
+    const lines = text.replace(/\r\n/g, "\n").split("\n");
+    let index = 0;
+    while (index < lines.length) {
+      const line = lines[index];
+      const fence = line.match(/^\s*```\s*([\w+-]*)\s*$/);
+      if (fence) {
+        const held = [];
+        index += 1;
+        while (index < lines.length && !/^\s*```\s*$/.test(lines[index])) held.push(lines[index++]);
+        index += 1;
+        target.append(codeBlock(held.join("\n"), fence[1]));
+        continue;
+      }
+      const run = codeRun(lines, index);
+      if (run > index) {
+        target.append(codeBlock(dedent(lines.slice(index, run)).join("\n"), ""));
+        index = run;
+        continue;
+      }
+      if (!line.trim()) { index += 1; continue; }
+      if (/^\s*([-*•]|\d+[.)])\s+/.test(line)) {
+        const ordered = /^\s*\d+[.)]\s+/.test(line);
+        const list = element(ordered ? "ol" : "ul");
+        while (index < lines.length && /^\s*([-*•]|\d+[.)])\s+/.test(lines[index])) {
+          const item = element("li");
+          inline(item, lines[index].replace(/^\s*([-*•]|\d+[.)])\s+/, ""));
+          index += 1;
+          while (index < lines.length && /^\s{2,}\S/.test(lines[index]) && !looksLikeCode(lines[index])) inline(item, " " + lines[index++].trim());
+          list.append(item);
+        }
+        target.append(list);
+        continue;
+      }
+      const paragraph = element("p");
+      const held = [];
+      while (index < lines.length && lines[index].trim() && !/^\s*```/.test(lines[index]) && !/^\s*([-*•]|\d+[.)])\s+/.test(lines[index]) && codeRun(lines, index) === index) held.push(lines[index++]);
+      held.forEach((part, at) => { if (at) paragraph.append(element("br")); inline(paragraph, part); });
+      target.append(paragraph);
+    }
+  }
+
+  // Agents often paste code without fences. A run of at least two code-shaped lines, blank lines allowed inside, is shown as code.
+  function codeRun(lines, start) {
+    let end = start, seen = 0, last = start;
+    while (end < lines.length) {
+      const line = lines[end];
+      if (!line.trim()) { end += 1; continue; }
+      if (!looksLikeCode(line)) break;
+      seen += 1; end += 1; last = end;
+    }
+    return seen >= 2 ? last : start;
+  }
+
+  function looksLikeCode(line) {
+    if (/^( {4,}|\t)\S/.test(line)) return true;
+    const bare = line.trim();
+    if (/^(def|class|import|from\s+\S+\s+import|return|async|await|function|const|let|var|export|fn|pub|use|if\s*\(|for\s*\(|while\s*\(|elif|else:|try:|except|@\w+)\b/.test(bare)) return true;
+    if (/^[}\])]+[;,]?$/.test(bare) || /[{;]$/.test(bare)) return true;
+    if (/^[\w.]+\s*(=|\+=|-=)\s*\S/.test(bare) && /[()[\]"']/.test(bare) && !/\s{2,}|[.!?]$/.test(bare)) return true;
+    if (/^\w+\(.*\)\s*(->.*)?:?$/.test(bare)) return true;
+    return false;
+  }
+
+  function dedent(lines) {
+    const widths = lines.filter(line => line.trim()).map(line => line.match(/^\s*/)[0].length);
+    const least = widths.length ? Math.min(...widths) : 0;
+    return lines.map(line => line.slice(least));
+  }
+
+  function guessLanguage(code, given) {
+    if (given) return given;
+    if (/^\s*[{[]/.test(code) && /"\s*:/.test(code)) return "json";
+    if (/\bdef\s+\w+\(|^\s*import\s+\w+$|\bself\b|:\s*$/m.test(code)) return "python";
+    if (/\b(function|const|let)\b|=>/.test(code)) return "javascript";
+    if (/^\s*(fn|module|export fn)\b/m.test(code)) return "pudu";
+    return "code";
+  }
+
+  function codeBlock(written, given) {
+    const code = written.replace(/^(\s*\n)+/, "").replace(/\s+$/, "");
+    const language = guessLanguage(code, given);
+    const block = element("div", "code");
+    const tools = element("div", "tools");
+    const copy = element("button", "", "Copy");
+    copy.type = "button";
+    copy.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(code); copy.textContent = "Copied"; } catch (failure) { copy.textContent = "Select to copy"; }
+      setTimeout(() => { copy.textContent = "Copy"; }, 1600);
+    });
+    tools.append(element("span", "", language), copy);
+    const pre = element("pre");
+    const inner = element("code");
+    highlight(inner, code, language);
+    pre.append(inner);
+    block.append(tools, pre);
+    return block;
+  }
+
+  function highlight(target, code, language) {
+    if (language === "code") { target.textContent = code; return; }
+    const comment = language === "python" ? "#[^\\n]*" : "\\/\\/[^\\n]*";
+    const pattern = new RegExp("(" + comment + ")|(\"(?:[^\"\\\\\\n]|\\\\.)*\"|'(?:[^'\\\\\\n]|\\\\.)*')|\\b(\\d+(?:\\.\\d+)?)\\b|\\b([A-Za-z_]\\w*)\\b", "g");
+    let at = 0;
+    for (const found of code.matchAll(pattern)) {
+      if (found.index > at) target.append(document.createTextNode(code.slice(at, found.index)));
+      const kind = found[1] ? "tok-com" : found[2] ? "tok-str" : found[3] ? "tok-num" : KEYWORDS.has(found[4]) ? "tok-key" : "";
+      target.append(kind ? element("span", kind, found[0]) : document.createTextNode(found[0]));
+      at = found.index + found[0].length;
+    }
+    target.append(document.createTextNode(code.slice(at)));
+  }
+
+  function inline(target, text) {
+    const pattern = /`([^`]+)`|\*\*([^*]+)\*\*/g;
+    let at = 0;
+    for (const found of text.matchAll(pattern)) {
+      if (found.index > at) target.append(document.createTextNode(text.slice(at, found.index)));
+      target.append(found[1] !== undefined ? element("code", "", found[1]) : element("strong", "", found[2]));
+      at = found.index + found[0].length;
+    }
+    target.append(document.createTextNode(text.slice(at)));
+  }
+
+  async function replay() {
+    view.replay.setAttribute("aria-pressed", "true");
+    view.live.setAttribute("aria-pressed", "false");
+    view.connect.dataset.open = "false";
+    problem("");
+    let recorded;
+    try {
+      recorded = await (await fetch("channels-session.json", {cache: "no-store"})).json();
+    } catch (failure) {
+      state("error", "No recording");
+      problem("The recorded run could not be loaded.");
+      return;
+    }
+    const mine = reset(recorded.channels, recorded.workspace.split(" / ")[0]);
+    view.provenance.textContent = recorded.note || "";
+    $("about").hidden = !recorded.note;
+    state("replay", "Replaying");
+    for (const step of recorded.posts) {
+      if (mine !== session) return;
+      add(step.channel, step.entry);
+      await new Promise(done => setTimeout(done, REPLAY_GAP_MILLIS));
+    }
+    if (mine === session) state("replay", "Recorded " + recorded.recorded);
+  }
+
+  function live(event) {
+    if (event) event.preventDefault();
+    view.replay.setAttribute("aria-pressed", "false");
+    view.live.setAttribute("aria-pressed", "true");
+    view.connect.dataset.open = "true";
+    $("about").hidden = true;
+    problem("");
+    const token = $("token").value.trim();
+    const chosen = $("names").value.split(",").map(name => name.trim()).filter(Boolean);
+    const mine = reset(chosen, $("scope").value.trim());
+    if (!token) { state("idle", "Not connected"); return; }
+    remember();
+    state("live", "Connecting");
+    for (const name of chosen) follow(mine, name, token);
+  }
+
+  async function follow(mine, name, token) {
+    const base = $("fabric").value.replace(/\/+$/, "");
+    const path = "/v1/scopes/" + encodeURIComponent($("scope").value.trim()) + "/graphs/" + encodeURIComponent($("graph").value.trim()) + "/channels/" + encodeURIComponent(name);
+    let cursor = 0;
+    while (mine === session) {
+      try {
+        const response = await fetch(base + path + "?after=" + cursor + "&limit=" + PAGE + "&wait=" + (cursor ? WAIT_MILLIS : 0), {headers: {"Authorization": "Bearer " + token, "Grail-Version": PROTOCOL}});
+        const body = await response.json();
+        if (!response.ok) {
+          state("error", "Refused");
+          problem("#" + name + ": " + (body.detail || response.status) + (response.status === 404 ? ". The token's participant must subscribe to this channel." : ""));
+          return;
+        }
+        for (const delivered of body.deliveries) add(name, delivered);
+        cursor = body.cursor;
+        state("live", "Live · " + base.replace(/^https?:\/\//, ""));
+      } catch (failure) {
+        state("error", "Unreachable");
+        problem("The browser could not reach " + base + ". Check that the fabric is running, that GRAIL_ALLOWED_ORIGINS lists " + location.origin + ", and that this page may reach your local network.");
+        await new Promise(done => setTimeout(done, RETRY_MILLIS));
+      }
+    }
+  }
+
+  $("dismiss").addEventListener("click", () => { $("about").hidden = true; });
+  view.replay.addEventListener("click", replay);
+  view.live.addEventListener("click", () => live());
+  view.connect.addEventListener("submit", live);
+  replay();
+})();
+</script>
+</body>
+</html>

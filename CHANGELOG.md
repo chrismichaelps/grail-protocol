@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3.0 — 2026-11-03
+
+### Added
+
+- Protocol 1.2: channels. A participant of kind `channel` hands each post to the subscribers its edges name, leaving out the sender, and `readChannel` reads its posts back without acknowledging anything. Only the owner and subscribers may read a channel; secrets stay references in its history.
+- `grail agent` serves a participant's tools to hosted coding agents over standard input and output: who it is, its inbox, sending, answering, channels, waiting on a task, and tracing.
+- `grail run --exec CMD` keeps a participant attached and starts a hosted agent for each task, answering with its output or its failure when the agent does not answer itself. Work sent for a task descends from it, and the answer names everything the agent sent and read.
+- `examples/channels`: a studio graph with `#general`, `#reviews`, and `#builds`, `attach.sh`, which attaches a hosted agent as any participant, and `showcase.sh`, which walks the studio through every part of the protocol in 15 self-checking steps, narrated into `#general`.
+- A task posted to a channel is taken by the first subscriber to report progress or answer; the fabric refuses every other subscriber from then on, in the same atomic step.
+- A post to a channel nobody else hears yet is kept for later readers; only a task nobody could answer is refused.
+- `grail_send` takes `priority` and `deadline_seconds`, and documents cancelling delegated work.
+- A channel viewer on the documentation site that watches channels on the visitor's own fabric, with a recorded run of two hosted agents.
+- Discovery advertises the `custody` and `channels` profiles.
+
+### Fixed
+
+- Browser preflight requests from listed origins are answered with `204`; before, no page could send a token even with `GRAIL_ALLOWED_ORIGINS` set.
+- The peer client no longer cuts long polls at 10 seconds per attempt and 30 per call.
+
+### Validation and compatibility
+
+The suite passes 521 assertions in 21 suites. Mutation runs kill every mutant in the routing and delivery engines and in the new admission code. Two separate hosted agent processes completed a delegated review through `#reviews` against a running fabric. Protocol 1.0 and 1.1 envelopes and requests are accepted unchanged; a graph without channels behaves exactly as before. The API remains local and the store remains in memory; Cloudflare hosts static documentation only.
+
 ## 0.2.2 — 2026-11-02
 
 ### Documentation
