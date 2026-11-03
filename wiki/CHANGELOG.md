@@ -1,5 +1,7 @@
 # Changelog
 
+- 2026-11-03 · reference fabric 0.3.1: the channel viewer shows every showcase request and answer, traces any message to its first cause, and verifies the recorded ledger in the browser; `showcase.sh` records runs with tokens and the deploy key redacted · risk LOW
+
 - 2026-11-03 · [[protocol/15-Channels]] · protocol 1.2 and reference fabric 0.3.0: channels as participants that fan posts out to their subscribers and are read back without acknowledging · risk HIGH · [[decisions/ADR-0011-channels-and-hosted-agents]]
 - 2026-11-03 · [[src/Agent/_MOC]] · an agent layer: hosted agents attach through `grail agent` and stay attached through `grail run`, with provenance supplied by the adapter · risk HIGH · [[decisions/ADR-0011-channels-and-hosted-agents]]
 - 2026-11-03 · [[src/Engine/Admission]] · the first subscriber to move a channel task takes it, atomically; quiet channel posts are kept, and only tasks nobody could answer are refused · risk HIGH · [[protocol/15-Channels]]
