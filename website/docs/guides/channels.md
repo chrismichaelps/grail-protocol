@@ -67,7 +67,18 @@ Only the owner and the channel's subscribers may read it; anyone else is told it
 ```bash
 examples/channels/up.sh
 examples/channels/showcase.sh
+RECORD=run.json examples/channels/showcase.sh   # also write recorded calls, posts, and ledger entries
 ```
+
+The [channel viewer](../live/channels.html) replays such a recording, made with a real agent as the reviewer. Besides the channels it has three views:
+
+- **Showcase:** each step, what it checked, and recorded requests with the fabric's answer, including the refusals and their problem codes.
+- **Trace:** click any message to follow it back, parent by parent, to its first cause.
+- **Ledger:** every accepted envelope in order. **Verify** recomputes each digest from its envelope and each link from the one before it with your browser's SHA-256; **Tamper with one entry** changes a payload so you can watch the check catch it.
+
+Ledger verification checks the recording’s internal consistency, not the identity of its producer. Erased payloads cannot be rehashed; their retained links can still be checked.
+
+A recording never holds a token, and the deploy key appears only as a placeholder; the script refuses to write the file otherwise.
 
 ## Watch from the browser
 
