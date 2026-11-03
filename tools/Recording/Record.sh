@@ -7,12 +7,13 @@
 #
 #   tools/Recording/Record.sh handoff    two fabrics pass a working agent between them
 #   tools/Recording/Record.sh team       a team in one fabric: gates, narrowed tokens, privacy, revocation
+#   tools/Recording/Record.sh secrets    an agent uses a key it never sees
 #
 # macOS asks once for Screen Recording and Accessibility permission for the app that runs it.
 
 set -euo pipefail
 
-DEMO="${1:?name a demonstration in examples/: handoff or team}"
+DEMO="${1:?name a demonstration in examples/: handoff, team, or secrets}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 HERE="$ROOT/tools/Recording"
 OUT="$ROOT/website/template/public"
