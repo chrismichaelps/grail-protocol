@@ -65,6 +65,7 @@ A [handoff](handoffs.md) lists the secrets its context `needs` and never carries
 
 - Keep models out of every audience. The audience is for executors that make the external call.
 - Let the executor, not the request, decide where a key goes. Pin the destination host and accept only a plain path; see `pinned` in `examples/secrets/agents.py`.
+- Refuse redirects on credential-bearing requests and disable implicit environment proxies. An initial host check alone does not constrain where a redirect or proxy sends the authorization header. The example executor contacts only its pinned local service.
 - Prefer `uses` and `expires` over long-lived keys, and rotate by putting the name again.
 - Store only high-entropy values. Custody refuses values shorter than 12 characters.
 - Deposit only the secret part of a credential, such as the password rather than the whole connection URL, so shared text like a host name never matches the tripwire.
