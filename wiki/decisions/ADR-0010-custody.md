@@ -26,13 +26,22 @@ Considered and rejected:
 - **The fabric calling external services with the key.** That makes the fabric a general proxy for arbitrary addresses. Executors make the calls; the fabric decides what they receive.
 - **Keyed fingerprints instead of values for the tripwire.** Matching a value inside arbitrary text needs the value. It is opened in memory only for the check, under the same sealing.
 
+### Bounding what remains
+
+The first version left four residual risks: the executor holds the value, leaks in forms the tripwire did not know, probing by guesses, and an in-memory store. Each is now bounded inside the protocol rather than left to practice:
+
+- Audiences may hold only `tool` and `service` participants, checked at deposit and at every reveal, and every reveal is counted.
+- The tripwire covers fragments, every base64 alignment, percent-encoding, both hex cases, and reversal.
+- Every caught leak strikes the presenting token, and the third strike revokes it and its delegates.
+- A persistent store must keep values sealed, with the key held apart and the binding to scope, name, and version.
+
 ## Consequences
 
-A model can use a key it has never seen, and a leaked key cannot travel through Grail undetected in its common forms. The executor still holds the value, so audiences must stay small and trusted. The tripwire is a narrowing control, not a proof: split, re-encoded, or paraphrased values are out of its reach, and the chapter says so. Probing by guessing full values is possible only at the cost of guessing the secret. Each admission opens every held value of the scope, which is bounded by `secrets`.
+A model can use a key it has never seen, and a leaked key cannot travel through Grail undetected in its common forms. The executor still holds the value, so audiences must stay small and trusted. The tripwire is a narrowing control, not a proof. Pieces shorter than its fragment bound, ciphers, and paraphrase are out of its reach, and the chapter says so. Only executors hold values, though, and every attempt that is caught costs a strike. Probing ends after three attempts. Fragment matching means a deposited value should be the secret part only; a whole connection string would match shared text. Each admission opens every held value of the scope, which is bounded by `secrets`.
 
 ## Validation
 
-[[test/Security/CustodyTest]] runs through the HTTP router. It covers deposit answers without values, the missing read operation, references in stored envelopes, ledgers, and traces, reveal for the executor only, the tripwire in plain text, base64, and hex, and refusals by audience, sender, kind, spent uses, expiry, and unknown name. It also covers rotation, deletion of pending references, handoff `needs`, an intact handoff smuggling a value, and the bridge. Mutation testing covers [[src/Engine/Custody]], [[src/Engine/Codec/Custody]], and [[src/Services/Custody]].
+[[test/Security/CustodyTest]] runs through the HTTP router. It covers deposit answers without values, the missing read operation, references in stored envelopes, ledgers, and traces, reveal for the executor only, the tripwire in plain text, base64, and hex, and refusals by audience, sender, kind, spent uses, expiry, and unknown name. It also covers rotation, deletion of pending references, handoff `needs`, an intact handoff smuggling a value, and the bridge. It also covers fragments, misaligned base64, reversal, strike counts, revocation at the third strike, executor-only audiences, and reveal counts. [[test/Engine/CustodyTest]] pins expiry, reveal, executor, and strike boundaries. Mutation testing covers [[src/Engine/Disguise]], [[src/Engine/Custody]], [[src/Engine/Codec/Custody]], and [[src/Services/Custody]].
 
 ## Referenced by
 

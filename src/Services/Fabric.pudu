@@ -67,24 +67,29 @@ export fn mutateGraph(runtime: &Runtime.Runtime, call: &Request.Call[Request.Cha
     })
 }
 
-/// Admits an envelope, or answers the original receipt of a repeated delivery key. Custody refuses an envelope that holds a secret's value and counts each reference it makes.
+/// Admits an envelope, or answers the original receipt of a repeated delivery key. Custody refuses an envelope that holds a secret's value, strikes the token that sent it, and counts each reference it makes.
 export fn send(runtime: &Runtime.Runtime, call: &Request.Call[Request.Sending]) -> Result[Transfer.Receipt, Problem.Problem] {
   let now = Runtime.now()
   let secret = runtime.secret
   let asked = *call
-  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+  let outcome = Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
       let authority = authorized(&state, &asked, secret, now) ?
-      let _screened = Custody.screened(&state, &asked.input.body, secret) ?
+
+      if Custody.exposes(&state, &asked.input.body, secret) {
+        let leak = Custody.caught(&state, &authority)
+        return Ok((Err(leak[0]), leak[1]))
+      }
 
       match Admission.admit(&state, &asked.input.envelope, &asked.input.body, &authority, now) ? {
         case Admission.Fresh(admitted) => {
           let guarded = Custody.guarded(&state, &admitted.record, now) ?
           let next = Admission.commit(&guarded, &admitted)
-          Ok((receiptOf(&next, &admitted.record, false), next))
+          Ok((Ok(receiptOf(&next, &admitted.record, false)), next))
         }
-        case Admission.Repeated(original) => Ok((receiptOf(&state, &original, true), state))
+        case Admission.Repeated(original) => Ok((Ok(receiptOf(&state, &original, true)), state))
       }
-    })
+    }) ?
+  outcome
 }
 
 /// Reads an envelope and where its lifecycle stands.
@@ -142,8 +147,8 @@ fn pullOnce(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> 
 
       let address = Envelope.Address{graph: asked.input.graph, participant: asked.input.participant}
       let pulled = Delivery.pull(&state, &address, asked.input.after, Delivery.pageSize(asked.input.limit), now)
-      let shown = pulled[0].records.map(|record: Ledger.Record| Custody.revealed(&state, &record, &address, secret, now))
-      Ok((Transfer.Page{..pulled[0], records: shown}, pulled[1]))
+      let shown = Custody.delivered(&pulled[1], &pulled[0].records, &address, secret, now)
+      Ok((Transfer.Page{..pulled[0], records: shown[0]}, shown[1]))
     })
 }
 

@@ -21,7 +21,7 @@ import Services.Fabric as Fabric
 import Services.Runtime as Runtime
 import Services.Store as Store
 
-/// Seals a value under a name as its next version. Every audience member and sender must be a participant of the graph.
+/// Seals a value under a name as its next version. Every audience member and sender must be a participant of the graph, and every audience member a tool or service.
 export fn putSecret(runtime: &Runtime.Runtime, call: &Request.Call[Custody.Deposit]) -> Result[Custody.Held, Problem.Problem] {
   let nonce = Result.mapErr(Crypto.newNonce(), |_e: Str| Problem.of(Codes.UNAVAILABLE, Details.ENTROPY_UNAVAILABLE)) ?
   let now = Runtime.now()
@@ -33,6 +33,7 @@ export fn putSecret(runtime: &Runtime.Runtime, call: &Request.Call[Custody.Depos
       let graph = Option.okOr(state.graphs.get(asked.input.graph), notFound()) ?
 
       if !List.all(&asked.input.audience.concat(asked.input.senders), |id: Str| Graph.hasParticipant(&graph, id)) { return Err(notFound()) }
+      if !List.all(&asked.input.audience, |id: Str| Guard.executes(&state, graph.id, id)) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_EXECUTORS)) }
       if !Map.containsKey(&state.secrets, asked.input.name) && state.secrets.size() >= Limits.SECRETS { return Err(Problem.of(Codes.LIMIT_EXCEEDED, Details.SECRETS_FULL)) }
       if Option.holds(&state.secrets.get(asked.input.name), |held: Custody.Held| held.graph != asked.input.graph) { return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_MEMBER)) }
 

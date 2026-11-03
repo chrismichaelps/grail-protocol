@@ -9,7 +9,7 @@ An agent that holds a key can be talked into repeating it. With custody, the age
 
 ## Give a key to custody
 
-Only a token with `secret.manage` for the graph can deposit. Name the participant that will actually call the external service as the `audience`, and the agents allowed to ask for it as `senders`:
+Only a token with `secret.manage` for the graph can deposit. Name the participant that will actually call the external service as the `audience`; it must be a `tool` or `service` participant, never an agent. Name the agents allowed to ask for it as `senders`:
 
 ```text
 PUT /v1/scopes/demo/secrets/github
@@ -25,7 +25,7 @@ PUT /v1/scopes/demo/secrets/github
 }
 ```
 
-The answer describes the secret, with its version, policy, and remaining uses, but never the value. No operation reads a value back. Putting the same name again rotates it to a new version.
+The answer describes the secret, with its version, policy, remaining uses, and how many deliveries have revealed it, but never the value. No operation reads a value back. Putting the same name again rotates it to a new version.
 
 ## Let agents discover what exists
 
@@ -46,7 +46,9 @@ The ledger, traces, reads, and handoffs keep `{"$secret": "github"}`. When `exec
 
 | Attempt | Answer |
 | --- | --- |
-| Any message holding the value, as written, JSON-escaped, base64, or hex | `grail.secret-exposed` |
+| Any message holding the value: whole, any piece of 31 characters or more, reversed, JSON-escaped, percent-encoded, hex, or base64 at any alignment | `grail.secret-exposed`, and a strike against the sender's token |
+| A third strike | the token and every token delegated from it are revoked |
+| An agent, person, memory, or graph as the audience | `grail.forbidden` |
 | A reference to a participant outside the audience | `grail.forbidden` |
 | A reference from an agent not in `senders`, or in a kind not in `kinds` | `grail.forbidden` |
 | A reference after the last use | `grail.forbidden` |
@@ -65,5 +67,7 @@ A [handoff](handoffs.md) lists the secrets its context `needs` and never carries
 - Let the executor, not the request, decide where a key goes. Pin the destination host and accept only a plain path; see `pinned` in `examples/secrets/agents.py`.
 - Prefer `uses` and `expires` over long-lived keys, and rotate by putting the name again.
 - Store only high-entropy values. Custody refuses values shorter than 12 characters.
+- Deposit only the secret part of a credential, such as the password rather than the whole connection URL, so shared text like a host name never matches the tripwire.
+- Watch `reveals` in the listing. A count that grows faster than your executor's work is worth a look.
 
 The [custody chapter](../protocol/14-Custody.md) is the normative text, including what the tripwire does not catch.

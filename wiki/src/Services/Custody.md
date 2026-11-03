@@ -19,7 +19,7 @@ Giving secrets to custody, listing what is held, and destroying it.
 ### Signatures
 
 ```pudu
-/// Seals a value under a name as its next version. Every audience member and sender must be a participant of the graph.
+/// Seals a value under a name as its next version. Every audience member and sender must be a participant of the graph, and every audience member a tool or service.
 export fn putSecret(runtime: &Runtime.Runtime, call: &Request.Call[Custody.Deposit]) -> Result[Custody.Held, Problem.Problem]
 
 /// Destroys a held secret; references to it stop resolving at once.

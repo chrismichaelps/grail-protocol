@@ -190,6 +190,9 @@ export const SECRET_KIND: Str = "this kind may not carry a reference to the secr
 /// The secret has no uses left.
 export const SECRET_SPENT: Str = "the secret has no uses left"
 
+/// An audience member is not an executor.
+export const SECRET_EXECUTORS: Str = "custody reveals values only to tool and service participants, never to agents, people, memory, or graphs"
+
 /// The secret expired.
 export const SECRET_EXPIRED: Str = "the secret expired"
 

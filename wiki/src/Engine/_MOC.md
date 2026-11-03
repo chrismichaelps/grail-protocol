@@ -13,6 +13,7 @@ One page per file, each with its interface and the modules it depends on.
 - [[src/Engine/Causality]] — the causal ancestors of an envelope
 - [[src/Engine/Custody]] — seals secrets, keeps their values out of every envelope, and reveals them only in deliveries to their audience
 - [[src/Engine/Delivery]] — deliveries, ledger ranges, and traces read after a cursor
+- [[src/Engine/Disguise]] — the forms a secret value can take inside a message, which the custody tripwire looks for
 - [[src/Engine/Erasure]] — removes a payload while the chain still proves it existed
 - [[src/Engine/Gating]] — whether a task's dependencies produced results among its ancestors
 - [[src/Engine/Handoff]] — assembles, seals, and checks handoffs that carry an agent's context between fabrics

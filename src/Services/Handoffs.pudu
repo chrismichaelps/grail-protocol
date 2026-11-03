@@ -54,7 +54,7 @@ export fn importHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Handoff.A
   let now = Runtime.now()
   let secret = runtime.secret
   let asked = *call
-  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+  let outcome = Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
       let authority = Fabric.authorized(&state, &asked, secret, now) ?
       let _allowed = Authority.require(&authority, Vocabulary.ABILITY_HANDOFF_IMPORT, Some(asked.input.graph)) ?
       let graph = Option.okOr(state.graphs.get(asked.input.graph), notFound()) ?
@@ -64,10 +64,13 @@ export fn importHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Handoff.A
       let entries = Portability.intact(&asked.input.bundle) ?
       let digest = Portability.digestOf(&asked.input.bundle)
 
-      if Custody.exposes(&state, &asked.input.bundle, secret) { return Err(Problem.of(Codes.SECRET_EXPOSED, Details.SECRET_EXPOSED)) }
+      if Custody.exposes(&state, &asked.input.bundle, secret) {
+        let leak = Custody.caught(&state, &authority)
+        return Ok((Err(leak[0]), leak[1]))
+      }
 
       if let Some(known) = state.handoffs.get(asked.input.id) {
-        if known.direction == Portable.IMPORTED && known.digest == digest && known.graph == graph.id { return Ok((receiptOf(&known, true), state)) }
+        if known.direction == Portable.IMPORTED && known.digest == digest && known.graph == graph.id { return Ok((Ok(receiptOf(&known, true)), state)) }
 
         return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_HANDOFF))
       }
@@ -79,8 +82,9 @@ export fn importHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Handoff.A
       let entry = Journal.Entry{id: asked.input.id, graph: graph.id, actor: asked.input.participant, kind: Vocabulary.KIND_HANDOFF_IMPORT, parents: [], payload: Portability.summary(&asked.input.bundle, Portable.IMPORTED, entries), recipients: [arrival]}
       let written = Journal.written(&state, &entry, now)
       let stored = storedOf(&written[0], Portable.IMPORTED, entries, asked.input.bundle)
-      Ok((receiptOf(&stored, false), Scope.State{..written[1], handoffs: written[1].handoffs.insert(stored.id, stored)}))
-    })
+      Ok((Ok(receiptOf(&stored, false)), Scope.State{..written[1], handoffs: written[1].handoffs.insert(stored.id, stored)}))
+    }) ?
+  outcome
 }
 
 /// Reads a handoff this scope exported or imported, when the token may read the entry that records it.

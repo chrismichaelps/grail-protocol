@@ -1432,6 +1432,12 @@ export const SECRET_VIEW_DESCRIPTION: Str = "description"
 /// The `created` member of `SecretView`.
 export const SECRET_VIEW_CREATED: Str = "created"
 
+/// The `reveals` member of `SecretView`.
+export const SECRET_VIEW_REVEALS: Str = "reveals"
+
+/// The `revealed` member of `SecretView`.
+export const SECRET_VIEW_REVEALED: Str = "revealed"
+
 /// Members `SecretView` allows.
 export const SECRET_VIEW_ALLOWED: Array[Str] = [
   "name",
@@ -1443,7 +1449,9 @@ export const SECRET_VIEW_ALLOWED: Array[Str] = [
   "uses",
   "expires",
   "description",
-  "created"
+  "created",
+  "reveals",
+  "revealed"
 ]
 
 /// Members `SecretView` requires.
@@ -1454,7 +1462,8 @@ export const SECRET_VIEW_REQUIRED: Array[Str] = [
   "audience",
   "senders",
   "kinds",
-  "created"
+  "created",
+  "reveals"
 ]
 
 /// Whether `SecretView` refuses members it does not list.

@@ -14,7 +14,7 @@ export type Deposit = {
   description: Option[Str]
 }
 
-/** @Domain.Custody.Held — a secret as custody keeps it: its policy, and its value sealed under a nonce used once */
+/** @Domain.Custody.Held — a secret as custody keeps it: its policy, its value sealed under a nonce used once, and how often and when deliveries last held it */
 export type Held = {
   name: Str,
   version: Int,
@@ -27,7 +27,9 @@ export type Held = {
   description: Option[Str],
   created: Int,
   nonce: Bytes,
-  sealed: Bytes
+  sealed: Bytes,
+  reveals: Int,
+  revealed: Option[Int]
 }
 
 /** @Domain.Custody.Sealing — a deposit with the nonce drawn for it and the time it arrived */

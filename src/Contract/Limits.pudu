@@ -102,6 +102,12 @@ export const SECRET_LENGTH_MIN: Int = 12
 /// The `secretAudience` limit.
 export const SECRET_AUDIENCE: Int = 64
 
+/// The `secretStrikes` limit.
+export const SECRET_STRIKES: Int = 3
+
+/// The `secretFragment` limit.
+export const SECRET_FRAGMENT: Int = 16
+
 /// Every limit by its contract name, for discovery.
 export const ALL: Array[(Str, Int)] = [
   ("envelopeBytes", 1114112),
@@ -136,5 +142,7 @@ export const ALL: Array[(Str, Int)] = [
   ("secrets", 256),
   ("secretBytes", 4096),
   ("secretLengthMin", 12),
-  ("secretAudience", 64)
+  ("secretAudience", 64),
+  ("secretStrikes", 3),
+  ("secretFragment", 16)
 ]

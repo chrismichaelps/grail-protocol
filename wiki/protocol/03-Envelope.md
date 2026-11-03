@@ -91,6 +91,8 @@ The digest is computed over the UTF-8 bytes of the canonical form. Two envelopes
 | Secrets per scope | 256 |
 | Secret value | 12 to 4 096 characters |
 | Secret audience or senders | 64 |
+| Secret fragment | 16 characters |
+| Custody strikes before revocation | 3 |
 | Handoff lifetime | 86 400 000 milliseconds |
 
 A fabric MAY lower these limits and MUST advertise its own in the discovery document ([[protocol/08-Bindings#8.4 Discovery]]).

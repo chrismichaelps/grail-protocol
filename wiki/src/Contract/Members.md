@@ -712,6 +712,10 @@ export const SECRET_VIEW_EXPIRES: Str = "expires"
 export const SECRET_VIEW_DESCRIPTION: Str = "description"
 /// The `created` member of `SecretView`.
 export const SECRET_VIEW_CREATED: Str = "created"
+/// The `reveals` member of `SecretView`.
+export const SECRET_VIEW_REVEALS: Str = "reveals"
+/// The `revealed` member of `SecretView`.
+export const SECRET_VIEW_REVEALED: Str = "revealed"
 /// Members `SecretView` allows.
 export const SECRET_VIEW_ALLOWED: Array[Str]
 /// Members `SecretView` requires.

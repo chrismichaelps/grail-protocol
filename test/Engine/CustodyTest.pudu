@@ -3,6 +3,7 @@ module Engine.CustodyTest
 
 import Std.Bytes as ByteSeq
 import Std.Json as Json
+import Std.Map as Map
 import Std.Option as Option
 import Std.Result as Result
 import Std.Test as Test
@@ -10,6 +11,7 @@ import Contract.Problems as Codes
 import Contract.Vocabulary as Vocabulary
 import Domain.Custody as Custody
 import Domain.Envelope as Envelope
+import Domain.Graph as Graph
 import Domain.Ledger as Ledger
 import Domain.Scope as Scope
 import Engine.Codec.Envelope as EnvelopeCodec
@@ -20,8 +22,19 @@ import Support.Runner as Runner
 /// The value every case seals.
 const VALUE: Str = "fixture-key-0123456789"
 
-fn held(expires: Option[Int]) -> Scope.State {
+fn executing() -> Scope.State {
   let state = Fixtures.teamScope()
+  let graphs = Map.mapValues(&state.graphs, |graph: Graph.Graph| Graph.Graph{..graph, participants: graph.participants.map(|member: Graph.Participant| if member.id == "writer" { Graph.Participant{..member, kind: Vocabulary.PARTICIPANT_TOOL} } else { member })})
+  Scope.State{..state, graphs: graphs}
+}
+
+fn demoted(state: &Scope.State) -> Scope.State {
+  let graphs = Map.mapValues(&state.graphs, |graph: Graph.Graph| Graph.Graph{..graph, participants: graph.participants.map(|member: Graph.Participant| if member.id == "writer" { Graph.Participant{..member, kind: Vocabulary.PARTICIPANT_AGENT} } else { member })})
+  Scope.State{..*state, graphs: graphs}
+}
+
+fn held(expires: Option[Int]) -> Scope.State {
+  let state = executing()
   let deposit = Custody.Deposit{name: "key", value: VALUE, graph: Fixtures.GRAPH, audience: ["writer"], senders: [], kinds: [], uses: None, expires: expires, description: None}
   let nonce = ByteSeq.fromText("twelve-bytes")
 
@@ -66,8 +79,15 @@ fn main() -> Int {
       Test.equals("references are found inside lists, once each", &Guard.references(&Json.List([reference(), reference(), Json.object(&[("$secret", Json.Text("other"))])])), &["key", "other"]),
       Test.that("a payload holding the value is seen", Guard.exposes(&open, &Json.Text("value is " + VALUE), Fixtures.SECRET)),
       Test.that("a payload without it is not", !Guard.exposes(&open, &Json.Text("nothing here"), Fixtures.SECRET)),
-      Test.equals("screening refuses a body holding the value", &Fixtures.code(&Guard.screened(&open, &Json.Text(VALUE), Fixtures.SECRET)), &Codes.SECRET_EXPOSED),
-      Test.equals("screening passes a clean body", &Fixtures.code(&Guard.screened(&open, &Json.Text("clean"), Fixtures.SECRET)), &"")
+      Test.equals("an audience member that stopped being an executor is refused", &Fixtures.code(&Guard.guarded(&demoted(&open), &record(&[writer]), Fixtures.NOW)), &Codes.FORBIDDEN),
+      Test.equals("an audience member that stopped being an executor is not revealed the value", &shown(&demoted(&open), &writer, Fixtures.NOW), &Json.object(&[("$secret", Json.Text("key"))])),
+      Test.equals("the owner is never struck", &Guard.caught(&open, &Fixtures.owner())[1].strikes.size(), &0),
+      Test.that("an executor kind may receive values", Guard.executes(&open, Fixtures.GRAPH, "writer")),
+      Test.that("an agent may not", !Guard.executes(&open, Fixtures.GRAPH, "planner")),
+      Test.that("a participant of another graph may not", !Guard.executes(&open, "elsewhere", "writer")),
+      Test.equals("strikes count up", &Guard.struck(&Guard.struck(&open, "t")[0], "t")[1], &2),
+      Test.that("a token is revoked at the strike limit", Guard.struck(&Guard.struck(&Guard.struck(&open, "t")[0], "t")[0], "t")[0].revoked.contains("t")),
+      Test.that("a token is not revoked before it", !Guard.struck(&Guard.struck(&open, "t")[0], "t")[0].revoked.contains("t"))
     ])
 
   Runner.finish(&checks)

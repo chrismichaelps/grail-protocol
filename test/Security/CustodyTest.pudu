@@ -89,11 +89,20 @@ fn main() -> Int {
   let stamped = Fabric.sent(&router, Http.Get, base + "/transfers/c1", root, "")
   let executed = Fabric.sent(&router, Http.Get, base + "/graphs/g/participants/executor/deliveries", executor, "")
   let ledger = Fabric.sent(&router, Http.Get, base + "/ledger", root, "")
-  let leaked = Fabric.sent(&router, Http.Post, base + "/transfers", executor, call("r1", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text("token was " + KEY), &["c1"]))
-  let encoded = Fabric.sent(&router, Http.Post, base + "/transfers", executor, call("r2", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(ByteSeq.encodeBase64(&ByteSeq.fromText(KEY))), &["c1"]))
-  let hexed = Fabric.sent(&router, Http.Post, base + "/transfers", executor, call("r3", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(ByteSeq.encodeHex(&ByteSeq.fromText(KEY))), &["c1"]))
+  let counted = Fabric.sent(&router, Http.Get, base + "/secrets", root, "")
+  let shifted = delegate(&router, root, "shifted", "executor", &[Vocabulary.ABILITY_TRANSFER_SEND])
+  let misaligned = Fabric.sent(&router, Http.Post, base + "/transfers", shifted, call("r8", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(ByteSeq.encodeBase64(&ByteSeq.fromText("header:" + KEY + ":trailer"))), &["c1"]))
+  let leaky = delegate(&router, root, "leaky", "executor", &[Vocabulary.ABILITY_TRANSFER_SEND])
+  let leaked = Fabric.sent(&router, Http.Post, base + "/transfers", leaky, call("r1", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text("token was " + KEY), &["c1"]))
+  let encoded = Fabric.sent(&router, Http.Post, base + "/transfers", leaky, call("r2", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(ByteSeq.encodeBase64(&ByteSeq.fromText(KEY))), &["c1"]))
+  let hexed = Fabric.sent(&router, Http.Post, base + "/transfers", leaky, call("r3", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(ByteSeq.encodeHex(&ByteSeq.fromText(KEY))), &["c1"]))
   let answered = Fabric.sent(&router, Http.Post, base + "/transfers", executor, call("r4", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text("201 created"), &["c1"]))
-  let lateLeak = Fabric.sent(&router, Http.Post, base + "/transfers", executor, call("r5", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(KEY), &["c1"]))
+  let afterStrikes = Fabric.sent(&router, Http.Get, base + "/tokens/self", leaky, "")
+  let fragment = delegate(&router, root, "fragment", "executor", &[Vocabulary.ABILITY_TRANSFER_SEND])
+  let pieces = Fabric.sent(&router, Http.Post, base + "/transfers", fragment, call("r6", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text("first half " + KEY.take(16) + "…"), &["c1"]))
+  let reversedLeak = Fabric.sent(&router, Http.Post, base + "/transfers", fragment, call("r7", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(backwards(KEY)), &["c1"]))
+  let lateLeak = Fabric.sent(&router, Http.Post, base + "/transfers", owner2(&router, root), call("r5", "executor", "planner", Vocabulary.KIND_TOOL_RESULT, Json.Text(KEY), &["c1"]))
+  let agentAudience = Fabric.sent(&router, Http.Put, base + "/secrets/for-agent", root, "\{\"value\":\"" + KEY + "-agent\",\"graph\":\"g\",\"audience\":[\"planner\"]\}")
   let traced = Fabric.sent(&router, Http.Get, base + "/transfers/r4/trace", root, "")
   let toPerson = Fabric.sent(&router, Http.Post, base + "/transfers", planner, call("c2", "planner", "auditor", Vocabulary.KIND_TOOL_CALL, using("github"), &[]))
   let notSender = Fabric.sent(&router, Http.Post, base + "/transfers", auditor, call("c3", "auditor", "executor", Vocabulary.KIND_TOOL_CALL, using("github"), &[]))
@@ -140,9 +149,15 @@ fn main() -> Int {
       Test.that("the stored envelope keeps the reference", !holds(&stamped) && Json.encode(&stamped.body).contains("$secret")),
       Test.equals("the executor receives the value in its delivery", &auth(&delivered(&executed, "c1")), &Json.Text(KEY)),
       Test.equals("the ledger never holds the value", &holds(&ledger), &false),
-      Test.equals("a result that repeats the value is refused", &Fabric.code(&leaked), &Codes.SECRET_EXPOSED),
+      Test.that("every reveal is counted on the secret", Json.encode(&counted.body).contains("\"reveals\":1") && Json.encode(&counted.body).contains("\"revealed\":")),
+      Test.equals("the value inside a longer base64 stream is refused", &Fabric.code(&misaligned), &Codes.SECRET_EXPOSED),
+      Test.equals("a result that repeats the value is refused, with a first strike", &(Fabric.code(&leaked), JsonRead.whole(&leaked.body, "strikes")), &(Codes.SECRET_EXPOSED, Some(1))),
       Test.equals("the value in base64 is refused", &Fabric.code(&encoded), &Codes.SECRET_EXPOSED),
-      Test.equals("the value in hex is refused", &Fabric.code(&hexed), &Codes.SECRET_EXPOSED),
+      Test.equals("the value in hex is refused, with a third strike", &(Fabric.code(&hexed), JsonRead.whole(&hexed.body, "strikes")), &(Codes.SECRET_EXPOSED, Some(3))),
+      Test.equals("a token with three strikes is revoked", &afterStrikes.status, &401),
+      Test.equals("a 16-character fragment of the value is refused", &Fabric.code(&pieces), &Codes.SECRET_EXPOSED),
+      Test.equals("the value reversed is refused", &Fabric.code(&reversedLeak), &Codes.SECRET_EXPOSED),
+      Test.equals("an agent cannot be an audience", &Fabric.code(&agentAudience), &Codes.FORBIDDEN),
       Test.equals("a clean result is accepted", &answered.status, &202),
       Test.equals("a leak is reported as a leak even when admission would refuse it anyway", &Fabric.code(&lateLeak), &Codes.SECRET_EXPOSED),
       Test.that("a trace shows the reference, never the value", !holds(&traced) && Json.encode(&traced.body).contains("$secret")),
@@ -170,6 +185,18 @@ fn main() -> Int {
 
   Runner.finish(&checks)
 }
+
+fn backwards(text: Str) -> Str {
+  var out = ""
+
+  for character in text.chars() {
+    out = character.toText() + out
+  }
+
+  out
+}
+
+fn owner2(router: &Route.Router, root: Str) -> Str { delegate(router, root, "late", "executor", &[Vocabulary.ABILITY_TRANSFER_SEND]) }
 
 fn smuggle(entry: &Json.Json) -> Json.Json {
   let envelope = match Json.field(entry, "envelope") {

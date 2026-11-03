@@ -47,7 +47,9 @@ export fn view(held: &Custody.Held) -> Json.Json {
       (Members.SECRET_VIEW_USES, Option.map(held.uses, |left: Int| Json.Number(left))),
       (Members.SECRET_VIEW_EXPIRES, Option.map(held.expires, |expires: Int| Json.Number(expires))),
       (Members.SECRET_VIEW_DESCRIPTION, Option.map(held.description, |text: Str| Json.Text(text))),
-      (Members.SECRET_VIEW_CREATED, Some(Json.Number(held.created)))
+      (Members.SECRET_VIEW_CREATED, Some(Json.Number(held.created))),
+      (Members.SECRET_VIEW_REVEALS, Some(Json.Number(held.reveals))),
+      (Members.SECRET_VIEW_REVEALED, Option.map(held.revealed, |when: Int| Json.Number(when)))
     ])
 }
 

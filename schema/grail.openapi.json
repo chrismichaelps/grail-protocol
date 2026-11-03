@@ -51,7 +51,9 @@
     "secrets": 256,
     "secretBytes": 4096,
     "secretLengthMin": 12,
-    "secretAudience": 64
+    "secretAudience": 64,
+    "secretStrikes": 3,
+    "secretFragment": 16
   },
   "x-grail-final-states": [
     "completed",
@@ -2281,7 +2283,7 @@
             "items": {
               "$ref": "#/components/schemas/Identifier"
             },
-            "description": "The participants whose deliveries receive the value, usually tool executors."
+            "description": "The tool or service participants whose deliveries receive the value. Agents, people, memory, and graphs are refused."
           },
           "senders": {
             "type": "array",
@@ -2323,7 +2325,8 @@
           "audience",
           "senders",
           "kinds",
-          "created"
+          "created",
+          "reveals"
         ],
         "description": "What anyone allowed to see a secret's existence may know about it. Never the value.",
         "properties": {
@@ -2365,6 +2368,14 @@
           },
           "created": {
             "type": "integer"
+          },
+          "reveals": {
+            "type": "integer",
+            "description": "How many deliveries have held the value of this version."
+          },
+          "revealed": {
+            "type": "integer",
+            "description": "When a delivery last held the value."
           }
         }
       },

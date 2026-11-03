@@ -52,10 +52,12 @@ For Custody, a fabric additionally conforms only if each of the following holds:
 
 1. No answer of any operation other than `pullDeliveries` contains a held value, and a deposit's own answer does not either.
 2. A reference is revealed only in deliveries to members of the secret's audience.
-3. An envelope, bridged message, or imported handoff that holds a value, as written, JSON-escaped, base64 of either alphabet, or hex, is refused with `grail.secret-exposed` and nothing is appended.
+3. An envelope, bridged message, or imported handoff that holds a value in any form of 14.3 is refused with `grail.secret-exposed` and nothing is appended. Each such refusal strikes a non-owner token, and the token is revoked at `secretStrikes`.
 4. References outside the graph, after expiry, past the last use, from an unlisted sender, in an unlisted kind, or to any recipient outside the audience are refused.
 5. Rotation reveals the new value; deletion stops revealing at once.
 6. A handoff lists the secrets it needs and carries no value.
+7. An audience member that is not a `tool` or `service` participant is refused at deposit, and never revealed a value at delivery.
+8. Every reveal is counted on the secret.
 
 ## 11.3 Test vectors
 

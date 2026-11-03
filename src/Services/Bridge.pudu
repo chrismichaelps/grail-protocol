@@ -30,7 +30,7 @@ export fn carry(runtime: &Runtime.Runtime, call: &Request.Call[Request.Bridging]
   let now = Runtime.now()
   let secret = runtime.secret
   let asked = *call
-  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+  let outcome = Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
       let authority = Fabric.authorized(&state, &asked, secret, now) ?
       let sender = Envelope.Address{graph: asked.input.graph, participant: authority.audience}
       let parents = if Correlation.isResponse(&message) { Option.toArray(Option.andThen(Json.field(&message, Rpc.ID), |rpcId: Json.Json| Correlation.requestFor(&state, &sender, &rpcId))) } else { [] }
@@ -47,15 +47,20 @@ export fn carry(runtime: &Runtime.Runtime, call: &Request.Call[Request.Bridging]
           (Members.ENVELOPE_PAYLOAD, message)
         ])
       let envelope = EnvelopeCodec.decode(&body) ?
-      let _screened = Custody.screened(&state, &body, secret) ?
+
+      if Custody.exposes(&state, &body, secret) {
+        let leak = Custody.caught(&state, &authority)
+        return Ok((Err(leak[0]), leak[1]))
+      }
 
       match Admission.admit(&state, &envelope, &body, &authority, now) ? {
         case Admission.Fresh(admitted) => {
           let guarded = Custody.guarded(&state, &admitted.record, now) ?
           let next = Admission.commit(&guarded, &admitted)
-          Ok((Transfer.Receipt{id: id, sequence: admitted.record.entry.sequence, digest: admitted.record.entry.digest, recipients: admitted.record.recipients, state: Option.map(admitted.lifecycle, |found: Lifecycle.Lifecycle| found.state), duplicate: false}, next))
+          Ok((Ok(Transfer.Receipt{id: id, sequence: admitted.record.entry.sequence, digest: admitted.record.entry.digest, recipients: admitted.record.recipients, state: Option.map(admitted.lifecycle, |found: Lifecycle.Lifecycle| found.state), duplicate: false}), next))
         }
-        case Admission.Repeated(original) => Ok((Transfer.Receipt{id: original.entry.id, sequence: original.entry.sequence, digest: original.entry.digest, recipients: original.recipients, state: None, duplicate: true}, state))
+        case Admission.Repeated(original) => Ok((Ok(Transfer.Receipt{id: original.entry.id, sequence: original.entry.sequence, digest: original.entry.digest, recipients: original.recipients, state: None, duplicate: true}), state))
       }
-    })
+    }) ?
+  outcome
 }

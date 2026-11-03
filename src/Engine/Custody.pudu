@@ -10,13 +10,23 @@ import Std.Option as Option
 import Std.Result as Result
 import Constants.Custody as Sealing
 import Constants.Details as Details
+import Constants.Extras as Extras
+import Constants.Security as Security
+import Contract.Limits as Limits
 import Contract.Members as Members
 import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
 import Domain.Custody as Custody
 import Domain.Envelope as Envelope
+import Domain.Graph as Graph
 import Domain.Ledger as Ledger
 import Domain.Problem as Problem
 import Domain.Scope as Scope
+import Engine.Disguise as Disguise
+
+/// The participant kinds custody reveals a value to: executors, never models, people, memory, or graphs.
+const EXECUTORS: Array[Str] = [Vocabulary.PARTICIPANT_TOOL, Vocabulary.PARTICIPANT_SERVICE]
 
 /// A deposit sealed as the next version of its name. The value is bound to the scope, the name, and the version, so a sealed value moved anywhere else does not open.
 export fn sealed(state: &Scope.State, sealing: &Custody.Sealing, secret: Str) -> Result[Custody.Held, Problem.Problem] {
@@ -36,7 +46,9 @@ export fn sealed(state: &Scope.State, sealing: &Custody.Sealing, secret: Str) ->
       description: deposit.description,
       created: sealing.now,
       nonce: sealing.nonce,
-      sealed: value
+      sealed: value,
+      reveals: 0,
+      revealed: None
     })
 }
 
@@ -46,11 +58,14 @@ export fn valueOf(held: &Custody.Held, secret: Str, scopeId: Str) -> Option[Str]
   Result.ok(ByteSeq.toText(&opened))
 }
 
-/// Nothing when a body holds no held value; a body that holds one, as written or in a common encoding, is refused before anything else is checked, so a leak is always reported as a leak.
-export fn screened(state: &Scope.State, body: &Json.Json, secret: Str) -> Result[(), Problem.Problem] {
-  if exposes(state, body, secret) { return Err(Problem.of(Codes.SECRET_EXPOSED, Details.SECRET_EXPOSED)) }
+/// The refusal of a message that holds a held value, and the scope with a strike against the token that sent it. The owner's own tokens are never struck. The problem says how many strikes the token has.
+export fn caught(state: &Scope.State, authority: &Capability.Authority) -> (Problem.Problem, Scope.State) {
+  let leak = Problem.of(Codes.SECRET_EXPOSED, Details.SECRET_EXPOSED)
 
-  Ok(())
+  if authority.audience == Security.OWNER || authority.chain.isEmpty() { return (leak, *state) }
+
+  let after = struck(state, authority.chain[authority.chain.length() - 1].id)
+  (Problem.withMember(&leak, Extras.STRIKES, Json.Number(after[1])), after[0])
 }
 
 /// The scope after an admitted record's references are checked and counted: each must name a secret of the record's graph whose policy admits its sender, its kind, and every recipient.
@@ -59,7 +74,7 @@ export fn guarded(state: &Scope.State, record: &Ledger.Record, now: Int) -> Resu
 
   for name in references(&Option.unwrapOr(record.envelope.payload, Json.Null)) {
     let held = Option.okOr(counted.get(name), Problem.of(Codes.NOT_FOUND, Details.SECRET_UNKNOWN)) ?
-    let _allowed = permitted(&held, record, now) ?
+    let _allowed = permitted(state, &held, record, now) ?
     counted = counted.insert(name, Custody.Held{..held, uses: Option.map(held.uses, |left: Int| left - 1)})
   }
 
@@ -69,7 +84,7 @@ export fn guarded(state: &Scope.State, record: &Ledger.Record, now: Int) -> Resu
 /// Whether a JSON value holds the value of any secret the scope keeps, as written or in one of its disguises.
 export fn exposes(state: &Scope.State, value: &Json.Json, secret: Str) -> Bool {
   let text = Json.encode(value)
-  List.any(&Map.values(&state.secrets), |held: Custody.Held| Option.holds(&valueOf(&held, secret, state.id), |found: Str| List.any(&disguises(found), |shown: Str| text.contains(shown))))
+  List.any(&Map.values(&state.secrets), |held: Custody.Held| Option.holds(&valueOf(&held, secret, state.id), |found: Str| List.any(&Disguise.forms(found), |shown: Str| text.contains(shown))))
 }
 
 /// The record as one recipient receives it: references to secrets whose audience holds the recipient become their values; everything else is left as stored.
@@ -81,8 +96,38 @@ export fn revealed(state: &Scope.State, record: &Ledger.Record, recipient: &Enve
 
   if references(&payload).isEmpty() { return *record }
 
-  let shown = substituted(&payload, |name: Str| Option.andThen(state.secrets.get(name), |held: Custody.Held| if receives(&held, recipient, now) { valueOf(&held, secret, state.id) } else { None }))
+  let shown = substituted(&payload, |name: Str| Option.andThen(state.secrets.get(name), |held: Custody.Held| if receives(state, &held, recipient, now) { valueOf(&held, secret, state.id) } else { None }))
   Ledger.Record{..*record, body: Json.withField(&record.body, Members.ENVELOPE_PAYLOAD, shown), envelope: Envelope.Envelope{..record.envelope, payload: Some(shown)}}
+}
+
+/// The records as one recipient receives them, and the scope with every reveal counted on the secret it revealed.
+export fn delivered(state: &Scope.State, records: &Array[Ledger.Record], recipient: &Envelope.Address, secret: Str, now: Int) -> (Array[Ledger.Record], Scope.State) {
+  var counted = state.secrets
+  var shown: Array[Ledger.Record] = []
+
+  for record in *records {
+    shown = shown.push(revealed(state, &record, recipient, secret, now))
+
+    for name in references(&Option.unwrapOr(record.envelope.payload, Json.Null)) {
+      if let Some(held) = counted.get(name) {
+        if receives(state, &held, recipient, now) { counted = counted.insert(name, Custody.Held{..held, reveals: held.reveals + 1, revealed: Some(now)}) }
+      }
+    }
+  }
+
+  (shown, Scope.State{..*state, secrets: counted})
+}
+
+/// Whether a participant of a graph is an executor custody may reveal a value to.
+export fn executes(state: &Scope.State, graph: Str, participant: Str) -> Bool {
+  Option.holds(&Option.andThen(state.graphs.get(graph), |found: Graph.Graph| Graph.participant(&found, participant)), |member: Graph.Participant| EXECUTORS.contains(member.kind))
+}
+
+/// The scope with one more strike against a token that tried to carry a held value, and the strikes it now has. At the contract's limit the token is revoked, and every token delegated from it falls with it.
+export fn struck(state: &Scope.State, tokenId: Str) -> (Scope.State, Int) {
+  let strikes = Map.getOr(&state.strikes, tokenId, 0) + 1
+  let revoked = if strikes >= Limits.SECRET_STRIKES { state.revoked.insert(tokenId) } else { state.revoked }
+  (Scope.State{..*state, strikes: state.strikes.insert(tokenId, strikes), revoked: revoked}, strikes)
 }
 
 /// Every secret name a value references, each once, in the order they appear.
@@ -96,14 +141,7 @@ export fn references(value: &Json.Json) -> Array[Str] {
   found
 }
 
-/// The forms a value is looked for in: as written, escaped inside JSON text, in base64 of both alphabets, and in hex.
-export fn disguises(value: Str) -> Array[Str] {
-  let escaped = Json.encode(&Json.Text(value))
-  let bytes = ByteSeq.fromText(value)
-  [value, escaped.drop(Sealing.QUOTE_LENGTH).take(escaped.length() - 2 * Sealing.QUOTE_LENGTH), ByteSeq.encodeBase64(&bytes), ByteSeq.encodeBase64Url(&bytes), ByteSeq.encodeHex(&bytes)]
-}
-
-fn permitted(held: &Custody.Held, record: &Ledger.Record, now: Int) -> Result[(), Problem.Problem] {
+fn permitted(state: &Scope.State, held: &Custody.Held, record: &Ledger.Record, now: Int) -> Result[(), Problem.Problem] {
   let envelope = record.envelope
 
   if held.graph != envelope.graph { return Err(Problem.of(Codes.NOT_FOUND, Details.SECRET_UNKNOWN)) }
@@ -111,13 +149,13 @@ fn permitted(held: &Custody.Held, record: &Ledger.Record, now: Int) -> Result[()
   if Option.holds(&held.uses, |left: Int| left <= 0) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_SPENT)) }
   if !held.senders.isEmpty() && !held.senders.contains(envelope.source) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_SENDER)) }
   if !held.kinds.isEmpty() && !held.kinds.contains(envelope.kind) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_KIND)) }
-  if record.recipients.isEmpty() || !List.all(&record.recipients, |address: Envelope.Address| address.graph == held.graph && held.audience.contains(address.participant)) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_AUDIENCE)) }
+  if record.recipients.isEmpty() || !List.all(&record.recipients, |address: Envelope.Address| address.graph == held.graph && held.audience.contains(address.participant) && executes(state, address.graph, address.participant)) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_AUDIENCE)) }
 
   Ok(())
 }
 
-fn receives(held: &Custody.Held, recipient: &Envelope.Address, now: Int) -> Bool {
-  recipient.graph == held.graph && held.audience.contains(recipient.participant) && !Option.holds(&held.expires, |expires: Int| expires <= now)
+fn receives(state: &Scope.State, held: &Custody.Held, recipient: &Envelope.Address, now: Int) -> Bool {
+  recipient.graph == held.graph && held.audience.contains(recipient.participant) && executes(state, recipient.graph, recipient.participant) && !Option.holds(&held.expires, |expires: Int| expires <= now)
 }
 
 fn collected(value: &Json.Json) -> Array[Str] {

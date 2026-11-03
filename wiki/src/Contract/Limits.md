@@ -86,6 +86,10 @@ export const SECRET_BYTES: Int = 4096
 export const SECRET_LENGTH_MIN: Int = 12
 /// The `secretAudience` limit.
 export const SECRET_AUDIENCE: Int = 64
+/// The `secretStrikes` limit.
+export const SECRET_STRIKES: Int = 3
+/// The `secretFragment` limit.
+export const SECRET_FRAGMENT: Int = 16
 /// Every limit by its contract name, for discovery.
 export const ALL: Array[(Str, Int)]
 ```
@@ -93,8 +97,8 @@ export const ALL: Array[(Str, Int)]
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/App/Resilience]] · [[src/Domain/Identifier]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Causality]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Views]] · [[src/Engine/Delivery]] · [[src/Engine/Handoff]] · [[src/Engine/Mutations]] · [[src/Main]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/MutationsTest]] · [[test/Security/CustodyTest]]
+- **Consumed by:** [[src/App/Resilience]] · [[src/Domain/Identifier]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Causality]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Disguise]] · [[src/Engine/Handoff]] · [[src/Engine/Mutations]] · [[src/Main]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/MutationsTest]] · [[test/Security/CustodyTest]]
 
 ## Referenced by
 
-[[src/Contract/_MOC]] · [[src/App/Resilience]] · [[src/Domain/Identifier]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Causality]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Views]] · [[src/Engine/Delivery]] · [[src/Engine/Handoff]] · [[src/Engine/Mutations]] · [[src/Main]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/MutationsTest]] · [[test/Security/CustodyTest]]
+[[src/Contract/_MOC]] · [[src/App/Resilience]] · [[src/Domain/Identifier]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Causality]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Disguise]] · [[src/Engine/Handoff]] · [[src/Engine/Mutations]] · [[src/Main]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/MutationsTest]] · [[test/Security/CustodyTest]]
