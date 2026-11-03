@@ -56,7 +56,9 @@ export const STRAY: Str = "a handler serves no contract operation: "
 /// A whole number was expected.
 export const NOT_WHOLE: Str = "is not a whole number"
 /// Methods other origins may use, when any origin is allowed.
-export const SHARED_METHODS: Array[Str] = ["GET", "HEAD", "POST", "PUT"]
+export const SHARED_METHODS: Array[Str] = ["GET", "HEAD", "POST", "PUT", "DELETE"]
+/// The status the server gives a path that exists for other methods.
+export const METHOD_NOT_ALLOWED_STATUS: Int = 405
 /// Request headers other origins may send.
 export const SHARED_HEADERS: Array[Str] = ["content-type", "authorization", "grail-version"]
 /// The scheme of the address the server reports.

@@ -31,6 +31,9 @@ export const PARENTS: Str = "parents"
 /// The limit that was exceeded.
 export const LIMIT: Str = "limit"
 
+/// How many custody strikes the presenting token has; at the contract's limit it is revoked.
+export const STRIKES: Str = "strikes"
+
 /// The versions a fabric supports.
 export const SUPPORTED: Str = "supported"
 

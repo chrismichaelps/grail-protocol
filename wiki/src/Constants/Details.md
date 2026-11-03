@@ -109,13 +109,59 @@ export const NOT_RPC: Str = "the body is not a JSON-RPC 2.0 message"
 export const RESERVED_ID: Str = "ids beginning with mutation: are written by the fabric"
 /// Only the issuer of a token, or the owner, may revoke it.
 export const NOT_ISSUER: Str = "only the issuer of a token, or the scope owner, may revoke it"
+/// The handoff id was used before for a different handoff.
+export const DUPLICATE_HANDOFF: Str = "a different handoff with this id is already recorded"
+/// The path and the body name different handoffs.
+export const HANDOFF_MISMATCH: Str = "the handoff in the path is not the handoff in the body"
+/// The handoff digest does not recompute.
+export const HANDOFF_DIGEST: Str = "the handoff digest does not match its canonical form"
+/// An envelope inside a handoff does not hash to its digest.
+export const HANDOFF_ALTERED: Str = "an envelope in the handoff does not match its digest"
+/// An entry's link does not follow from its previous link and digest.
+export const HANDOFF_LINK: Str = "an entry's link does not follow from its previous link and digest"
+/// Entries are not in strictly increasing ledger order.
+export const HANDOFF_ORDER: Str = "handoff entries are not in increasing ledger order"
+/// A carried envelope names a parent the handoff does not carry.
+export const HANDOFF_OPEN: Str = "a carried envelope names a parent the handoff does not carry"
+/// An anchor is not among the carried entries.
+export const HANDOFF_ANCHOR: Str = "an anchor is not among the carried entries"
+/// An entry claims an envelope it withholds, or withholds one it carries.
+export const HANDOFF_WITHHELD: Str = "a withheld entry carries an envelope, or a carried entry has none"
+/// The handoff's lifetime is longer than the contract allows.
+export const HANDOFF_LIFETIME: Str = "a handoff may live at most the contract's handoff lifetime"
+/// The ancestry is larger than one handoff may carry.
+export const HANDOFF_TOO_MANY: Str = "the anchors' ancestry is larger than one handoff may carry"
+/// The handoff expired before it was imported.
+export const HANDOFF_EXPIRED: Str = "the handoff expired before it was imported"
+/// A payload holds the value of a secret in custody.
+export const SECRET_EXPOSED: Str = "the envelope holds the value of a secret in custody; reference it by name instead"
+/// A reference names a secret the graph does not hold.
+export const SECRET_UNKNOWN: Str = "the graph holds no secret by that name"
+/// A recipient of a reference is not in the secret's audience.
+export const SECRET_AUDIENCE: Str = "every recipient of a secret reference must be in the secret's audience"
+/// The sender may not reference the secret.
+export const SECRET_SENDER: Str = "this participant may not reference the secret"
+/// The kind may not carry the secret.
+export const SECRET_KIND: Str = "this kind may not carry a reference to the secret"
+/// The secret has no uses left.
+export const SECRET_SPENT: Str = "the secret has no uses left"
+/// An audience member is not an executor.
+export const SECRET_EXECUTORS: Str = "custody reveals values only to tool and service participants, never to agents, people, memory, or graphs"
+/// The secret expired.
+export const SECRET_EXPIRED: Str = "the secret expired"
+/// A scope holds as many secrets as it may.
+export const SECRETS_FULL: Str = "the scope holds as many secrets as it may"
+/// A value could not be sealed.
+export const SECRET_UNSEALABLE: Str = "the value could not be sealed"
+/// The path exists, but not for this method.
+export const METHOD_NOT_ALLOWED: Str = "this path does not answer that method"
 ```
 
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Api/Bridge]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Erasure]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[src/Web/Caller]] · [[src/Web/Router]]
+- **Consumed by:** [[src/Api/Bridge]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Custody]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[src/Web/Caller]] · [[src/Web/Router]]
 
 ## Referenced by
 
-[[src/Api/Bridge]] · [[src/Constants/_MOC]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Erasure]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[src/Web/Caller]] · [[src/Web/Router]]
+[[src/Constants/_MOC]] · [[src/Api/Bridge]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Custody]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[src/Web/Caller]] · [[src/Web/Router]]

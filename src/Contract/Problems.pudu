@@ -18,6 +18,9 @@ export const FORBIDDEN: Str = "grail.forbidden"
 /// Not found (404).
 export const NOT_FOUND: Str = "grail.not-found"
 
+/// Method not allowed (405).
+export const METHOD_NOT_ALLOWED: Str = "grail.method-not-allowed"
+
 /// Duplicate (409).
 export const DUPLICATE: Str = "grail.duplicate"
 
@@ -45,6 +48,12 @@ export const INVALID_TRANSITION: Str = "grail.invalid-transition"
 /// Unknown parent (422).
 export const UNKNOWN_PARENT: Str = "grail.unknown-parent"
 
+/// Integrity failure (422).
+export const INTEGRITY: Str = "grail.integrity"
+
+/// Secret exposed (422).
+export const SECRET_EXPOSED: Str = "grail.secret-exposed"
+
 /// Limit exceeded (422).
 export const LIMIT_EXCEEDED: Str = "grail.limit-exceeded"
 
@@ -69,6 +78,7 @@ export const ALL: Array[Entry] = [
   Entry{code: "grail.unauthorized", status: 401, title: "Unauthorized"},
   Entry{code: "grail.forbidden", status: 403, title: "Forbidden"},
   Entry{code: "grail.not-found", status: 404, title: "Not found"},
+  Entry{code: "grail.method-not-allowed", status: 405, title: "Method not allowed"},
   Entry{code: "grail.duplicate", status: 409, title: "Duplicate"},
   Entry{code: "grail.revision-conflict", status: 409, title: "Revision conflict"},
   Entry{code: "grail.key-reused", status: 409, title: "Delivery key reused"},
@@ -78,6 +88,8 @@ export const ALL: Array[Entry] = [
   Entry{code: "grail.cycle", status: 422, title: "Cycle"},
   Entry{code: "grail.invalid-transition", status: 422, title: "Invalid transition"},
   Entry{code: "grail.unknown-parent", status: 422, title: "Unknown parent"},
+  Entry{code: "grail.integrity", status: 422, title: "Integrity failure"},
+  Entry{code: "grail.secret-exposed", status: 422, title: "Secret exposed"},
   Entry{code: "grail.limit-exceeded", status: 422, title: "Limit exceeded"},
   Entry{code: "grail.clock-skew", status: 422, title: "Clock skew"},
   Entry{code: "grail.expired", status: 422, title: "Expired"},

@@ -1,0 +1,66 @@
+/** @Services.Custody.UseCases — giving secrets to custody, listing what is held, and destroying it */
+module Services.Custody
+
+import Std.Crypto as Crypto
+import Std.List as List
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import Constants.Details as Details
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Custody as Custody
+import Domain.Graph as Graph
+import Domain.Problem as Problem
+import Domain.Request as Request
+import Domain.Scope as Scope
+import Engine.Authority as Authority
+import Engine.Custody as Guard
+import Services.Fabric as Fabric
+import Services.Runtime as Runtime
+import Services.Store as Store
+
+/// Seals a value under a name as its next version. Every audience member and sender must be a participant of the graph, and every audience member a tool or service.
+export fn putSecret(runtime: &Runtime.Runtime, call: &Request.Call[Custody.Deposit]) -> Result[Custody.Held, Problem.Problem] {
+  let nonce = Result.mapErr(Crypto.newNonce(), |_e: Str| Problem.of(Codes.UNAVAILABLE, Details.ENTROPY_UNAVAILABLE)) ?
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = Fabric.authorized(&state, &asked, secret, now) ?
+      let _allowed = Authority.require(&authority, Vocabulary.ABILITY_SECRET_MANAGE, Some(asked.input.graph)) ?
+      let graph = Option.okOr(state.graphs.get(asked.input.graph), notFound()) ?
+
+      if !List.all(&asked.input.audience.concat(asked.input.senders), |id: Str| Graph.hasParticipant(&graph, id)) { return Err(notFound()) }
+      if !List.all(&asked.input.audience, |id: Str| Guard.executes(&state, graph.id, id)) { return Err(Problem.of(Codes.FORBIDDEN, Details.SECRET_EXECUTORS)) }
+      if !Map.containsKey(&state.secrets, asked.input.name) && state.secrets.size() >= Limits.SECRETS { return Err(Problem.of(Codes.LIMIT_EXCEEDED, Details.SECRETS_FULL)) }
+      if Option.holds(&state.secrets.get(asked.input.name), |held: Custody.Held| held.graph != asked.input.graph) { return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_MEMBER)) }
+
+      let held = Guard.sealed(&state, &Custody.Sealing{deposit: asked.input, nonce: nonce, now: now}, secret) ?
+      Ok((held, Scope.State{..state, secrets: state.secrets.insert(held.name, held)}))
+    })
+}
+
+/// Destroys a held secret; references to it stop resolving at once.
+export fn deleteSecret(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Custody.Held, Problem.Problem] {
+  let now = Runtime.now()
+  let secret = runtime.secret
+  let asked = *call
+  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+      let authority = Fabric.authorized(&state, &asked, secret, now) ?
+      let held = Option.okOr(state.secrets.get(asked.input), notFound()) ?
+      let _allowed = Authority.require(&authority, Vocabulary.ABILITY_SECRET_MANAGE, Some(held.graph)) ?
+      Ok((held, Scope.State{..state, secrets: Map.remove(&state.secrets, asked.input)}))
+    })
+}
+
+/// The secrets of the graphs the token may read, in name order, without their values.
+export fn listSecrets(runtime: &Runtime.Runtime, call: &Request.Call[()]) -> Result[Array[Custody.Held], Problem.Problem] {
+  let state = Store.read(&runtime.store, call.scopeId) ?
+  let authority = Fabric.authorized(&state, call, runtime.secret, Runtime.now()) ?
+  let _allowed = Authority.require(&authority, Vocabulary.ABILITY_GRAPH_READ, None) ?
+  Ok(Map.values(&state.secrets).filter(|held: Custody.Held| Option.isNone(&authority.graph) || authority.graph == Some(held.graph)))
+}
+
+fn notFound() -> Problem.Problem { Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND) }

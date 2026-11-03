@@ -12,6 +12,7 @@ One page per file, each with its interface and the modules it depends on.
 - [[tools/Layers]] — judges the source tree against the layer catalog
 - [[tools/LayersTest]] — the gate refuses upward edges, cycles, impurity, and strangers
 - [[tools/Mutate]] — mutation testing over the source tree
+- [[tools/Recording]] — records the handoff demonstration in a real Terminal window and converts it for the README
 - [[tools/Siege]] — floods a live fabric and holds its pulls open, then judges how it held up
 - [[tools/Site]] — assembles the documentation site's sources from the paper, the vault, and the contract
 - [[tools/Spacing]] — judges every source file against the statement spacing rules

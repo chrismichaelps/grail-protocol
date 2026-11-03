@@ -1,0 +1,17 @@
+/** @Constants.Handoff.Portability — labels and directions of portable handoffs */
+module Constants.Handoff
+
+/// The label mixed into the key a fabric seals its handoffs with.
+export const SEAL_KEY_LABEL: Str = "grail-handoff:"
+
+/// A handoff this scope sealed and sent.
+export const EXPORTED: Str = "export"
+
+/// A handoff this scope received from elsewhere.
+export const IMPORTED: Str = "import"
+
+/// The member of a recorded handoff naming the direction it moved in.
+export const DIRECTION_MEMBER: Str = "direction"
+
+/// The member of a recorded handoff counting the entries it carried.
+export const ENTRIES_MEMBER: Str = "entries"

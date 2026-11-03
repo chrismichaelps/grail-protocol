@@ -6,6 +6,10 @@
   href: capabilities.md
 - name: Receive work
   href: deliveries.md
+- name: Move an agent
+  href: handoffs.md
+- name: Use keys safely
+  href: secrets.md
 - name: Configure the fabric
   href: configuration.md
 - name: Troubleshooting

@@ -1,0 +1,77 @@
+/** @Test.Engine.Handoff.Suite — the boundaries of assembling, checking, and expiring handoffs, at a fixed time */
+module Engine.HandoffTest
+
+import Std.Json as Json
+import Std.Option as Option
+import Std.Result as Result
+import Std.Test as Test
+import Contract.Limits as Limits
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Handoff as Handoff
+import Domain.Problem as Problem
+import Domain.Scope as Scope
+import Engine.Codec.Handoff as HandoffCodec
+import Engine.Handoff as Portability
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+import Utils.JsonRead as JsonRead
+
+fn worked() -> Scope.State {
+  let asked = Fixtures.body("t1", "planner", Fixtures.to("writer"), Vocabulary.KIND_TASK, &[])
+  let started = Result.unwrapOr(Fixtures.admitted(&Fixtures.teamScope(), &asked), Fixtures.teamScope())
+  Result.unwrapOr(Fixtures.admitted(&started, &Fixtures.body("r1", "writer", Fixtures.to("planner"), Vocabulary.KIND_RESULT, &["t1"])), started)
+}
+
+fn sealed(expires: Option[Int]) -> Result[Json.Json, Problem.Problem] {
+  let state = worked()
+  let origin = Handoff.Origin{fabric: "studio", scopeId: Fixtures.SCOPE, graph: Fixtures.GRAPH, participant: "writer"}
+  let asked = Handoff.Asked{graph: Fixtures.GRAPH, participant: "writer", id: "h", transfers: ["r1"], expires: expires}
+  Portability.assemble(&state, &origin, &Fixtures.member("writer", &[], &[]), &asked, &Fixtures.owner(), Fixtures.NOW, Fixtures.SECRET)
+}
+
+fn entries(bundle: &Json.Json) -> Array[Json.Json] { Option.unwrapOr(JsonRead.list(bundle, "entries"), []) }
+
+fn withEntries(bundle: &Json.Json, changed: Array[Json.Json]) -> Json.Json {
+  let replaced = Json.withField(bundle, "entries", Json.List(changed))
+  Json.withField(&replaced, "digest", Json.Text(Portability.digestOf(&replaced)))
+}
+
+fn padded(length: Int) -> Json.Json {
+  var text = "x"
+
+  while text.length() < length { text = text + text }
+
+  Json.object(&[("pad", Json.Text(text.take(length - 10)))])
+}
+
+fn main() -> Int {
+  let bundle = Result.unwrapOr(sealed(None), Json.Null)
+  let listed = entries(&bundle)
+  let repeated = withEntries(&bundle, [listed[0], listed[0], listed[1]])
+  let unmarked = withEntries(&bundle, listed.map(|entry: Json.Json| Json.object(&Option.unwrapOr(Json.asObject(&entry), []).filter(|pair: (Str, Json.Json)| pair[0] != "withheld"))))
+  let atLimit = padded(Limits.HANDOFF_BYTES)
+  let overLimit = padded(Limits.HANDOFF_BYTES + 1)
+  let expiresAt = Option.unwrapOr(JsonRead.whole(&bundle, "expires"), 0)
+  let checks = Test.suite("Engine handoff", &[
+      Test.equals("a default handoff lives the whole lifetime", &expiresAt, &(Fixtures.NOW + Limits.HANDOFF_LIFETIME_MILLIS)),
+      Test.equals("a handoff that expires as it is issued is refused", &Fixtures.code(&sealed(Some(Fixtures.NOW))), &Codes.INVALID),
+      Test.equals("a handoff may live exactly the lifetime", &Fixtures.code(&sealed(Some(Fixtures.NOW + Limits.HANDOFF_LIFETIME_MILLIS))), &""),
+      Test.equals("a handoff may not outlive the lifetime", &Fixtures.code(&sealed(Some(Fixtures.NOW + Limits.HANDOFF_LIFETIME_MILLIS + 1))), &Codes.INVALID),
+      Test.equals("the task and its result travel together", &listed.length(), &2),
+      Test.equals("a sealed handoff is intact", &Portability.intact(&bundle), &Ok(2)),
+      Test.that("the fabric that sealed it attests it", Portability.attested(&bundle, Fixtures.SECRET, Fixtures.SCOPE)),
+      Test.that("another secret does not attest it", !Portability.attested(&bundle, "another-secret-0123456789abcdef-01", Fixtures.SCOPE)),
+      Test.equals("a repeated sequence is refused", &Fixtures.code(&Portability.intact(&repeated)), &Codes.INTEGRITY),
+      Test.equals("an entry without a withheld mark counts as carried", &Portability.intact(&unmarked), &Ok(2)),
+      Test.that("a handoff has expired at its expiry", Portability.expired(&bundle, expiresAt)),
+      Test.that("a handoff is live just before its expiry", !Portability.expired(&bundle, expiresAt - 1)),
+      Test.equals("a body of exactly the byte limit is read", &Json.encode(&atLimit).length(), &Limits.HANDOFF_BYTES),
+      Test.equals("a body at the byte limit reaches the shape check", &Fixtures.code(&HandoffCodec.decodeBundle(&atLimit, "h")), &Codes.INVALID),
+      Test.equals("a body over the byte limit is refused for size", &Fixtures.code(&HandoffCodec.decodeBundle(&overLimit, "h")), &Codes.TOO_LARGE),
+      Test.that("a handoff may carry exactly the entry limit", Portability.carries(Limits.HANDOFF_ENTRIES)),
+      Test.that("a handoff may not carry more than the entry limit", !Portability.carries(Limits.HANDOFF_ENTRIES + 1))
+    ])
+
+  Runner.finish(&checks)
+}

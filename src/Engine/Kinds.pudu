@@ -47,7 +47,9 @@ const CATALOG: Map[Str, Behavior] = mapOf([
     (Vocabulary.KIND_STREAM_OPEN, Behavior{effect: Records, actor: Anyone, stream: OpensStream}),
     (Vocabulary.KIND_STREAM_CHUNK, Behavior{effect: Records, actor: Anyone, stream: InStream}),
     (Vocabulary.KIND_STREAM_CLOSE, Behavior{effect: Records, actor: Anyone, stream: ClosesStream}),
-    (Vocabulary.KIND_GRAPH_MUTATION, Behavior{effect: Records, actor: Fabric, stream: Outside})
+    (Vocabulary.KIND_GRAPH_MUTATION, Behavior{effect: Records, actor: Fabric, stream: Outside}),
+    (Vocabulary.KIND_HANDOFF_EXPORT, Behavior{effect: Records, actor: Fabric, stream: Outside}),
+    (Vocabulary.KIND_HANDOFF_IMPORT, Behavior{effect: Records, actor: Fabric, stream: Outside})
   ])
 
 /// The behavior of an envelope's kind. A bridged JSON-RPC message behaves as the request or response it carries.

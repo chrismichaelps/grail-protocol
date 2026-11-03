@@ -21,7 +21,7 @@ An envelope is a JSON object. Unknown top-level members MUST be refused unless t
 | `kind` | kind | yes | See 3.2. |
 | `parents` | array of transfer ids | no | Causal parents. At most 64. Each MUST already be in the ledger of the same scope. |
 | `schema` | string | no | A URI or name identifying the payload's type. At most 512 characters. |
-| `payload` | any JSON | no | The content. Its encoded size MUST NOT exceed 1 048 576 bytes. |
+| `payload` | any JSON | no | The content. Its encoded size MUST NOT exceed 1 048 576 bytes. An object whose only member is `$secret` is a secret reference ([[protocol/14-Custody]]). |
 | `delivery` | object | no | `{"mode": "at-most-once" \| "at-least-once" \| "effectively-once", "key": string}`. Default mode `at-least-once`. `key` is REQUIRED for `effectively-once`. |
 | `priority` | integer | no | 0 (lowest) to 9 (highest). Default 4. |
 | `deadline` | integer | no | Milliseconds since the Unix epoch after which the envelope MUST NOT be delivered. |
@@ -59,6 +59,8 @@ A kind is a dotted lowercase name. The kinds below are reserved and drive fabric
 | `stream.close` | Ends a stream. | MUST name the `stream.open` among its parents. Later chunks are refused. |
 | `ability.advert` | A participant advertises abilities. | Recorded; fabrics MAY index it for discovery. |
 | `graph.mutation` | A change to a graph, recorded for provenance. | Emitted by the fabric, never accepted from senders. |
+| `handoff.export` | A participant's context sealed and sent to another fabric ([[protocol/13-Portability]]). | Emitted by the fabric, never accepted from senders. |
+| `handoff.import` | A participant's context received from another fabric, delivered to that participant. | Emitted by the fabric, never accepted from senders. |
 | `bridge.rpc` | A JSON-RPC message of a tool protocol. | See [[protocol/10-Bridge]]. |
 
 ## 3.3 Canonical form and digest
@@ -83,6 +85,15 @@ The digest is computed over the UTF-8 bytes of the canonical form. Two envelopes
 | Identifier | 128 characters |
 | Name (role, ability) | 64 characters |
 | Schema reference | 512 characters |
+| Handoff anchors | 64 |
+| Handoff entries | 10 000 |
+| Encoded handoff | 4 194 304 bytes |
+| Secrets per scope | 256 |
+| Secret value | 12 to 4 096 characters |
+| Secret audience or senders | 64 |
+| Secret fragment | 16 characters |
+| Custody strikes before revocation | 3 |
+| Handoff lifetime | 86 400 000 milliseconds |
 
 A fabric MAY lower these limits and MUST advertise its own in the discovery document ([[protocol/08-Bindings#8.4 Discovery]]).
 

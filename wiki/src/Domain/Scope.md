@@ -31,10 +31,10 @@ export fn recordAt(state: &State, position: Int) -> Option[Ledger.Record]
 
 ### Linkage
 
-- **Requires:** [[src/Domain/Graph]] · [[src/Domain/Ledger]] · [[src/Domain/Lifecycle]]
+- **Requires:** [[src/Domain/Custody]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Ledger]] · [[src/Domain/Lifecycle]]
 - **Standard library:** `Std.Map`
-- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Bridge]] · [[src/Engine/Causality]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Journal]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Services/Store]] · [[test/Engine/AdmissionTest]] · [[test/Engine/DeliveryTest]] · [[test/Support/Fixtures]]
+- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Bridge]] · [[src/Engine/Causality]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Store]] · [[test/Engine/AdmissionTest]] · [[test/Engine/CustodyTest]] · [[test/Engine/DeliveryTest]] · [[test/Support/Fixtures]]
 
 ## Referenced by
 
-[[src/Domain/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Bridge]] · [[src/Engine/Causality]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Journal]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Services/Store]] · [[test/Engine/AdmissionTest]] · [[test/Engine/DeliveryTest]] · [[test/Support/Fixtures]]
+[[src/Domain/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Bridge]] · [[src/Engine/Causality]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Store]] · [[test/Engine/AdmissionTest]] · [[test/Engine/CustodyTest]] · [[test/Engine/DeliveryTest]] · [[test/Support/Fixtures]]

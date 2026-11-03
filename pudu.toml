@@ -1,7 +1,7 @@
 [package]
 name = "@chrismichaelps/grail-protocol"
-version = "0.1.2"
-description = "Grail: a graph-routed protocol for agents, tools, memory, and people to exchange information with causality, provenance, and scope isolation"
+version = "0.2.0"
+description = "Grail: a graph-routed protocol for agents, tools, memory, and people to exchange information with causality, provenance, scope isolation, and portability between fabrics"
 license = "Apache-2.0"
 keywords = ["protocol", "agents", "graph", "provenance", "capabilities", "pudu"]
 language = ">=0.1.3 <0.2.0"

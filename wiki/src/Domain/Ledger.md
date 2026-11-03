@@ -27,8 +27,8 @@ export type Record = { … }
 
 - **Requires:** [[src/Domain/Envelope]]
 - **Standard library:** `Std.Json`
-- **Consumed by:** [[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Engine/Admission]] · [[src/Engine/Bridge]] · [[src/Engine/Causality]] · [[src/Engine/Codec/Views]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Fabric]] · [[test/Engine/AdmissionTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]]
+- **Consumed by:** [[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Engine/Admission]] · [[src/Engine/Bridge]] · [[src/Engine/Causality]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Engine/AdmissionTest]] · [[test/Engine/CustodyTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]]
 
 ## Referenced by
 
-[[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Domain/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Bridge]] · [[src/Engine/Causality]] · [[src/Engine/Codec/Views]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Fabric]] · [[test/Engine/AdmissionTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]]
+[[src/Domain/_MOC]] · [[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Engine/Admission]] · [[src/Engine/Bridge]] · [[src/Engine/Causality]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[test/Engine/AdmissionTest]] · [[test/Engine/CustodyTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/LedgerTest]] · [[test/Security/AttackTest]]

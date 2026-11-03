@@ -1,0 +1,96 @@
+/** @Engine.Disguise.Forms — the forms a secret value can take inside a message, which the custody tripwire looks for */
+module Engine.Disguise
+
+import Std.Bytes as ByteSeq
+import Std.Char as Char
+import Std.Json as Json
+import Std.Math as Math
+import Constants.Custody as Sealing
+import Contract.Limits as Limits
+
+/// Every form a value is looked for in: as written, escaped inside JSON text, reversed, percent-encoded, in hex of either case, in base64 of both alphabets at every byte alignment, and every aligned fragment, so any contiguous piece of at least twice the fragment length less one is caught.
+export fn forms(value: Str) -> Array[Str] {
+  let escaped = Json.encode(&Json.Text(value))
+  let hex = ByteSeq.encodeHex(&ByteSeq.fromText(value))
+  let whole = [value, escaped.drop(Sealing.QUOTE_LENGTH).take(escaped.length() - 2 * Sealing.QUOTE_LENGTH), reversed(value), percentEncoded(value), hex, upper(hex)]
+  whole.concat(aligned(value)).concat(fragments(value)).filter(|form: Str| !form.isEmpty())
+}
+
+/// The windows of a value a fragment long, one starting at every multiple of the fragment length, the last moved back to end with the value. A value shorter than a fragment has none.
+export fn fragments(value: Str) -> Array[Str] {
+  let last = value.length() - Limits.SECRET_FRAGMENT
+  var found: Array[Str] = []
+  var start = 0
+
+  if last < 0 { return [] }
+
+  while start < value.length() {
+    found = found.push(value.drop(Math.min(start, last)).take(Limits.SECRET_FRAGMENT))
+    start = start + Limits.SECRET_FRAGMENT
+  }
+
+  found
+}
+
+/// The value percent-encoded, with unreserved characters kept and every other byte written as `%XX`.
+export fn percentEncoded(value: Str) -> Str {
+  var out = ""
+
+  for character in value.chars() {
+    out = out + if Char.isAlphanumeric(character) && Char.isAscii(character) || Sealing.UNRESERVED.contains(character) { character.toText() } else { escapedBytes(character) }
+  }
+
+  out
+}
+
+fn escapedBytes(character: Char) -> Str {
+  let hex = upper(ByteSeq.encodeHex(&ByteSeq.fromText(character.toText())))
+  var out = ""
+  var index = 0
+
+  while index < hex.length() {
+    out = out + Sealing.PERCENT + hex.drop(index).take(2)
+    index = index + 2
+  }
+
+  out
+}
+
+fn aligned(value: Str) -> Array[Str] {
+  var found: Array[Str] = []
+  var index = 0
+
+  for shift in Sealing.ALIGNMENTS {
+    let bytes = ByteSeq.fromText(shift + value)
+    let lead = Sealing.ALIGNED_LEAD[index]
+
+    for encoded in [ByteSeq.encodeBase64(&bytes), ByteSeq.encodeBase64Url(&bytes)] {
+      let middle = encoded.drop(lead).take(encoded.length() - lead - Sealing.ALIGNED_TAIL)
+      found = if index == 0 { found.push(encoded).push(middle) } else { found.push(middle) }
+    }
+
+    index = index + 1
+  }
+
+  found
+}
+
+fn reversed(value: Str) -> Str {
+  var out = ""
+
+  for character in value.chars() {
+    out = character.toText() + out
+  }
+
+  out
+}
+
+fn upper(text: Str) -> Str {
+  var out = ""
+
+  for character in text.chars() {
+    out = out + Char.toUpper(character).toText()
+  }
+
+  out
+}

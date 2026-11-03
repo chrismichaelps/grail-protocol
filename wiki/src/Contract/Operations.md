@@ -53,6 +53,20 @@ export const INSPECT_TOKEN: Str = "inspectToken"
 export const REVOKE_TOKEN: Str = "revokeToken"
 /// `POST /v1/scopes/{scope}/graphs/{graph}/bridge/{participant}`.
 export const BRIDGE_RPC: Str = "bridgeRpc"
+/// `POST /v1/scopes/{scope}/graphs/{graph}/participants/{participant}/handoffs`.
+export const EXPORT_HANDOFF: Str = "exportHandoff"
+/// `PUT /v1/scopes/{scope}/graphs/{graph}/participants/{participant}/handoffs/{handoff}`.
+export const IMPORT_HANDOFF: Str = "importHandoff"
+/// `GET /v1/scopes/{scope}/handoffs/{handoff}`.
+export const READ_HANDOFF: Str = "readHandoff"
+/// `POST /v1/scopes/{scope}/handoffs/{handoff}/verification`.
+export const VERIFY_HANDOFF: Str = "verifyHandoff"
+/// `GET /v1/scopes/{scope}/secrets`.
+export const LIST_SECRETS: Str = "listSecrets"
+/// `PUT /v1/scopes/{scope}/secrets/{secret}`.
+export const PUT_SECRET: Str = "putSecret"
+/// `DELETE /v1/scopes/{scope}/secrets/{secret}`.
+export const DELETE_SECRET: Str = "deleteSecret"
 /// Every operation, in contract order.
 export const ALL: Array[Operation]
 ```
@@ -60,8 +74,8 @@ export const ALL: Array[Operation]
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/App/Messages]] · [[src/Engine/Paths]] · [[src/Web/Description]] · [[src/Web/Handlers]] · [[src/Web/Router]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/App/Messages]] · [[src/Cli/Commands]] · [[src/Engine/Paths]] · [[src/Web/Description]] · [[src/Web/Handlers]] · [[src/Web/Router]] · [[test/Web/RouterTest]]
 
 ## Referenced by
 
-[[src/App/Messages]] · [[src/Contract/_MOC]] · [[src/Engine/Paths]] · [[src/Web/Description]] · [[src/Web/Handlers]] · [[src/Web/Router]] · [[test/Web/RouterTest]]
+[[src/Contract/_MOC]] · [[src/App/Messages]] · [[src/Cli/Commands]] · [[src/Engine/Paths]] · [[src/Web/Description]] · [[src/Web/Handlers]] · [[src/Web/Router]] · [[test/Web/RouterTest]]

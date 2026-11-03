@@ -27,13 +27,13 @@ export fn createGraph(runtime: &Runtime.Runtime, call: &Request.Call[Request.Cre
 export fn readGraph(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Graph.Graph, Problem.Problem]
 /// Applies a mutation and records it.
 export fn mutateGraph(runtime: &Runtime.Runtime, call: &Request.Call[Request.Change]) -> Result[Graph.Graph, Problem.Problem]
-/// Admits an envelope, or answers the original receipt of a repeated delivery key.
+/// Admits an envelope, or answers the original receipt of a repeated delivery key. Custody refuses an envelope that holds a secret's value and counts each reference it makes.
 export fn send(runtime: &Runtime.Runtime, call: &Request.Call[Request.Sending]) -> Result[Transfer.Receipt, Problem.Problem]
 /// Reads an envelope and where its lifecycle stands.
 export fn readTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Transfer.View, Problem.Problem]
 /// Reads the causal ancestry of an envelope.
 export fn traceTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> Result[Request.Traced, Problem.Problem]
-/// Reads deliveries for the participant the token acts for, acknowledging everything up to the cursor; with a wait, looks again until one arrives or the wait runs out.
+/// Reads deliveries for the participant the token acts for, acknowledging everything up to the cursor; with a wait, looks again until one arrives or the wait runs out. Secret references are revealed here and only here, for recipients in the secret's audience.
 export fn pullDeliveries(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem]
 /// Reads a range of the ledger.
 export fn readLedger(runtime: &Runtime.Runtime, call: &Request.Call[Request.Paging]) -> Result[Transfer.Page, Problem.Problem]
@@ -51,10 +51,10 @@ export fn authorized[T](state: &Scope.State, call: &Request.Call[T], secret: Str
 
 ### Linkage
 
-- **Requires:** [[src/Constants/Details]] · [[src/Constants/Security]] · [[src/Constants/Server]] · [[src/Contract/Limits]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Capability]] · [[src/Domain/Envelope]] · [[src/Domain/Graph]] · [[src/Domain/Ledger]] · [[src/Domain/Lifecycle]] · [[src/Domain/Mutation]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Journal]] · [[src/Engine/Mutations]] · [[src/Services/Runtime]] · [[src/Services/Store]]
+- **Requires:** [[src/Constants/Details]] · [[src/Constants/Security]] · [[src/Constants/Server]] · [[src/Contract/Limits]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Capability]] · [[src/Domain/Envelope]] · [[src/Domain/Graph]] · [[src/Domain/Ledger]] · [[src/Domain/Lifecycle]] · [[src/Domain/Mutation]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Erasure]] · [[src/Engine/Journal]] · [[src/Engine/Mutations]] · [[src/Services/Runtime]] · [[src/Services/Store]]
 - **Standard library:** `Std.Concurrent`, `Std.Math`, `Std.Option`, `Std.Result`
-- **Consumed by:** [[src/App/Handlers]] · [[src/Services/Bridge]]
+- **Consumed by:** [[src/App/Handlers]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Handoffs]]
 
 ## Referenced by
 
-[[src/App/Handlers]] · [[src/Services/Bridge]] · [[src/Services/_MOC]]
+[[src/Services/_MOC]] · [[src/App/Handlers]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Handoffs]]

@@ -23,6 +23,7 @@ import Domain.Scope as Scope
 import Domain.Transfer as Transfer
 import Engine.Admission as Admission
 import Engine.Authority as Authority
+import Engine.Custody as Custody
 import Engine.Delivery as Delivery
 import Engine.Erasure as Erasure
 import Engine.Journal as Journal
@@ -66,22 +67,29 @@ export fn mutateGraph(runtime: &Runtime.Runtime, call: &Request.Call[Request.Cha
     })
 }
 
-/// Admits an envelope, or answers the original receipt of a repeated delivery key.
+/// Admits an envelope, or answers the original receipt of a repeated delivery key. Custody refuses an envelope that holds a secret's value, strikes the token that sent it, and counts each reference it makes.
 export fn send(runtime: &Runtime.Runtime, call: &Request.Call[Request.Sending]) -> Result[Transfer.Receipt, Problem.Problem] {
   let now = Runtime.now()
   let secret = runtime.secret
   let asked = *call
-  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+  let outcome = Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
       let authority = authorized(&state, &asked, secret, now) ?
+
+      if Custody.exposes(&state, &asked.input.body, secret) {
+        let leak = Custody.caught(&state, &authority)
+        return Ok((Err(leak[0]), leak[1]))
+      }
 
       match Admission.admit(&state, &asked.input.envelope, &asked.input.body, &authority, now) ? {
         case Admission.Fresh(admitted) => {
-          let next = Admission.commit(&state, &admitted)
-          Ok((receiptOf(&next, &admitted.record, false), next))
+          let guarded = Custody.guarded(&state, &admitted.record, now) ?
+          let next = Admission.commit(&guarded, &admitted)
+          Ok((Ok(receiptOf(&next, &admitted.record, false)), next))
         }
-        case Admission.Repeated(original) => Ok((receiptOf(&state, &original, true), state))
+        case Admission.Repeated(original) => Ok((Ok(receiptOf(&state, &original, true)), state))
       }
-    })
+    }) ?
+  outcome
 }
 
 /// Reads an envelope and where its lifecycle stands.
@@ -109,7 +117,7 @@ export fn traceTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> 
   Ok(Request.Traced{of: call.input, entries: Delivery.trace(&state, &record, &authority)})
 }
 
-/// Reads deliveries for the participant the token acts for, acknowledging everything up to the cursor; with a wait, looks again until one arrives or the wait runs out.
+/// Reads deliveries for the participant the token acts for, acknowledging everything up to the cursor; with a wait, looks again until one arrives or the wait runs out. Secret references are revealed here and only here, for recipients in the secret's audience.
 export fn pullDeliveries(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem] {
   let until = Runtime.now() + Math.min(Math.max(call.input.wait, 0), Limits.WAIT_MAX)
   let page = pullOnce(runtime, call) ?
@@ -138,7 +146,9 @@ fn pullOnce(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> 
       if authority.audience != Security.OWNER && authority.audience != asked.input.participant { return Err(Problem.of(Codes.FORBIDDEN, Details.NOT_YOUR_DELIVERIES)) }
 
       let address = Envelope.Address{graph: asked.input.graph, participant: asked.input.participant}
-      Ok(Delivery.pull(&state, &address, asked.input.after, Delivery.pageSize(asked.input.limit), now))
+      let pulled = Delivery.pull(&state, &address, asked.input.after, Delivery.pageSize(asked.input.limit), now)
+      let shown = Custody.delivered(&pulled[1], &pulled[0].records, &address, secret, now)
+      Ok((Transfer.Page{..pulled[0], records: shown[0]}, shown[1]))
     })
 }
 

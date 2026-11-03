@@ -28,12 +28,19 @@ A binding maps the protocol's operations onto a transport. Each operation has a 
 | `revokeToken` | `token.delegate` | Revokes a token the caller issued, and with it every token delegated from it (7.5). The owner may revoke any token. |
 | `eraseTransfer` | `ledger.erase` | Erases an envelope's payload, keeping its digest and link (5.6). |
 | `bridgeRpc` | `transfer.send` | Carries one JSON-RPC message through a graph (10). |
+| `exportHandoff` | `handoff.export` | Seals a participant's context into a portable handoff (13.1). |
+| `importHandoff` | `handoff.import` | Admits a handoff from another fabric (13.4). |
+| `readHandoff` | `ledger.read` | Reads a handoff the scope exported or imported. |
+| `verifyHandoff` | none | Says whether this fabric sealed a handoff (13.3). |
+| `putSecret` | `secret.manage` | Gives a secret to custody or rotates it (14.2). |
+| `deleteSecret` | `secret.manage` | Destroys a secret in custody (14.2). |
+| `listSecrets` | `graph.read` | Lists secret names and policies, never values (14.2). |
 
 ## 8.2 HTTP binding
 
 - Requests and responses use `application/json`; problems use `application/problem+json`.
 - The token travels as `Authorization: Bearer <token>`.
-- A client SHOULD send `Grail-Version: 1.0`. A fabric that does not support the requested version answers `grail.unsupported-version` with the versions it supports.
+- A client SHOULD send `Grail-Version: 1.1`. A fabric that does not support the requested version answers `grail.unsupported-version` with the versions it supports.
 - Paths, methods, parameters, bodies, and status codes are exactly those in the contract.
 - Pulling deliveries is cursor based: `after` is the last ledger sequence the recipient has processed. Passing a cursor acknowledges every delivery up to it, which is how `at-least-once` delivery learns that redelivery can stop. `limit` bounds the page and defaults to 100, at most 1000. `wait` (milliseconds, at most 30 000) holds the request open until a delivery arrives or the time runs out, so a participant behind a firewall or on a laptop receives work as it happens without the fabric ever calling it.
 

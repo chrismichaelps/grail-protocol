@@ -27,6 +27,10 @@ pudu run src/Main.pudu call readGraph \
 
 Use `--body` for operations with a JSON request body. Operation ids, paths, and parameters come from `schema/grail.openapi.json`.
 
+## Carry a handoff
+
+`grail handoff` exports a participant's context from one fabric, asks that fabric to attest it, and imports it into another. See [Move an agent](handoffs.md) for the options and what each step returns.
+
 ## Use the line binding
 
 `lines` runs a separate in-memory fabric; it does not connect to the HTTP process or share its state. Each input line selects an operation and may carry `token`, `params`, and `body`:

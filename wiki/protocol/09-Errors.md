@@ -27,6 +27,7 @@ Every refusal is one problem document in the shape of RFC 9457. Its `type` is `u
 | `grail.unauthorized` | 401 | No token, or a token that does not verify. | |
 | `grail.forbidden` | 403 | The token verifies but lacks the ability. | `ability` |
 | `grail.not-found` | 404 | The object does not exist in the token's scope. | |
+| `grail.method-not-allowed` | 405 | The path exists, but the contract offers no operation for this method on it. | |
 | `grail.duplicate` | 409 | An envelope or object with this id already exists. | |
 | `grail.revision-conflict` | 409 | `expectedRevision` is stale. | `revision` |
 | `grail.key-reused` | 409 | An `effectively-once` key was reused with a different envelope. | |
@@ -37,6 +38,8 @@ Every refusal is one problem document in the shape of RFC 9457. Its `type` is `u
 | `grail.invalid-transition` | 422 | The envelope would move a lifecycle illegally. | `state` |
 | `grail.unknown-parent` | 422 | A parent is not in the ledger. | `parents` |
 | `grail.limit-exceeded` | 422 | A count limit was exceeded. | `limit` |
+| `grail.secret-exposed` | 422 | An envelope, bridged message, or handoff holds the value of a secret in custody ([[protocol/14-Custody#14.3 Admission]]). | |
+| `grail.integrity` | 422 | A handoff's digests, links, or ancestry do not hold ([[protocol/13-Portability#13.2 Integrity]]). | |
 | `grail.clock-skew` | 422 | The sender's clock is too far ahead. | |
 | `grail.expired` | 422 | The deadline passed before acceptance. | |
 | `grail.unsupported-version` | 426 | The requested protocol version is not supported. | `supported` |

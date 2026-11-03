@@ -53,6 +53,9 @@ The signature is `HMAC-SHA-256(scopeKey, canonical form without the signature)`.
 | `transfer.read` | Reading the status of transfers. |
 | `ledger.read` | Reading traces and ledger ranges. |
 | `ledger.erase` | Erasing payloads. |
+| `handoff.export` | Sealing a participant's context into a handoff ([[protocol/13-Portability]]). |
+| `handoff.import` | Admitting a handoff from another fabric for a participant. |
+| `secret.manage` | Giving secrets to custody, rotating, and destroying them ([[protocol/14-Custody]]). |
 | `token.delegate` | Issuing narrower tokens to other participants. |
 | `*` | Every ability. Only tokens issued by `owner` may hold it. |
 

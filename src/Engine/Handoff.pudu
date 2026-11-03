@@ -1,0 +1,165 @@
+/** @Engine.Handoff.Portability — assembles, seals, and checks handoffs that carry an agent's context between fabrics */
+module Engine.Handoff
+
+import Std.Bytes as ByteSeq
+import Std.Crypto as Crypto
+import Std.Json as Json
+import Std.List as List
+import Std.Option as Option
+import Constants.Details as Details
+import Constants.Fabric as Fabric
+import Constants.Handoff as Portable
+import Constants.Ledger as Hashing
+import Contract.Limits as Limits
+import Contract.Members as Members
+import Contract.Problems as Codes
+import Domain.Capability as Capability
+import Domain.Graph as Graph
+import Domain.Handoff as Handoff
+import Domain.Ledger as Ledger
+import Domain.Problem as Problem
+import Domain.Scope as Scope
+import Engine.Causality as Causality
+import Engine.Codec.Graph as GraphCodec
+import Engine.Custody as Custody
+import Engine.Delivery as Delivery
+import Engine.Ledger as Chain
+import Utils.Canonical as Canonical
+import Utils.JsonRead as JsonRead
+import Utils.Pointer as Pointer
+
+/// The members a handoff's digest never covers.
+const SEALING: Array[Str] = [Members.HANDOFF_DIGEST, Members.HANDOFF_SEAL]
+
+/// A sealed handoff of the anchors and their causal ancestry. Entries the authority may not read travel withheld: their digest and link prove they exist, their content stays home. Secrets never travel; the handoff names the ones its carried envelopes reference, so the receiving owner can bind its own.
+export fn assemble(state: &Scope.State, origin: &Handoff.Origin, member: &Graph.Participant, asked: &Handoff.Asked, authority: &Capability.Authority, issued: Int, secret: Str) -> Result[Json.Json, Problem.Problem] {
+  let expires = Option.unwrapOr(asked.expires, issued + Limits.HANDOFF_LIFETIME_MILLIS)
+
+  if expires <= issued || expires > issued + Limits.HANDOFF_LIFETIME_MILLIS { return Err(Problem.invalid(&[Problem.violation(Pointer.of(&[Members.HANDOFF_REQUEST_EXPIRES]), Details.HANDOFF_LIFETIME)])) }
+
+  for anchor in asked.transfers {
+    let record = Option.okOr(state.records.get(anchor), Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) ?
+
+    if !Delivery.visible(&record, authority) { return Err(Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) }
+  }
+
+  let carried = Causality.ancestors(state, &asked.transfers)
+
+  if !carries(carried.length()) { return Err(Problem.withMember(&Problem.of(Codes.LIMIT_EXCEEDED, Details.HANDOFF_TOO_MANY), Members.HANDOFF_ENTRIES, Json.Number(Limits.HANDOFF_ENTRIES))) }
+
+  let unsealed = Json.object(&[
+      (Members.HANDOFF_GRAIL, Json.Text(Fabric.PROTOCOLS[0])),
+      (Members.HANDOFF_HANDOFF, Json.Text(asked.id)),
+      (Members.HANDOFF_ORIGIN, originJson(origin)),
+      (Members.HANDOFF_PARTICIPANT, GraphCodec.participantJson(member)),
+      (Members.HANDOFF_ANCHORS, JsonRead.textList(&asked.transfers)),
+      (Members.HANDOFF_ENTRIES, Json.List(carried.map(|record: Ledger.Record| entryJson(state, &record, !Delivery.visible(&record, authority))))),
+      (Members.HANDOFF_NEEDS, JsonRead.textList(&Custody.references(&Json.List(carried.filter(|record: Ledger.Record| Delivery.visible(&record, authority)).map(|record: Ledger.Record| Option.unwrapOr(record.envelope.payload, Json.Null)))))),
+      (Members.HANDOFF_ISSUED, Json.Number(issued)),
+      (Members.HANDOFF_EXPIRES, Json.Number(expires))
+    ])
+  let digest = digestOf(&unsealed)
+  let digested = Json.withField(&unsealed, Members.HANDOFF_DIGEST, Json.Text(digest))
+  Ok(Json.withField(&digested, Members.HANDOFF_SEAL, Json.Text(sealOf(secret, origin.scopeId, digest))))
+}
+
+/// Whether one handoff may carry this many entries.
+export fn carries(count: Int) -> Bool { count <= Limits.HANDOFF_ENTRIES }
+
+/// The digest of a handoff: the hash of its canonical form without its digest and seal.
+export fn digestOf(bundle: &Json.Json) -> Str { Hashing.DIGEST_PREFIX + Crypto.sha256Hex(Canonical.text(&Canonical.without(bundle, &SEALING))) }
+
+/// The seal a fabric gives a digest for one of its scopes. Only a fabric holding the same secret can make or check it.
+export fn sealOf(secret: Str, scopeId: Str, digest: Str) -> Str {
+  let key = Crypto.hmacSha256Text(secret, Portable.SEAL_KEY_LABEL + scopeId)
+  ByteSeq.encodeBase64Url(&Crypto.hmacSha256(&key, &ByteSeq.fromText(digest)))
+}
+
+/// Whether this fabric sealed the handoff, for the scope it was shown under.
+export fn attested(bundle: &Json.Json, secret: Str, scopeId: Str) -> Bool {
+  let origin = Option.unwrapOr(Json.field(bundle, Members.HANDOFF_ORIGIN), Json.Null)
+  let sealed = Option.unwrapOr(JsonRead.text(bundle, Members.HANDOFF_SEAL), "")
+  let expected = sealOf(secret, scopeId, digestOf(bundle))
+
+  JsonRead.text(&origin, Members.ORIGIN_SCOPE) == Some(scopeId) && Crypto.secretsMatch(sealed, expected)
+}
+
+/// The number of entries a handoff carries, when its digest, every envelope digest, every link, its ancestry, and its anchors all hold.
+export fn intact(bundle: &Json.Json) -> Result[Int, Problem.Problem] {
+  let entries = Option.unwrapOr(JsonRead.list(bundle, Members.HANDOFF_ENTRIES), [])
+  let anchors = Option.unwrapOr(JsonRead.texts(bundle, Members.HANDOFF_ANCHORS), [])
+  var carried: Set[Str] = setOf([])
+  var parents: Array[Str] = []
+  var last = 0
+
+  if JsonRead.text(bundle, Members.HANDOFF_DIGEST) != Some(digestOf(bundle)) { return Err(broken(Details.HANDOFF_DIGEST)) }
+
+  for entry in entries {
+    let sequence = Option.unwrapOr(JsonRead.whole(&entry, Members.HANDOFF_ENTRY_SEQUENCE), 0)
+    let id = Option.unwrapOr(JsonRead.text(&entry, Members.HANDOFF_ENTRY_ID), "")
+    let digest = Option.unwrapOr(JsonRead.text(&entry, Members.HANDOFF_ENTRY_DIGEST), "")
+    let previous = Option.unwrapOr(JsonRead.text(&entry, Members.HANDOFF_ENTRY_PREVIOUS), "")
+    let withheld = flag(&entry, Members.HANDOFF_ENTRY_WITHHELD)
+    let envelope = Json.field(&entry, Members.HANDOFF_ENTRY_ENVELOPE)
+
+    if sequence <= last { return Err(broken(Details.HANDOFF_ORDER)) }
+    if withheld == Option.isSome(&envelope) { return Err(broken(Details.HANDOFF_WITHHELD)) }
+    if JsonRead.text(&entry, Members.HANDOFF_ENTRY_LINK) != Some(Chain.linkAfter(previous, digest)) { return Err(broken(Details.HANDOFF_LINK)) }
+
+    if let Some(body) = envelope {
+      if JsonRead.text(&body, Members.ENVELOPE_ID) != Some(id) || !flag(&entry, Members.HANDOFF_ENTRY_ERASED) && Chain.digestOf(&body) != digest { return Err(broken(Details.HANDOFF_ALTERED)) }
+
+      parents = parents.concat(Option.unwrapOr(JsonRead.texts(&body, Members.ENVELOPE_PARENTS), []))
+    }
+
+    carried = carried.insert(id)
+    last = sequence
+  }
+
+  if !List.all(&parents, |parent: Str| carried.contains(parent)) { return Err(broken(Details.HANDOFF_OPEN)) }
+  if !List.all(&anchors, |anchor: Str| carried.contains(anchor)) { return Err(broken(Details.HANDOFF_ANCHOR)) }
+
+  Ok(entries.length())
+}
+
+/// Whether a handoff's import window closed before `now`.
+export fn expired(bundle: &Json.Json, now: Int) -> Bool { Option.holds(&JsonRead.whole(bundle, Members.HANDOFF_EXPIRES), |expires: Int| expires <= now) }
+
+/// What the ledger records about a handoff that moved in a direction: its id, digest, origin, anchors, and how many entries it carried.
+export fn summary(bundle: &Json.Json, direction: Str, entries: Int) -> Json.Json {
+  JsonRead.objectOf(&[
+      (Members.HANDOFF_HANDOFF, Json.field(bundle, Members.HANDOFF_HANDOFF)),
+      (Members.HANDOFF_DIGEST, Json.field(bundle, Members.HANDOFF_DIGEST)),
+      (Members.HANDOFF_ORIGIN, Json.field(bundle, Members.HANDOFF_ORIGIN)),
+      (Members.HANDOFF_ANCHORS, Json.field(bundle, Members.HANDOFF_ANCHORS)),
+      (Portable.ENTRIES_MEMBER, Some(Json.Number(entries))),
+      (Portable.DIRECTION_MEMBER, Some(Json.Text(direction)))
+    ])
+}
+
+fn entryJson(state: &Scope.State, record: &Ledger.Record, withheld: Bool) -> Json.Json {
+  let previous = Option.unwrapOr(Option.map(Scope.recordAt(state, record.entry.sequence - 1), |before: Ledger.Record| before.entry.link), "")
+  JsonRead.objectOf(&[
+      (Members.HANDOFF_ENTRY_SEQUENCE, Some(Json.Number(record.entry.sequence))),
+      (Members.HANDOFF_ENTRY_ID, Some(Json.Text(record.entry.id))),
+      (Members.HANDOFF_ENTRY_PREVIOUS, Some(Json.Text(previous))),
+      (Members.HANDOFF_ENTRY_DIGEST, Some(Json.Text(record.entry.digest))),
+      (Members.HANDOFF_ENTRY_LINK, Some(Json.Text(record.entry.link))),
+      (Members.HANDOFF_ENTRY_ERASED, Some(Json.Boolean(record.erased))),
+      (Members.HANDOFF_ENTRY_WITHHELD, Some(Json.Boolean(withheld))),
+      (Members.HANDOFF_ENTRY_ENVELOPE, if withheld { None } else { Some(record.body) })
+    ])
+}
+
+fn originJson(origin: &Handoff.Origin) -> Json.Json {
+  Json.object(&[
+      (Members.ORIGIN_FABRIC, Json.Text(origin.fabric)),
+      (Members.ORIGIN_SCOPE, Json.Text(origin.scopeId)),
+      (Members.ORIGIN_GRAPH, Json.Text(origin.graph)),
+      (Members.ORIGIN_PARTICIPANT, Json.Text(origin.participant))
+    ])
+}
+
+fn flag(value: &Json.Json, name: Str) -> Bool { Option.unwrapOr(Option.andThen(Json.field(value, name), |held: Json.Json| Json.asBool(&held)), false) }
+
+fn broken(detail: Str) -> Problem.Problem { Problem.of(Codes.INTEGRITY, detail) }

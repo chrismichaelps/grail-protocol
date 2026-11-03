@@ -1,0 +1,94 @@
+/** @Test.Engine.Custody.Suite — the edges of sealing, guarding, and revealing secrets, at a fixed time */
+module Engine.CustodyTest
+
+import Std.Bytes as ByteSeq
+import Std.Json as Json
+import Std.Map as Map
+import Std.Option as Option
+import Std.Result as Result
+import Std.Test as Test
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Domain.Custody as Custody
+import Domain.Envelope as Envelope
+import Domain.Graph as Graph
+import Domain.Ledger as Ledger
+import Domain.Scope as Scope
+import Engine.Codec.Envelope as EnvelopeCodec
+import Engine.Custody as Guard
+import Support.Fixtures as Fixtures
+import Support.Runner as Runner
+
+/// The value every case seals.
+const VALUE: Str = "fixture-key-0123456789"
+
+fn executing() -> Scope.State {
+  let state = Fixtures.teamScope()
+  let graphs = Map.mapValues(&state.graphs, |graph: Graph.Graph| Graph.Graph{..graph, participants: graph.participants.map(|member: Graph.Participant| if member.id == "writer" { Graph.Participant{..member, kind: Vocabulary.PARTICIPANT_TOOL} } else { member })})
+  Scope.State{..state, graphs: graphs}
+}
+
+fn demoted(state: &Scope.State) -> Scope.State {
+  let graphs = Map.mapValues(&state.graphs, |graph: Graph.Graph| Graph.Graph{..graph, participants: graph.participants.map(|member: Graph.Participant| if member.id == "writer" { Graph.Participant{..member, kind: Vocabulary.PARTICIPANT_AGENT} } else { member })})
+  Scope.State{..*state, graphs: graphs}
+}
+
+fn held(expires: Option[Int]) -> Scope.State {
+  let state = executing()
+  let deposit = Custody.Deposit{name: "key", value: VALUE, graph: Fixtures.GRAPH, audience: ["writer"], senders: [], kinds: [], uses: None, expires: expires, description: None}
+  let nonce = ByteSeq.fromText("twelve-bytes")
+
+  match Guard.sealed(&state, &Custody.Sealing{deposit: deposit, nonce: nonce, now: Fixtures.NOW}, Fixtures.SECRET) {
+    case Ok(found) => Scope.State{..state, secrets: state.secrets.insert(found.name, found)}
+    case Err(_) => state
+  }
+}
+
+fn reference() -> Json.Json { Json.object(&[("auth", Json.object(&[("$secret", Json.Text("key"))]))]) }
+
+fn record(recipients: &Array[Envelope.Address]) -> Ledger.Record {
+  let body = Json.withField(&Fixtures.body("c", "planner", Fixtures.to("writer"), Vocabulary.KIND_TOOL_CALL, &[]), "payload", reference())
+  let envelope = Result.unwrapOr(EnvelopeCodec.decode(&body), Result.unwrapOr(EnvelopeCodec.decode(&Fixtures.body("x", "planner", Fixtures.to("writer"), Vocabulary.KIND_TASK, &[])), Envelope.Envelope{grail: "", id: "", scopeId: "", graph: "", source: "", target: Envelope.ToParticipant(""), kind: "", parents: [], schema: None, payload: None, delivery: Envelope.Delivery{mode: "", key: None}, priority: 0, deadline: None, clock: None, visibility: "", encryption: None, extensions: []}))
+  Ledger.Record{entry: Ledger.Entry{sequence: 2, id: "c", digest: "", link: ""}, envelope: envelope, body: body, stamp: Envelope.Stamp{sequence: 2, digest: "", accepted: Fixtures.NOW}, recipients: *recipients, erased: false}
+}
+
+fn address(graph: Str, participant: Str) -> Envelope.Address { Envelope.Address{graph: graph, participant: participant} }
+
+fn shown(state: &Scope.State, recipient: &Envelope.Address, now: Int) -> Json.Json {
+  let revealed = Guard.revealed(state, &record(&[*recipient]), recipient, Fixtures.SECRET, now)
+  Option.unwrapOr(Option.andThen(revealed.envelope.payload, |payload: Json.Json| Json.field(&payload, "auth")), Json.Null)
+}
+
+fn main() -> Int {
+  let open = held(None)
+  let expiring = held(Some(Fixtures.NOW))
+  let writer = address(Fixtures.GRAPH, "writer")
+  let checks = Test.suite("Engine custody", &[
+      Test.equals("a sealed value opens under the same key", &Option.andThen(open.secrets.get("key"), |found: Custody.Held| Guard.valueOf(&found, Fixtures.SECRET, Fixtures.SCOPE)), &Some(VALUE)),
+      Test.equals("a sealed value does not open in another scope", &Option.andThen(open.secrets.get("key"), |found: Custody.Held| Guard.valueOf(&found, Fixtures.SECRET, "elsewhere")), &None),
+      Test.equals("a reference to the audience is admitted", &Fixtures.code(&Guard.guarded(&open, &record(&[writer]), Fixtures.NOW)), &""),
+      Test.equals("a secret has expired at its expiry", &Fixtures.code(&Guard.guarded(&expiring, &record(&[writer]), Fixtures.NOW)), &Codes.EXPIRED),
+      Test.equals("a secret is usable just before its expiry", &Fixtures.code(&Guard.guarded(&expiring, &record(&[writer]), Fixtures.NOW - 1)), &""),
+      Test.equals("the audience receives the value", &shown(&open, &writer, Fixtures.NOW), &Json.Text(VALUE)),
+      Test.equals("a recipient outside the audience receives the reference", &shown(&open, &address(Fixtures.GRAPH, "reviewer"), Fixtures.NOW), &Json.object(&[("$secret", Json.Text("key"))])),
+      Test.equals("the same participant in another graph receives the reference", &shown(&open, &address("elsewhere", "writer"), Fixtures.NOW), &Json.object(&[("$secret", Json.Text("key"))])),
+      Test.equals("nothing is revealed at the moment of expiry", &shown(&expiring, &writer, Fixtures.NOW), &Json.object(&[("$secret", Json.Text("key"))])),
+      Test.equals("the value is revealed just before expiry", &shown(&expiring, &writer, Fixtures.NOW - 1), &Json.Text(VALUE)),
+      Test.equals("an object with more than the marker is not a reference", &Guard.references(&Json.object(&[("$secret", Json.Text("key")), ("note", Json.Text("x"))])), &[]),
+      Test.equals("a single member that is not the marker is not a reference", &Guard.references(&Json.object(&[("secret", Json.Text("key"))])), &[]),
+      Test.equals("references are found inside lists, once each", &Guard.references(&Json.List([reference(), reference(), Json.object(&[("$secret", Json.Text("other"))])])), &["key", "other"]),
+      Test.that("a payload holding the value is seen", Guard.exposes(&open, &Json.Text("value is " + VALUE), Fixtures.SECRET)),
+      Test.that("a payload without it is not", !Guard.exposes(&open, &Json.Text("nothing here"), Fixtures.SECRET)),
+      Test.equals("an audience member that stopped being an executor is refused", &Fixtures.code(&Guard.guarded(&demoted(&open), &record(&[writer]), Fixtures.NOW)), &Codes.FORBIDDEN),
+      Test.equals("an audience member that stopped being an executor is not revealed the value", &shown(&demoted(&open), &writer, Fixtures.NOW), &Json.object(&[("$secret", Json.Text("key"))])),
+      Test.equals("the owner is never struck", &Guard.caught(&open, &Fixtures.owner())[1].strikes.size(), &0),
+      Test.that("an executor kind may receive values", Guard.executes(&open, Fixtures.GRAPH, "writer")),
+      Test.that("an agent may not", !Guard.executes(&open, Fixtures.GRAPH, "planner")),
+      Test.that("a participant of another graph may not", !Guard.executes(&open, "elsewhere", "writer")),
+      Test.equals("strikes count up", &Guard.struck(&Guard.struck(&open, "t")[0], "t")[1], &2),
+      Test.that("a token is revoked at the strike limit", Guard.struck(&Guard.struck(&Guard.struck(&open, "t")[0], "t")[0], "t")[0].revoked.contains("t")),
+      Test.that("a token is not revoked before it", !Guard.struck(&Guard.struck(&open, "t")[0], "t")[0].revoked.contains("t"))
+    ])
+
+  Runner.finish(&checks)
+}

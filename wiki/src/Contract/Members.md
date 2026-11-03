@@ -536,13 +536,211 @@ export const ERASURE_REQUIRED: Array[Str]
 export const ERASURE_CLOSED: Bool = false
 /// Whether `Erasure` accepts `x-` members.
 export const ERASURE_EXTENSIBLE: Bool = false
+/// The `fabric` member of `Origin`.
+export const ORIGIN_FABRIC: Str = "fabric"
+/// The `scope` member of `Origin`.
+export const ORIGIN_SCOPE: Str = "scope"
+/// The `graph` member of `Origin`.
+export const ORIGIN_GRAPH: Str = "graph"
+/// The `participant` member of `Origin`.
+export const ORIGIN_PARTICIPANT: Str = "participant"
+/// Members `Origin` allows.
+export const ORIGIN_ALLOWED: Array[Str]
+/// Members `Origin` requires.
+export const ORIGIN_REQUIRED: Array[Str]
+/// Whether `Origin` refuses members it does not list.
+export const ORIGIN_CLOSED: Bool = true
+/// Whether `Origin` accepts `x-` members.
+export const ORIGIN_EXTENSIBLE: Bool = false
+/// The `id` member of `HandoffRequest`.
+export const HANDOFF_REQUEST_ID: Str = "id"
+/// The `transfers` member of `HandoffRequest`.
+export const HANDOFF_REQUEST_TRANSFERS: Str = "transfers"
+/// The `expires` member of `HandoffRequest`.
+export const HANDOFF_REQUEST_EXPIRES: Str = "expires"
+/// Members `HandoffRequest` allows.
+export const HANDOFF_REQUEST_ALLOWED: Array[Str]
+/// Members `HandoffRequest` requires.
+export const HANDOFF_REQUEST_REQUIRED: Array[Str]
+/// Whether `HandoffRequest` refuses members it does not list.
+export const HANDOFF_REQUEST_CLOSED: Bool = true
+/// Whether `HandoffRequest` accepts `x-` members.
+export const HANDOFF_REQUEST_EXTENSIBLE: Bool = false
+/// The `sequence` member of `HandoffEntry`.
+export const HANDOFF_ENTRY_SEQUENCE: Str = "sequence"
+/// The `id` member of `HandoffEntry`.
+export const HANDOFF_ENTRY_ID: Str = "id"
+/// The `previous` member of `HandoffEntry`.
+export const HANDOFF_ENTRY_PREVIOUS: Str = "previous"
+/// The `digest` member of `HandoffEntry`.
+export const HANDOFF_ENTRY_DIGEST: Str = "digest"
+/// The `link` member of `HandoffEntry`.
+export const HANDOFF_ENTRY_LINK: Str = "link"
+/// The `erased` member of `HandoffEntry`.
+export const HANDOFF_ENTRY_ERASED: Str = "erased"
+/// The `withheld` member of `HandoffEntry`.
+export const HANDOFF_ENTRY_WITHHELD: Str = "withheld"
+/// The `envelope` member of `HandoffEntry`.
+export const HANDOFF_ENTRY_ENVELOPE: Str = "envelope"
+/// Members `HandoffEntry` allows.
+export const HANDOFF_ENTRY_ALLOWED: Array[Str]
+/// Members `HandoffEntry` requires.
+export const HANDOFF_ENTRY_REQUIRED: Array[Str]
+/// Whether `HandoffEntry` refuses members it does not list.
+export const HANDOFF_ENTRY_CLOSED: Bool = true
+/// Whether `HandoffEntry` accepts `x-` members.
+export const HANDOFF_ENTRY_EXTENSIBLE: Bool = false
+/// The `grail` member of `Handoff`.
+export const HANDOFF_GRAIL: Str = "grail"
+/// The `handoff` member of `Handoff`.
+export const HANDOFF_HANDOFF: Str = "handoff"
+/// The `origin` member of `Handoff`.
+export const HANDOFF_ORIGIN: Str = "origin"
+/// The `participant` member of `Handoff`.
+export const HANDOFF_PARTICIPANT: Str = "participant"
+/// The `anchors` member of `Handoff`.
+export const HANDOFF_ANCHORS: Str = "anchors"
+/// The `entries` member of `Handoff`.
+export const HANDOFF_ENTRIES: Str = "entries"
+/// The `issued` member of `Handoff`.
+export const HANDOFF_ISSUED: Str = "issued"
+/// The `expires` member of `Handoff`.
+export const HANDOFF_EXPIRES: Str = "expires"
+/// The `digest` member of `Handoff`.
+export const HANDOFF_DIGEST: Str = "digest"
+/// The `seal` member of `Handoff`.
+export const HANDOFF_SEAL: Str = "seal"
+/// The `needs` member of `Handoff`.
+export const HANDOFF_NEEDS: Str = "needs"
+/// Members `Handoff` allows.
+export const HANDOFF_ALLOWED: Array[Str]
+/// Members `Handoff` requires.
+export const HANDOFF_REQUIRED: Array[Str]
+/// Whether `Handoff` refuses members it does not list.
+export const HANDOFF_CLOSED: Bool = true
+/// Whether `Handoff` accepts `x-` members.
+export const HANDOFF_EXTENSIBLE: Bool = false
+/// The `handoff` member of `HandoffReceipt`.
+export const HANDOFF_RECEIPT_HANDOFF: Str = "handoff"
+/// The `id` member of `HandoffReceipt`.
+export const HANDOFF_RECEIPT_ID: Str = "id"
+/// The `sequence` member of `HandoffReceipt`.
+export const HANDOFF_RECEIPT_SEQUENCE: Str = "sequence"
+/// The `digest` member of `HandoffReceipt`.
+export const HANDOFF_RECEIPT_DIGEST: Str = "digest"
+/// The `entries` member of `HandoffReceipt`.
+export const HANDOFF_RECEIPT_ENTRIES: Str = "entries"
+/// The `duplicate` member of `HandoffReceipt`.
+export const HANDOFF_RECEIPT_DUPLICATE: Str = "duplicate"
+/// Members `HandoffReceipt` allows.
+export const HANDOFF_RECEIPT_ALLOWED: Array[Str]
+/// Members `HandoffReceipt` requires.
+export const HANDOFF_RECEIPT_REQUIRED: Array[Str]
+/// Whether `HandoffReceipt` refuses members it does not list.
+export const HANDOFF_RECEIPT_CLOSED: Bool = false
+/// Whether `HandoffReceipt` accepts `x-` members.
+export const HANDOFF_RECEIPT_EXTENSIBLE: Bool = false
+/// The `handoff` member of `HandoffCheck`.
+export const HANDOFF_CHECK_HANDOFF: Str = "handoff"
+/// The `digest` member of `HandoffCheck`.
+export const HANDOFF_CHECK_DIGEST: Str = "digest"
+/// The `intact` member of `HandoffCheck`.
+export const HANDOFF_CHECK_INTACT: Str = "intact"
+/// The `attested` member of `HandoffCheck`.
+export const HANDOFF_CHECK_ATTESTED: Str = "attested"
+/// The `expired` member of `HandoffCheck`.
+export const HANDOFF_CHECK_EXPIRED: Str = "expired"
+/// Members `HandoffCheck` allows.
+export const HANDOFF_CHECK_ALLOWED: Array[Str]
+/// Members `HandoffCheck` requires.
+export const HANDOFF_CHECK_REQUIRED: Array[Str]
+/// Whether `HandoffCheck` refuses members it does not list.
+export const HANDOFF_CHECK_CLOSED: Bool = false
+/// Whether `HandoffCheck` accepts `x-` members.
+export const HANDOFF_CHECK_EXTENSIBLE: Bool = false
+/// The `$secret` member of `SecretReference`.
+export const SECRET_REFERENCE_SECRET: Str = "$secret"
+/// Members `SecretReference` allows.
+export const SECRET_REFERENCE_ALLOWED: Array[Str]
+/// Members `SecretReference` requires.
+export const SECRET_REFERENCE_REQUIRED: Array[Str]
+/// Whether `SecretReference` refuses members it does not list.
+export const SECRET_REFERENCE_CLOSED: Bool = true
+/// Whether `SecretReference` accepts `x-` members.
+export const SECRET_REFERENCE_EXTENSIBLE: Bool = false
+/// The `value` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_VALUE: Str = "value"
+/// The `graph` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_GRAPH: Str = "graph"
+/// The `audience` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_AUDIENCE: Str = "audience"
+/// The `senders` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_SENDERS: Str = "senders"
+/// The `kinds` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_KINDS: Str = "kinds"
+/// The `uses` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_USES: Str = "uses"
+/// The `expires` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_EXPIRES: Str = "expires"
+/// The `description` member of `SecretDeposit`.
+export const SECRET_DEPOSIT_DESCRIPTION: Str = "description"
+/// Members `SecretDeposit` allows.
+export const SECRET_DEPOSIT_ALLOWED: Array[Str]
+/// Members `SecretDeposit` requires.
+export const SECRET_DEPOSIT_REQUIRED: Array[Str]
+/// Whether `SecretDeposit` refuses members it does not list.
+export const SECRET_DEPOSIT_CLOSED: Bool = true
+/// Whether `SecretDeposit` accepts `x-` members.
+export const SECRET_DEPOSIT_EXTENSIBLE: Bool = false
+/// The `name` member of `SecretView`.
+export const SECRET_VIEW_NAME: Str = "name"
+/// The `version` member of `SecretView`.
+export const SECRET_VIEW_VERSION: Str = "version"
+/// The `graph` member of `SecretView`.
+export const SECRET_VIEW_GRAPH: Str = "graph"
+/// The `audience` member of `SecretView`.
+export const SECRET_VIEW_AUDIENCE: Str = "audience"
+/// The `senders` member of `SecretView`.
+export const SECRET_VIEW_SENDERS: Str = "senders"
+/// The `kinds` member of `SecretView`.
+export const SECRET_VIEW_KINDS: Str = "kinds"
+/// The `uses` member of `SecretView`.
+export const SECRET_VIEW_USES: Str = "uses"
+/// The `expires` member of `SecretView`.
+export const SECRET_VIEW_EXPIRES: Str = "expires"
+/// The `description` member of `SecretView`.
+export const SECRET_VIEW_DESCRIPTION: Str = "description"
+/// The `created` member of `SecretView`.
+export const SECRET_VIEW_CREATED: Str = "created"
+/// The `reveals` member of `SecretView`.
+export const SECRET_VIEW_REVEALS: Str = "reveals"
+/// The `revealed` member of `SecretView`.
+export const SECRET_VIEW_REVEALED: Str = "revealed"
+/// Members `SecretView` allows.
+export const SECRET_VIEW_ALLOWED: Array[Str]
+/// Members `SecretView` requires.
+export const SECRET_VIEW_REQUIRED: Array[Str]
+/// Whether `SecretView` refuses members it does not list.
+export const SECRET_VIEW_CLOSED: Bool = false
+/// Whether `SecretView` accepts `x-` members.
+export const SECRET_VIEW_EXTENSIBLE: Bool = false
+/// The `secrets` member of `SecretList`.
+export const SECRET_LIST_SECRETS: Str = "secrets"
+/// Members `SecretList` allows.
+export const SECRET_LIST_ALLOWED: Array[Str]
+/// Members `SecretList` requires.
+export const SECRET_LIST_REQUIRED: Array[Str]
+/// Whether `SecretList` refuses members it does not list.
+export const SECRET_LIST_CLOSED: Bool = false
+/// Whether `SecretList` accepts `x-` members.
+export const SECRET_LIST_EXTENSIBLE: Bool = false
 ```
 
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Erasure]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Bridge]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]]
+- **Consumed by:** [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Bridge]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]]
 
 ## Referenced by
 
-[[src/Contract/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Erasure]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Bridge]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]]
+[[src/Contract/_MOC]] · [[src/Cli/Commands]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]] · [[src/Services/Bridge]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]]

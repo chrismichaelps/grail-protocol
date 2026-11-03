@@ -54,6 +54,10 @@ export const KIND_ABILITY_ADVERT: Str = "ability.advert"
 export const KIND_GRAPH_MUTATION: Str = "graph.mutation"
 /// `bridge.rpc`.
 export const KIND_BRIDGE_RPC: Str = "bridge.rpc"
+/// `handoff.export`.
+export const KIND_HANDOFF_EXPORT: Str = "handoff.export"
+/// `handoff.import`.
+export const KIND_HANDOFF_IMPORT: Str = "handoff.import"
 /// Every value of the set.
 export const KINDS: Array[Str]
 /// `*`.
@@ -74,6 +78,12 @@ export const ABILITY_LEDGER_READ: Str = "ledger.read"
 export const ABILITY_LEDGER_ERASE: Str = "ledger.erase"
 /// `token.delegate`.
 export const ABILITY_TOKEN_DELEGATE: Str = "token.delegate"
+/// `handoff.export`.
+export const ABILITY_HANDOFF_EXPORT: Str = "handoff.export"
+/// `handoff.import`.
+export const ABILITY_HANDOFF_IMPORT: Str = "handoff.import"
+/// `secret.manage`.
+export const ABILITY_SECRET_MANAGE: Str = "secret.manage"
 /// Every value of the set.
 export const ABILITIES: Array[Str]
 /// `agent`.
@@ -149,8 +159,8 @@ export const OPENING_KINDS: Array[Str]
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Cli/Commands]] · [[src/Domain/Graph]] · [[src/Domain/Identifier]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Bridge]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Views]] · [[src/Engine/Delivery]] · [[src/Engine/Journal]] · [[src/Engine/Kinds]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Engine/Routing]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/MutationsTest]] · [[test/Engine/ShapesTest]] · [[test/Security/AttackTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/Cli/Commands]] · [[src/Domain/Graph]] · [[src/Domain/Identifier]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Bridge]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Journal]] · [[src/Engine/Kinds]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Engine/Routing]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/CustodyTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/MutationsTest]] · [[test/Engine/ShapesTest]] · [[test/Security/AttackTest]] · [[test/Security/CustodyTest]] · [[test/Security/HandoffTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
 
 ## Referenced by
 
-[[src/Cli/Commands]] · [[src/Contract/_MOC]] · [[src/Domain/Graph]] · [[src/Domain/Identifier]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Bridge]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Views]] · [[src/Engine/Delivery]] · [[src/Engine/Journal]] · [[src/Engine/Kinds]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Engine/Routing]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/MutationsTest]] · [[test/Engine/ShapesTest]] · [[test/Security/AttackTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
+[[src/Contract/_MOC]] · [[src/Cli/Commands]] · [[src/Domain/Graph]] · [[src/Domain/Identifier]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Bridge]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Codec/Views]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Engine/Journal]] · [[src/Engine/Kinds]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Engine/Routing]] · [[src/Services/Bridge]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[test/Engine/AdmissionTest]] · [[test/Engine/AuthorityTest]] · [[test/Engine/CustodyTest]] · [[test/Engine/DeliveryTest]] · [[test/Engine/MutationsTest]] · [[test/Engine/ShapesTest]] · [[test/Security/AttackTest]] · [[test/Security/CustodyTest]] · [[test/Security/HandoffTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]

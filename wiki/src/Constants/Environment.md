@@ -21,6 +21,8 @@ The variables the fabric reads at start, and what it accepts.
 ```pudu
 /// The address the server binds.
 export const HOST: Str = "GRAIL_HOST"
+/// The name this fabric gives itself as the origin of the handoffs it seals.
+export const FABRIC_NAME: Str = "GRAIL_FABRIC_NAME"
 /// The port the server binds.
 export const PORT: Str = "GRAIL_PORT"
 /// The fabric secret every scope key derives from.
@@ -57,6 +59,10 @@ export const SECRET_TOO_SHORT: Str = "at least 32 characters"
 export const LEVEL_UNKNOWN: Str = "one of verbose, debug, information, warning, error, fatal"
 /// What separates allowed origins.
 export const ORIGIN_SEPARATOR: Str = ","
+/// What a fabric name may hold.
+export const FABRIC_NAME_INVALID: Str = "1 to 64 lowercase letters, digits, and . _ -"
+/// The longest fabric name.
+export const FABRIC_NAME_MAX: Int = 64
 ```
 
 ### Linkage

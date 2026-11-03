@@ -34,8 +34,8 @@ export const SECRET_LENGTH_MIN: Int = 32
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Api/Peer]] · [[src/Cli/Commands]] · [[src/Config/Settings]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Delivery]] · [[src/Services/Fabric]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[test/Engine/AuthorityTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
+- **Consumed by:** [[src/Api/Peer]] · [[src/Cli/Commands]] · [[src/Config/Settings]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Services/Fabric]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[test/Engine/AuthorityTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
 
 ## Referenced by
 
-[[src/Api/Peer]] · [[src/Cli/Commands]] · [[src/Config/Settings]] · [[src/Constants/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Delivery]] · [[src/Services/Fabric]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[test/Engine/AuthorityTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]
+[[src/Constants/_MOC]] · [[src/Api/Peer]] · [[src/Cli/Commands]] · [[src/Config/Settings]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Custody]] · [[src/Engine/Delivery]] · [[src/Services/Fabric]] · [[src/Web/Caller]] · [[src/Web/Lines]] · [[test/Engine/AuthorityTest]] · [[test/Support/Fabric]] · [[test/Support/Fixtures]] · [[test/Web/RouterTest]]

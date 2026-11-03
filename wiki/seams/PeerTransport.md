@@ -13,7 +13,7 @@ tags: [seam]
 
 ## Classification
 
-EXPLORATORY: [[src/Api/Peer]] calls a remote fabric over HTTP through the standard resilience pipeline: rate limiter, total timeout, retry that honors `Retry-After`, circuit breaker, and attempt timeout. Federation between fabrics would add a second consumer.
+EXPLORATORY: [[src/Api/Peer]] calls a remote fabric over HTTP through the standard resilience pipeline: rate limiter, total timeout, retry that honors `Retry-After`, circuit breaker, and attempt timeout. Two commands consume it: `grail call`, and `grail handoff`, which carries a handoff between two fabrics ([[protocol/13-Portability]]). Fabrics themselves never use it to import; the carrier talks to each fabric.
 
 ## Referenced by
 

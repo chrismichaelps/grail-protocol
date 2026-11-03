@@ -34,8 +34,8 @@ export const REVISION_SEPARATOR: Str = "@"
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]]
+- **Consumed by:** [[src/Engine/Admission]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]]
 
 ## Referenced by
 
-[[src/Constants/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]]
+[[src/Constants/_MOC]] · [[src/Engine/Admission]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Engine/Ledger]]

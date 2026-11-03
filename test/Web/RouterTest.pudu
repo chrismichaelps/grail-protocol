@@ -89,7 +89,7 @@ fn main() -> Int {
       Test.equals("the description is consistent", &Description.problems(), &[]),
       Test.equals("there is a route per operation", &router.routes.length(), &Operations.ALL.length()),
       Test.equals("discovery answers", &discovered[0], &200),
-      Test.equals("discovery names the protocol version", &JsonRead.texts(&discovered[1], "grail"), &Some(["1.0"])),
+      Test.equals("discovery names the protocol versions, newest first", &JsonRead.texts(&discovered[1], "grail"), &Some(["1.1", "1.0"])),
       Test.equals("the contract is served", &JsonRead.text(&contract[1], "openapi"), &Some("3.1.0")),
       Test.equals("no token is unauthorized", &codeOf(&anonymous), &Codes.UNAUTHORIZED),
       Test.equals("a graph is created with the contract's status", &created[0], &201),

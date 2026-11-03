@@ -21,8 +21,6 @@ Bounds of the HTTP server.
 ```pudu
 /// The largest request head the server reads.
 export const HEAD_BYTES_MAX: Int = 32768
-/// The largest request body the server reads: one envelope at its limit.
-export const BODY_BYTES_MAX: Int = 1114112
 /// Milliseconds a connection may take to send or receive.
 export const SOCKET_DEADLINE_MILLIS: Int = 45000
 /// Milliseconds in-flight requests have to finish at shutdown.

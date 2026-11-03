@@ -16,7 +16,7 @@
         {"name": "Source", "href": "https://github.com/chrismichaelps/grail-protocol"},
         {"name": "Issues", "href": "https://github.com/chrismichaelps/grail-protocol/issues"},
         {"name": "License", "href": "https://github.com/chrismichaelps/grail-protocol/blob/main/LICENSE"},
-        {"name": "Support", "href": "https://ko-fi.com/chrismichaelps"}
+        {"name": "Support", "href": "https://paypal.me/chrismperezsantiago"}
       ]
     },
     "sitemap": {"baseUrl": "https://grail-protocol.chrisperezsantiago1.workers.dev", "changefreq": "weekly"}

@@ -23,6 +23,8 @@ The HTTP routes, built from the contract's operations and nothing else.
 export fn router(app: &Assembly.App) -> Result[Route.Router, Str]
 /// The hardening every request passes: a request identity, protective headers, sharing with listed origins only, a rate limit, a concurrency bound, and a deadline. Same-site form protection is left out on purpose: every operation is authorized by a bearer token, never by a cookie.
 export fn middleware(settings: &Settings.Settings) -> Array[Route.Middleware]
+/// Answers a method a contract path does not offer with a problem document, like every other refusal, in place of the server's plain text.
+export fn refusing() -> Route.Middleware
 ```
 
 ### Linkage

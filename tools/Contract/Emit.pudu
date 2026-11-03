@@ -20,7 +20,7 @@ export fn files(contract: &Read.Contract) -> Array[(Str, Str)] {
   ]
 }
 
-/// A name in constant case: `envelopeBytes` is `ENVELOPE_BYTES`, `tool.call` is `TOOL_CALL`, `*` is `ALL`.
+/// A name in constant case: `envelopeBytes` is `ENVELOPE_BYTES`, `tool.call` is `TOOL_CALL`, `$secret` is `SECRET`, `*` is `ALL`.
 export fn constantName(name: Str) -> Str {
   if name == "*" { return "ALL" }
 
@@ -32,6 +32,8 @@ export fn constantName(name: Str) -> Str {
       out = out + "_" + character.toText()
     } else if Char.isAlphanumeric(character) {
       out = out + Char.toUpper(character).toText()
+    } else if out.isEmpty() {
+      out = out
     } else {
       out = out + "_"
     }

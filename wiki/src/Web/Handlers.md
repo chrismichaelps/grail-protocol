@@ -28,7 +28,7 @@ export fn respond(id: Str, app: Assembly.App, request: Route.Request, status: In
 
 ### Linkage
 
-- **Requires:** [[src/App/Assembly]] · [[src/App/Commands]] · [[src/Contract/Document]] · [[src/Contract/Operations]] · [[src/Contract/Parameters]] · [[src/Domain/Capability]] · [[src/Domain/Envelope]] · [[src/Domain/Graph]] · [[src/Domain/Mutation]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Transfer]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Web/Caller]] · [[src/Web/Respond]]
+- **Requires:** [[src/App/Assembly]] · [[src/App/Commands]] · [[src/Contract/Document]] · [[src/Contract/Operations]] · [[src/Contract/Parameters]] · [[src/Domain/Capability]] · [[src/Domain/Custody]] · [[src/Domain/Envelope]] · [[src/Domain/Graph]] · [[src/Domain/Handoff]] · [[src/Domain/Mutation]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Transfer]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/Views]] · [[src/Web/Caller]] · [[src/Web/Respond]]
 - **Standard library:** `Std.Http`, `Std.Http.Server.Reply`, `Std.Http.Server.Route`, `Std.Json`, `Std.Map`, `Std.Option`, `Std.Result`
 - **Consumed by:** [[src/Web/Router]]
 

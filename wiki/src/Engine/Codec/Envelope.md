@@ -33,8 +33,8 @@ export fn addressJson(address: &Envelope.Address) -> Json.Json
 
 - **Requires:** [[src/Constants/Details]] · [[src/Constants/Extras]] · [[src/Constants/Graphs]] · [[src/Contract/Limits]] · [[src/Contract/Members]] · [[src/Contract/Problems]] · [[src/Contract/Schemas]] · [[src/Contract/Vocabulary]] · [[src/Domain/Envelope]] · [[src/Domain/Problem]] · [[src/Engine/Codec/Shapes]] · [[src/Utils/JsonRead]]
 - **Standard library:** `Std.Json`, `Std.Option`
-- **Consumed by:** [[src/Engine/Codec/Views]] · [[src/Engine/Journal]] · [[src/Services/Bridge]] · [[src/Web/Handlers]] · [[test/Engine/AdmissionTest]] · [[test/Engine/LedgerTest]] · [[test/Engine/ShapesTest]] · [[test/Support/Fixtures]]
+- **Consumed by:** [[src/Engine/Codec/Views]] · [[src/Engine/Journal]] · [[src/Services/Bridge]] · [[src/Web/Handlers]] · [[test/Engine/AdmissionTest]] · [[test/Engine/CustodyTest]] · [[test/Engine/LedgerTest]] · [[test/Engine/ShapesTest]] · [[test/Support/Fixtures]]
 
 ## Referenced by
 
-[[src/Engine/Codec/Views]] · [[src/Engine/Codec/_MOC]] · [[src/Engine/Journal]] · [[src/Services/Bridge]] · [[src/Web/Handlers]] · [[test/Engine/AdmissionTest]] · [[test/Engine/LedgerTest]] · [[test/Engine/ShapesTest]] · [[test/Support/Fixtures]]
+[[src/Engine/Codec/_MOC]] · [[src/Engine/Codec/Views]] · [[src/Engine/Journal]] · [[src/Services/Bridge]] · [[src/Web/Handlers]] · [[test/Engine/AdmissionTest]] · [[test/Engine/CustodyTest]] · [[test/Engine/LedgerTest]] · [[test/Engine/ShapesTest]] · [[test/Support/Fixtures]]

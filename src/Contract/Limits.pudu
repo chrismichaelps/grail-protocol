@@ -78,6 +78,36 @@ export const DELIVERY_KEYS: Int = 100000
 /// The `ancestryMax` limit.
 export const ANCESTRY_MAX: Int = 100000
 
+/// The `handoffAnchors` limit.
+export const HANDOFF_ANCHORS: Int = 64
+
+/// The `handoffEntries` limit.
+export const HANDOFF_ENTRIES: Int = 10000
+
+/// The `handoffLifetimeMillis` limit.
+export const HANDOFF_LIFETIME_MILLIS: Int = 86400000
+
+/// The `handoffBytes` limit.
+export const HANDOFF_BYTES: Int = 4194304
+
+/// The `secrets` limit.
+export const SECRETS: Int = 256
+
+/// The `secretBytes` limit.
+export const SECRET_BYTES: Int = 4096
+
+/// The `secretLengthMin` limit.
+export const SECRET_LENGTH_MIN: Int = 12
+
+/// The `secretAudience` limit.
+export const SECRET_AUDIENCE: Int = 64
+
+/// The `secretStrikes` limit.
+export const SECRET_STRIKES: Int = 3
+
+/// The `secretFragment` limit.
+export const SECRET_FRAGMENT: Int = 16
+
 /// Every limit by its contract name, for discovery.
 export const ALL: Array[(Str, Int)] = [
   ("envelopeBytes", 1114112),
@@ -104,5 +134,15 @@ export const ALL: Array[(Str, Int)] = [
   ("waitMax", 30000),
   ("scopeEntries", 1000000),
   ("deliveryKeys", 100000),
-  ("ancestryMax", 100000)
+  ("ancestryMax", 100000),
+  ("handoffAnchors", 64),
+  ("handoffEntries", 10000),
+  ("handoffLifetimeMillis", 86400000),
+  ("handoffBytes", 4194304),
+  ("secrets", 256),
+  ("secretBytes", 4096),
+  ("secretLengthMin", 12),
+  ("secretAudience", 64),
+  ("secretStrikes", 3),
+  ("secretFragment", 16)
 ]
