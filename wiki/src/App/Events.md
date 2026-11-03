@@ -12,6 +12,8 @@ tags: [module, app]
 
 ## Purpose
 
+Revocation logs record the event without the caller-supplied identifier. Token identifiers are untrusted metadata and may themselves contain sensitive text; API responses preserve the existing revocation contract.
+
 What the fabric announces after a change, and who listens.
 
 ## Interface

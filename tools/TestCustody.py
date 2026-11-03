@@ -74,6 +74,7 @@ def main():
             graph = {"participants": [{"id": "planner", "kind": "agent"}, {"id": "executor", "kind": "tool"}, {"id": "helper", "kind": "tool"}], "edges": [{"id": "flow", "from": "planner", "to": "executor", "relation": "flow"}, {"id": "help", "from": "helper", "to": "executor", "relation": "flow"}]}
             assert call("PUT", prefix + "/graphs/g", body=graph)[0] == 201
             assert deposit(key)[0] == 201
+            assert call("POST", prefix + "/tokens/" + key + "/revocation")[0] == 200
             planner = delegate("planner", "planner", ["token.delegate", "transfer.receive"])
             worker = delegate("worker", "executor", ["transfer.receive"])
             escalation = call("POST", prefix + "/tokens", planner, {"id": "owner-child", "audience": "owner", "graph": "g", "abilities": ["transfer.receive"], "expires": int(time.time() * 1000) + 60000})

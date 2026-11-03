@@ -48,8 +48,8 @@ export fn registrations(events: &Kinds, server: &Logger.Logger) -> Array[Registr
         log.information(Names.DELEGATED, [Value.int(granted.expires)])
         Ok(())
       }),
-    Registration.notificationHandler(&events.revoked, Names.RECORDER, |token: Str, _context: Context.Context| {
-        log.information(Names.REVOKED, [Value.text(token)])
+    Registration.notificationHandler(&events.revoked, Names.RECORDER, |_token: Str, _context: Context.Context| {
+        log.information(Names.REVOKED, [])
         Ok(())
       }),
     Registration.notificationHandler(&events.erased, Names.RECORDER, |erased: Request.Erased, _context: Context.Context| {
