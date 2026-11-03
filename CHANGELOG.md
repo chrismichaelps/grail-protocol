@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.2 — 2026-11-02
+
+### Documentation
+
+- Quick-start, contribution, and README access instructions now reflect the public repository.
+- Quick-start prerequisites link Pudu 0.1.3 and name Git, OpenSSL, and curl.
+- An anonymous clone and the documented localhost health/create/read/duplicate workflow were verified, including owner-token file permissions and Git ignore behavior.
+
+Runtime behavior and draft protocol 1.1 are unchanged. The API remains local; Cloudflare hosts static documentation only.
+
 ## 0.2.1 — 2026-11-02
 
 ### Fixed
