@@ -1,6 +1,7 @@
 """Names, ports, and timings of the custody demonstration."""
 
 FABRIC = {"name": "workbench", "port": 7450, "scope": "acme", "graph": "ops"}
+SERVICE_HOST = "127.0.0.1"
 SERVICE_PORT = 7451
 
 GRAPH = {

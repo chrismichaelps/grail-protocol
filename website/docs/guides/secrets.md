@@ -62,6 +62,7 @@ A [handoff](handoffs.md) lists the secrets its context `needs` and never carries
 ## Good practice
 
 - Keep models out of every audience. The audience is for executors that make the external call.
+- Let the executor, not the request, decide where a key goes. Pin the destination host and accept only a plain path; see `pinned` in `examples/secrets/agents.py`.
 - Prefer `uses` and `expires` over long-lived keys, and rotate by putting the name again.
 - Store only high-entropy values. Custody refuses values shorter than 12 characters.
 

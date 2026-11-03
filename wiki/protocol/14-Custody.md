@@ -64,7 +64,7 @@ A handoff's `needs` lists the secret names its readable entries reference. The r
 
 ## 14.7 What custody does not promise
 
-- **Values in the executor.** The audience receives the value and can misuse it. Keep audiences to executors you trust with the key, and keep models out of them.
+- **Values in the executor.** The audience receives the value and can misuse it. Keep audiences to executors you trust with the key, and keep models out of them. An executor MUST decide for itself where a key may be sent. It pins the destination host and accepts only plain paths or arguments from the request, because a sender that can choose the address, for example with `@other.host` in a path, can make the executor carry the key anywhere.
 - **Disguises beyond those listed.** The tripwire catches the value verbatim and in the listed encodings, wherever they appear. It does not catch a value split across messages, re-encoded another way, or paraphrased. It narrows exfiltration through Grail; it does not replace keeping secrets out of reach of untrusted instructions.
 - **Probing.** A sender can learn whether a guess equals a held value by being refused. Guessing a full value of at least `secretLengthMin` characters is as hard as guessing the secret itself. Short or low-entropy secrets do not belong in custody.
 - **Persistence.** The reference store is in memory, so custody empties on restart, like the rest of the fabric.
