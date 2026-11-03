@@ -32,9 +32,9 @@ export fn origins(settings: &Settings) -> Array[Str]
 
 ### Linkage
 
-- **Requires:** [[src/Constants/Environment]] · [[src/Constants/Security]]
+- **Requires:** [[src/Constants/Environment]] · [[src/Constants/Security]] · [[src/Constants/Text]]
 - **Packages:** `PuduLangEnvironment`, `PuduLangValidator`
-- **Standard library:** `Std.App.Secret`, `Std.Result`
+- **Standard library:** `Std.App.Secret`, `Std.Char`, `Std.Result`, `Std.Text`
 - **Consumed by:** [[src/App/Logging]] · [[src/Cli/Commands]] · [[src/Main]] · [[src/Services/Runtime]] · [[src/Web/Router]] · [[test/Support/Fabric]] · [[test/Web/RouterTest]]
 
 ## Referenced by

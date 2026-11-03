@@ -1,0 +1,34 @@
+/** @Test.Engine.Disguise.Suite — every form the tripwire looks for, exactly */
+module Engine.DisguiseTest
+
+import Std.Bytes as ByteSeq
+import Std.List as List
+import Std.Test as Test
+import Engine.Disguise as Disguise
+import Support.Runner as Runner
+
+/// A value of exactly two fragments.
+const TWO: Str = "0123456789abcdefGHIJKLMNOPQRSTUV"
+
+/// A value two and a half fragments long.
+const LONG: Str = "0123456789abcdefGHIJKLMNOPQRSTUVwxyz!@#$"
+
+fn main() -> Int {
+  let forms = Disguise.forms(TWO)
+  let checks = Test.suite("Engine disguise", &[
+      Test.equals("a value shorter than a fragment has no fragments", &Disguise.fragments("0123456789abcde"), &[]),
+      Test.equals("a value of one fragment is its own fragment", &Disguise.fragments("0123456789abcdef"), &["0123456789abcdef"]),
+      Test.equals("a value of two fragments has exactly two", &Disguise.fragments(TWO), &["0123456789abcdef", "GHIJKLMNOPQRSTUV"]),
+      Test.equals("the last fragment of a longer value ends with the value", &Disguise.fragments(LONG), &["0123456789abcdef", "GHIJKLMNOPQRSTUV", "OPQRSTUVwxyz!@#$"]),
+      Test.equals("percent-encoding keeps unreserved characters and escapes every byte of the rest", &Disguise.percentEncoded("aé-~._Z /"), &"a%C3%A9-~._Z%20%2F"),
+      Test.that("the value as written is a form", forms.contains(TWO)),
+      Test.that("the value reversed is a form", forms.contains("VUTSRQPONMLKJIHGfedcba9876543210")),
+      Test.that("the value in upper-case hex is a form", forms.contains("303132333435363738396162636465664748494A4B4C4D4E4F50515253545556")),
+      Test.that("the value in lower-case hex is a form", forms.contains(ByteSeq.encodeHex(&ByteSeq.fromText(TWO)))),
+      Test.that("the whole base64 of the value is a form", forms.contains(ByteSeq.encodeBase64(&ByteSeq.fromText(TWO)))),
+      Test.that("the value inside a base64 stream at each alignment is found", List.all(&[ByteSeq.encodeBase64(&ByteSeq.fromText("x" + TWO + "yz")), ByteSeq.encodeBase64(&ByteSeq.fromText("xy" + TWO + "z")), ByteSeq.encodeBase64(&ByteSeq.fromText(TWO + "tail"))], |stream: Str| forms.filter(|form: Str| form.length() > 16 && stream.contains(form)).length() > 0)),
+      Test.that("no form is empty", forms.filter(|form: Str| form.isEmpty()).isEmpty())
+    ])
+
+  Runner.finish(&checks)
+}

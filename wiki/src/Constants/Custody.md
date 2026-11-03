@@ -1,0 +1,54 @@
+---
+type: module
+path: "@root/src/Constants/Custody.pudu"
+layer: 0
+grammar: "[[grammar/pudu]]"
+tags: [module, constants]
+---
+
+# Constants.Custody
+
+> @Constants.Custody.Sealing — labels of the custody key and of what each sealed value is bound to
+
+## Purpose
+
+Labels of the custody key and of what each sealed value is bound to.
+
+## Interface
+
+### Signatures
+
+```pudu
+/// The label mixed into the key a scope's secrets are sealed with.
+export const KEY_LABEL: Str = "grail-custody:"
+
+/// What joins the scope, name, and version a sealed value is bound to.
+export const BINDING_JOIN: Str = "/"
+
+/// The quote marks a JSON-escaped value is wrapped in, trimmed before searching for it.
+export const QUOTE_LENGTH: Int = 1
+
+/// The bytes that shift a value through each base64 alignment; only the characters that depend on the value alone are kept.
+export const ALIGNMENTS: Array[Str] = ["", "a", "aa"]
+
+/// Characters at the start of a shifted base64 encoding that also depend on the shift, for each alignment.
+export const ALIGNED_LEAD: Array[Int] = [0, 2, 3]
+
+/// Characters at the end of a base64 encoding that may depend on what follows the value.
+export const ALIGNED_TAIL: Int = 4
+
+/// The characters a percent-encoded value keeps as they are.
+export const UNRESERVED: Array[Char] = ['-', '.', '_', '~']
+
+/// What starts a percent-encoded byte.
+export const PERCENT: Str = "%"
+```
+
+### Linkage
+
+- **Requires:** nothing in `src/`
+- **Consumed by:** [[src/Engine/Custody]] · [[src/Engine/Disguise]]
+
+## Referenced by
+
+[[src/Constants/_MOC]] · [[src/Engine/Custody]] · [[src/Engine/Disguise]]

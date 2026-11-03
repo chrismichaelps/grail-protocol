@@ -31,8 +31,8 @@ export fn without(value: &Json.Json, names: &Array[Str]) -> Json.Json
 
 - **Requires:** nothing inside the fabric
 - **Standard library:** `Std.Json`
-- **Consumed by:** [[src/Engine/Authority]] · [[src/Engine/Erasure]] · [[src/Engine/Ledger]] · [[test/Engine/LedgerTest]]
+- **Consumed by:** [[src/Engine/Authority]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Ledger]] · [[test/Engine/LedgerTest]]
 
 ## Referenced by
 
-[[src/Engine/Authority]] · [[src/Engine/Erasure]] · [[src/Engine/Ledger]] · [[src/Utils/_MOC]] · [[test/Engine/LedgerTest]]
+[[src/Utils/_MOC]] · [[src/Engine/Authority]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Ledger]] · [[test/Engine/LedgerTest]]

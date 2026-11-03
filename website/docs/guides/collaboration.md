@@ -7,6 +7,8 @@ description: Send work, return a result, and enforce a review dependency on a lo
 
 Start the fabric with the [quick start](quick-start.md). This example uses the owner token to simulate three participants. Real integrations should use [separate delegated tokens](capabilities.md).
 
+To watch the same ideas run with separate agent processes and their own tokens, run `python3 examples/team/demo.py` from the repository root. It builds the fabric and covers this gate, narrowed delegation, a recipients-only note, and cascading revocation.
+
 ## Create the team
 
 From the repository root, define a helper and create a graph:

@@ -2,14 +2,14 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Grail Protocol",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "summary": "Graph routed exchange of envelopes between participants, with causality, provenance, and scope isolation.",
     "license": {
       "name": "Apache-2.0",
       "identifier": "Apache-2.0"
     }
   },
-  "x-grail-version": "1.0",
+  "x-grail-version": "1.1",
   "x-grail-media-type": "application/json",
   "x-grail-problem-media-type": "application/problem+json",
   "x-grail-problem-prefix": "urn:grail:problem:",
@@ -43,7 +43,17 @@
     "waitMax": 30000,
     "scopeEntries": 1000000,
     "deliveryKeys": 100000,
-    "ancestryMax": 100000
+    "ancestryMax": 100000,
+    "handoffAnchors": 64,
+    "handoffEntries": 10000,
+    "handoffLifetimeMillis": 86400000,
+    "handoffBytes": 4194304,
+    "secrets": 256,
+    "secretBytes": 4096,
+    "secretLengthMin": 12,
+    "secretAudience": 64,
+    "secretStrikes": 3,
+    "secretFragment": 16
   },
   "x-grail-final-states": [
     "completed",
@@ -77,6 +87,11 @@
       "code": "grail.not-found",
       "status": 404,
       "title": "Not found"
+    },
+    {
+      "code": "grail.method-not-allowed",
+      "status": 405,
+      "title": "Method not allowed"
     },
     {
       "code": "grail.duplicate",
@@ -122,6 +137,16 @@
       "code": "grail.unknown-parent",
       "status": 422,
       "title": "Unknown parent"
+    },
+    {
+      "code": "grail.integrity",
+      "status": 422,
+      "title": "Integrity failure"
+    },
+    {
+      "code": "grail.secret-exposed",
+      "status": 422,
+      "title": "Secret exposed"
     },
     {
       "code": "grail.limit-exceeded",
@@ -679,6 +704,260 @@
           }
         }
       }
+    },
+    "/v1/scopes/{scope}/graphs/{graph}/participants/{participant}/handoffs": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Scope"
+        },
+        {
+          "$ref": "#/components/parameters/Graph"
+        },
+        {
+          "$ref": "#/components/parameters/ParticipantId"
+        }
+      ],
+      "post": {
+        "operationId": "exportHandoff",
+        "tags": ["Handoffs"],
+        "summary": "Exports a participant's working context as a sealed, portable handoff.",
+        "x-grail-ability": "handoff.export",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The handoff.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Handoff"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/scopes/{scope}/graphs/{graph}/participants/{participant}/handoffs/{handoff}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Scope"
+        },
+        {
+          "$ref": "#/components/parameters/Graph"
+        },
+        {
+          "$ref": "#/components/parameters/ParticipantId"
+        },
+        {
+          "$ref": "#/components/parameters/HandoffId"
+        }
+      ],
+      "put": {
+        "operationId": "importHandoff",
+        "tags": ["Handoffs"],
+        "summary": "Imports a handoff from another fabric after checking its integrity.",
+        "x-grail-ability": "handoff.import",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Handoff"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The import receipt.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffReceipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/scopes/{scope}/handoffs/{handoff}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Scope"
+        },
+        {
+          "$ref": "#/components/parameters/HandoffId"
+        }
+      ],
+      "get": {
+        "operationId": "readHandoff",
+        "tags": ["Handoffs"],
+        "summary": "Reads a handoff this scope exported or imported.",
+        "x-grail-ability": "ledger.read",
+        "responses": {
+          "200": {
+            "description": "The handoff.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Handoff"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/scopes/{scope}/handoffs/{handoff}/verification": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Scope"
+        },
+        {
+          "$ref": "#/components/parameters/HandoffId"
+        }
+      ],
+      "post": {
+        "operationId": "verifyHandoff",
+        "tags": ["Handoffs"],
+        "summary": "Checks a handoff's integrity and whether this fabric sealed it.",
+        "security": [],
+        "x-grail-ability": "none",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Handoff"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The check.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffCheck"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/scopes/{scope}/secrets": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Scope"
+        }
+      ],
+      "get": {
+        "operationId": "listSecrets",
+        "tags": ["Custody"],
+        "summary": "Lists the secrets of the token's graphs: names, versions, and policy, never values.",
+        "x-grail-ability": "graph.read",
+        "responses": {
+          "200": {
+            "description": "The secrets.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretList"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/scopes/{scope}/secrets/{secret}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Scope"
+        },
+        {
+          "$ref": "#/components/parameters/SecretName"
+        }
+      ],
+      "put": {
+        "operationId": "putSecret",
+        "tags": ["Custody"],
+        "summary": "Gives a secret to the fabric's custody, or rotates it to a new version.",
+        "x-grail-ability": "secret.manage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecretDeposit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The held secret, without its value.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretView"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteSecret",
+        "tags": ["Custody"],
+        "summary": "Destroys a held secret; references to it stop resolving at once.",
+        "x-grail-ability": "secret.manage",
+        "responses": {
+          "200": {
+            "description": "The destroyed secret.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretView"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -758,6 +1037,22 @@
         "schema": {
           "$ref": "#/components/schemas/Identifier"
         }
+      },
+      "HandoffId": {
+        "name": "handoff",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Identifier"
+        }
+      },
+      "SecretName": {
+        "name": "secret",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Name"
+        }
       }
     },
     "responses": {
@@ -807,7 +1102,9 @@
               "stream.close",
               "ability.advert",
               "graph.mutation",
-              "bridge.rpc"
+              "bridge.rpc",
+              "handoff.export",
+              "handoff.import"
             ]
           },
           {
@@ -826,7 +1123,10 @@
           "transfer.read",
           "ledger.read",
           "ledger.erase",
-          "token.delegate"
+          "token.delegate",
+          "handoff.export",
+          "handoff.import",
+          "secret.manage"
         ]
       },
       "ParticipantKind": {
@@ -1718,6 +2018,378 @@
           },
           "erased": {
             "type": "boolean"
+          }
+        }
+      },
+      "Origin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fabric",
+          "scope",
+          "graph",
+          "participant"
+        ],
+        "description": "Where a handoff was exported: the exporting fabric's configured name and the address the agent held there.",
+        "properties": {
+          "fabric": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "participant": {
+            "$ref": "#/components/schemas/Identifier"
+          }
+        }
+      },
+      "HandoffRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "transfers"
+        ],
+        "description": "What to carry: the anchor transfers whose causal ancestry travels with the agent.",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "transfers": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "expires": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Milliseconds since the Unix epoch; at most handoffLifetimeMillis after issue. Defaults to that bound."
+          }
+        }
+      },
+      "HandoffEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sequence",
+          "id",
+          "previous",
+          "digest",
+          "link",
+          "erased",
+          "withheld"
+        ],
+        "description": "One ledger entry of the origin. `envelope` is the digested body; it is absent when withheld and has no payload when erased.",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "id": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "previous": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "erased": {
+            "type": "boolean"
+          },
+          "withheld": {
+            "type": "boolean"
+          },
+          "envelope": {
+            "type": "object"
+          }
+        }
+      },
+      "Handoff": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grail",
+          "handoff",
+          "origin",
+          "participant",
+          "anchors",
+          "entries",
+          "needs",
+          "issued",
+          "expires",
+          "digest",
+          "seal"
+        ],
+        "description": "A portable, self-verifying record of an agent's working context, carried from one fabric to another.",
+        "properties": {
+          "grail": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+$"
+          },
+          "handoff": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/Origin"
+          },
+          "participant": {
+            "$ref": "#/components/schemas/Participant"
+          },
+          "anchors": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "entries": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/HandoffEntry"
+            }
+          },
+          "issued": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expires": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "digest": {
+            "type": "string",
+            "description": "sha256 of the canonical handoff without digest and seal."
+          },
+          "seal": {
+            "type": "string",
+            "description": "The origin fabric's attestation of the digest; only the origin can check it."
+          },
+          "needs": {
+            "type": "array",
+            "maxItems": 256,
+            "items": {
+              "$ref": "#/components/schemas/Name"
+            },
+            "description": "The secret names the carried envelopes reference. Values never travel; the receiving owner binds its own."
+          }
+        }
+      },
+      "HandoffReceipt": {
+        "type": "object",
+        "required": [
+          "handoff",
+          "id",
+          "sequence",
+          "digest",
+          "entries",
+          "duplicate"
+        ],
+        "properties": {
+          "handoff": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "sequence": {
+            "type": "integer"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "integer"
+          },
+          "duplicate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "HandoffCheck": {
+        "type": "object",
+        "required": [
+          "handoff",
+          "digest",
+          "intact",
+          "attested",
+          "expired"
+        ],
+        "properties": {
+          "handoff": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "intact": {
+            "type": "boolean"
+          },
+          "attested": {
+            "type": "boolean"
+          },
+          "expired": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SecretReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "$secret"
+        ],
+        "description": "Stands for a held secret anywhere inside a payload. The fabric replaces it with the value only in deliveries to the secret's audience; everywhere else it stays a reference.",
+        "properties": {
+          "$secret": {
+            "$ref": "#/components/schemas/Name"
+          }
+        }
+      },
+      "SecretDeposit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "graph",
+          "audience"
+        ],
+        "description": "A secret given to the fabric's custody. The value can never be read back.",
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 4096,
+            "writeOnly": true
+          },
+          "graph": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "audience": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            },
+            "description": "The tool or service participants whose deliveries receive the value. Agents, people, memory, and graphs are refused."
+          },
+          "senders": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            },
+            "description": "The participants that may reference the secret; empty means any participant of the graph."
+          },
+          "kinds": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "$ref": "#/components/schemas/Kind"
+            },
+            "description": "The envelope kinds that may carry a reference; empty means any."
+          },
+          "uses": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "How many admitted envelopes may reference it before it is spent."
+          },
+          "expires": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 512
+          }
+        }
+      },
+      "SecretView": {
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "graph",
+          "audience",
+          "senders",
+          "kinds",
+          "created",
+          "reveals"
+        ],
+        "description": "What anyone allowed to see a secret's existence may know about it. Never the value.",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/Identifier"
+          },
+          "audience": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "senders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Kind"
+            }
+          },
+          "uses": {
+            "type": "integer"
+          },
+          "expires": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "reveals": {
+            "type": "integer",
+            "description": "How many deliveries have held the value of this version."
+          },
+          "revealed": {
+            "type": "integer",
+            "description": "When a delivery last held the value."
+          }
+        }
+      },
+      "SecretList": {
+        "type": "object",
+        "required": [
+          "secrets"
+        ],
+        "properties": {
+          "secrets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SecretView"
+            }
           }
         }
       }

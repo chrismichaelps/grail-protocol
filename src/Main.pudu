@@ -16,6 +16,7 @@ import Constants.Http as Http
 import Constants.Logging as Events
 import Constants.Server as Capacity
 import Constants.Text as Text
+import Contract.Limits as Limits
 import PuduLangLog.Logger as Logger
 import PuduLangLog.Value as Value
 import Services.Runtime as Runtime
@@ -57,7 +58,7 @@ fn serve(app: &Assembly.App) -> Int {
     case Err(_) => { return stopped(settings.host + Text.PORT_JOIN + show(settings.port)) }
   }
   var served = Server.server(&router)
-    .withLimits(Capacity.HEAD_BYTES_MAX, Capacity.BODY_BYTES_MAX)
+    .withLimits(Capacity.HEAD_BYTES_MAX, Limits.HANDOFF_BYTES)
     .withWorkers(settings.workers, settings.workers * 2)
     .withReadDeadline(Capacity.SOCKET_DEADLINE_MILLIS)
     .withWriteDeadline(Capacity.SOCKET_DEADLINE_MILLIS)

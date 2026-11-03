@@ -23,23 +23,29 @@ import Web.Router as Router
 export type Answer = { status: Int, body: Json.Json, millis: Int }
 
 /// A router over a fresh runtime, or why one could not be built.
-export fn start() -> Result[Route.Router, Str] {
-  let settings = Settings.loadFrom(&mapOf([("GRAIL_SECRET", Fixtures.SECRET)])) ?
+export fn start() -> Result[Route.Router, Str] { startAs(Fixtures.SECRET, "grail-local") }
+
+/// A router over a fresh runtime with its own secret and fabric name, standing for another vendor's fabric.
+export fn startAs(secret: Str, name: Str) -> Result[Route.Router, Str] {
+  let settings = Settings.loadFrom(&mapOf([("GRAIL_SECRET", secret), ("GRAIL_FABRIC_NAME", name)])) ?
   let app = Assembly.assemble(&Runtime.create(&settings), &Logging.quiet()) ?
   Router.router(&app)
 }
 
 /// The owner's root token for a scope, valid for a day around the current time.
-export fn owner(scopeId: Str) -> Str {
+export fn owner(scopeId: Str) -> Str { ownerOn(Fixtures.SECRET, scopeId) }
+
+/// The owner's root token for a scope of the fabric holding `secret`.
+export fn ownerOn(secret: Str, scopeId: Str) -> Str {
   let now = Assembly.now()
-  Authority.issue(&Capability.Token{..Fixtures.claims("root", Security.OWNER, &[Vocabulary.ABILITY_ALL]), scopeId: scopeId, notBefore: now - Fixtures.DAY, expires: now + Fixtures.DAY}, Fixtures.SECRET)
+  Authority.issue(&Capability.Token{..Fixtures.claims("root", Security.OWNER, &[Vocabulary.ABILITY_ALL]), scopeId: scopeId, notBefore: now - Fixtures.DAY, expires: now + Fixtures.DAY}, secret)
 }
 
 /// One request through the router.
 export fn sent(router: &Route.Router, method: Http.Method, path: Str, token: Str, body: Str) -> Answer {
   let started = Assembly.now()
   let message = Http.Request{method: method, target: path, headers: [("authorization", Security.BEARER_PREFIX + token), ("content-type", "application/json")], body: body, binaryBody: None}
-  let response = Route.dispatch(router, Route.Request{message: message, path: Route.pathOf(path), params: Map.empty(), query: Route.queryOf(path), peer: "test"})
+  let response = Router.refusing()(Route.Request{message: message, path: Route.pathOf(path), params: Map.empty(), query: Route.queryOf(path), peer: "test"}, |request: Route.Request| Route.dispatch(router, request))
   Answer{status: response.status.code, body: Result.unwrapOr(Json.decode(response.body), Json.Null), millis: Assembly.now() - started}
 }
 

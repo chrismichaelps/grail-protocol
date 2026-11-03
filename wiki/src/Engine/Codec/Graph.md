@@ -37,8 +37,8 @@ export fn mutationJson(mutation: &Mutation.Mutation) -> Json.Json
 
 - **Requires:** [[src/Constants/Details]] · [[src/Contract/Members]] · [[src/Contract/Schemas]] · [[src/Contract/Vocabulary]] · [[src/Domain/Graph]] · [[src/Domain/Mutation]] · [[src/Domain/Problem]] · [[src/Engine/Codec/Shapes]] · [[src/Utils/JsonRead]] · [[src/Utils/Pointer]]
 - **Standard library:** `Std.Json`, `Std.Option`
-- **Consumed by:** [[src/Engine/Journal]] · [[src/Web/Handlers]]
+- **Consumed by:** [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Web/Handlers]]
 
 ## Referenced by
 
-[[src/Engine/Codec/_MOC]] · [[src/Engine/Journal]] · [[src/Web/Handlers]]
+[[src/Engine/Codec/_MOC]] · [[src/Engine/Handoff]] · [[src/Engine/Journal]] · [[src/Web/Handlers]]

@@ -32,8 +32,8 @@ export fn dotted(property: Str) -> Str { Text.POINTER_SEPARATOR + property.repla
 ### Linkage
 
 - **Requires:** [[src/Constants/Text]]
-- **Consumed by:** [[src/App/Pipeline]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]]
+- **Consumed by:** [[src/App/Pipeline]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Handoff]]
 
 ## Referenced by
 
-[[src/App/Pipeline]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Shapes]] · [[src/Utils/_MOC]]
+[[src/Utils/_MOC]] · [[src/App/Pipeline]] · [[src/Engine/Admission]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Handoff]]

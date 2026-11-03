@@ -33,8 +33,8 @@ export fn isExtension(text: Str) -> Bool
 
 - **Requires:** [[src/Constants/Graphs]] · [[src/Constants/Text]] · [[src/Contract/Limits]] · [[src/Contract/Vocabulary]]
 - **Standard library:** `Std.Char`, `Std.Text`
-- **Consumed by:** [[src/Engine/Codec/Shapes]] · [[test/Engine/ShapesTest]]
+- **Consumed by:** [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Shapes]] · [[test/Engine/ShapesTest]]
 
 ## Referenced by
 
-[[src/Domain/_MOC]] · [[src/Engine/Codec/Shapes]] · [[test/Engine/ShapesTest]]
+[[src/Domain/_MOC]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Shapes]] · [[test/Engine/ShapesTest]]

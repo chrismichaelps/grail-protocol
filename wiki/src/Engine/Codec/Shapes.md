@@ -29,7 +29,7 @@ export fn check(name: Str, value: &Json.Json, path: Str) -> Array[Problem.Violat
 
 - **Requires:** [[src/Constants/Details]] · [[src/Constants/Graphs]] · [[src/Constants/Text]] · [[src/Contract/Limits]] · [[src/Contract/Members]] · [[src/Contract/Schemas]] · [[src/Contract/Vocabulary]] · [[src/Domain/Identifier]] · [[src/Domain/Problem]] · [[src/Utils/Pointer]]
 - **Standard library:** `Std.Json`, `Std.List`, `Std.Option`
-- **Consumed by:** [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Token]] · [[test/Engine/ShapesTest]]
+- **Consumed by:** [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Token]] · [[test/Engine/ShapesTest]]
 
 <!-- authored -->
 ## Algorithm
@@ -43,4 +43,4 @@ Every shape is a row of a constant table built from generated contract constants
 
 ## Referenced by
 
-[[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Token]] · [[src/Engine/Codec/_MOC]] · [[test/Engine/ShapesTest]]
+[[src/Engine/Codec/_MOC]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Token]] · [[test/Engine/ShapesTest]]

@@ -1,0 +1,25 @@
+/** @Domain.Handoff.Portable — an agent's working context as it leaves one fabric and arrives at another */
+module Domain.Handoff
+
+import Std.Json as Json
+
+/** @Domain.Handoff.Origin — the fabric, scope, graph, and participant a handoff left */
+export type Origin = { fabric: Str, scopeId: Str, graph: Str, participant: Str }
+
+/** @Domain.Handoff.Asked — what an export carries: the anchors whose ancestry travels, and until when the handoff may be imported */
+export type Asked = { graph: Str, participant: Str, id: Str, transfers: Array[Str], expires: Option[Int] }
+
+/** @Domain.Handoff.Arriving — a handoff presented for import at an address of this fabric */
+export type Arriving = { graph: Str, participant: Str, id: Str, bundle: Json.Json }
+
+/** @Domain.Handoff.Presented — a handoff presented to the fabric that may have sealed it */
+export type Presented = { id: Str, bundle: Json.Json }
+
+/** @Domain.Handoff.Stored — a handoff a scope exported or imported, with the ledger entry that records it */
+export type Stored = { id: Str, graph: Str, direction: Str, digest: Str, entries: Int, recorded: Str, sequence: Int, bundle: Json.Json }
+
+/** @Domain.Handoff.Receipt — the answer to an import */
+export type Receipt = { handoff: Str, id: Str, sequence: Int, digest: Str, entries: Int, duplicate: Bool }
+
+/** @Domain.Handoff.Check — what a fabric can say about a handoff it is shown */
+export type Check = { handoff: Str, digest: Str, intact: Bool, attested: Bool, expired: Bool }

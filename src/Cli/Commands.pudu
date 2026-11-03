@@ -14,10 +14,14 @@ import Constants.Fabric as Fabric
 import Constants.Security as Security
 import Constants.Text as Text
 import Contract.Document as Document
+import Contract.Members as Members
+import Contract.Operations as Operations
+import Contract.Parameters as Parameters
 import Contract.Vocabulary as Vocabulary
 import Domain.Capability as Capability
 import Engine.Authority as Authority
 import Engine.Paths as Paths
+import Utils.JsonRead as JsonRead
 import Web.Lines as Lines
 import Web.Router as Router
 
@@ -29,6 +33,7 @@ export fn offline(arguments: &Array[Str]) -> Option[Int] {
   if command == Names.CONTRACT { return Some(said(Document.TEXT)) }
   if command == Names.HELP { return Some(said(Names.USAGE.join(Text.LINE_JOIN))) }
   if command == Names.CALL { return Some(call(arguments)) }
+  if command == Names.HANDOFF { return Some(handoff()) }
 
   None
 }
@@ -115,6 +120,61 @@ fn call(arguments: &Array[Str]) -> Int {
     }
     case Err(reason) => failed(reason)
   }
+}
+
+fn handoff() -> Int {
+  let given = match options(&[Names.FROM_OPTION, Names.TO_OPTION, Names.SCOPE_OPTION, Names.GRAPH_OPTION, Names.PARTICIPANT_OPTION, Names.TO_SCOPE_OPTION, Names.TO_GRAPH_OPTION, Names.TO_PARTICIPANT_OPTION, Names.ID_OPTION, Names.TRANSFERS_OPTION]) {
+    case Ok(found) => found
+    case Err(reason) => { return failed(reason) }
+  }
+  let origin = Json.object(&[(Parameters.SCOPE, Json.Text(given[2])), (Parameters.GRAPH, Json.Text(given[3])), (Parameters.PARTICIPANT, Json.Text(given[4])), (Parameters.HANDOFF, Json.Text(given[8]))])
+  let destination = Json.object(&[(Parameters.SCOPE, Json.Text(given[5])), (Parameters.GRAPH, Json.Text(given[6])), (Parameters.PARTICIPANT, Json.Text(given[7])), (Parameters.HANDOFF, Json.Text(given[8]))])
+  let asked = Json.object(&[(Members.HANDOFF_REQUEST_ID, Json.Text(given[8])), (Members.HANDOFF_REQUEST_TRANSFERS, JsonRead.textList(&given[9].split(Names.LIST_SEPARATOR).map(|id: Str| id.trim())))])
+  let exported = match step(given[0], Option.unwrapOr(Env.option(Names.FROM_TOKEN_OPTION), ""), Operations.EXPORT_HANDOFF, &origin, &Some(asked)) {
+    case Ok(found) => found
+    case Err(reason) => { return failed(reason) }
+  }
+  let _exportSaid = said(Json.encode(&reported(Names.STEP_EXPORT, &exported)))
+
+  if exported.status >= 400 { return 1 }
+
+  let verified = match step(given[0], "", Operations.VERIFY_HANDOFF, &origin, &Some(exported.body)) {
+    case Ok(found) => found
+    case Err(reason) => { return failed(reason) }
+  }
+  let _verifySaid = said(Json.encode(&reported(Names.STEP_VERIFY, &verified)))
+
+  if Json.field(&verified.body, Members.HANDOFF_CHECK_ATTESTED) != Some(Json.Boolean(true)) { return failed(Names.NOT_ATTESTED) }
+
+  match step(given[1], Option.unwrapOr(Env.option(Names.TO_TOKEN_OPTION), ""), Operations.IMPORT_HANDOFF, &destination, &Some(exported.body)) {
+    case Ok(imported) => {
+      let _importSaid = said(Json.encode(&reported(Names.STEP_IMPORT, &imported)))
+
+      if imported.status < 400 { 0 } else { 1 }
+    }
+    case Err(reason) => failed(reason)
+  }
+}
+
+fn step(base: Str, presented: Str, id: Str, params: &Json.Json, body: &Option[Json.Json]) -> Result[Peer.Answer, Str] {
+  let operation = Option.okOr(Paths.operationOf(id), Names.UNKNOWN_OPERATION + id) ?
+  let peer = Peer.connect(base, presented) ?
+  Peer.call(&peer, operation.method, Paths.target(&operation, params), body)
+}
+
+fn reported(name: Str, answer: &Peer.Answer) -> Json.Json {
+  Json.object(&[(Names.STEP_MEMBER, Json.Text(name)), (Names.STATUS_MEMBER, Json.Number(answer.status)), (Names.ANSWER_MEMBER, answer.body)])
+}
+
+fn options(names: &Array[Str]) -> Result[Array[Str], Str] {
+  var found: Array[Str] = []
+
+  for name in *names {
+    let value = Option.okOr(Env.option(name), Names.MISSING_OPTION + name) ?
+    found = found.push(value)
+  }
+
+  Ok(found)
 }
 
 fn parsed(option: Str) -> Result[Option[Json.Json], Str] {

@@ -25,7 +25,7 @@ export fn carry(runtime: &Runtime.Runtime, call: &Request.Call[Request.Bridging]
 
 ### Linkage
 
-- **Requires:** [[src/Api/Bridge]] · [[src/Constants/Fabric]] · [[src/Constants/Rpc]] · [[src/Contract/Members]] · [[src/Contract/Vocabulary]] · [[src/Domain/Envelope]] · [[src/Domain/Lifecycle]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Engine/Admission]] · [[src/Engine/Bridge]] · [[src/Engine/Codec/Envelope]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Utils/JsonRead]]
+- **Requires:** [[src/Api/Bridge]] · [[src/Constants/Fabric]] · [[src/Constants/Rpc]] · [[src/Contract/Members]] · [[src/Contract/Vocabulary]] · [[src/Domain/Envelope]] · [[src/Domain/Lifecycle]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Scope]] · [[src/Domain/Transfer]] · [[src/Engine/Admission]] · [[src/Engine/Bridge]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Custody]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Utils/JsonRead]]
 - **Standard library:** `Std.Json`, `Std.Option`
 - **Consumed by:** [[src/App/Handlers]]
 

@@ -1,6 +1,6 @@
 ### YamlMime:Landing
 title: Collaboration starts with a graph.
-summary: Connect agents, tools, services, and people with explicit routes, dependency gates, and delegated authority. Run the reference fabric locally and test the protocol with your own participants.
+summary: Connect agents, tools, services, and people with explicit routes, dependency gates, and delegated authority, then move an agent's work to a fabric run by different software with its history intact.
 metadata:
   uid: home
   description: Practical guides and API reference for the Grail protocol proposal.
@@ -27,6 +27,10 @@ conceptualContent:
       url: guides/quick-start.md
     - text: Send work and enforce a review gate
       url: guides/collaboration.md
+    - text: Move an agent between fabrics
+      url: guides/handoffs.md
+    - text: Use keys without showing them to agents
+      url: guides/secrets.md
     - text: Command-line reference
       url: guides/command-line.md
   - title: Understand the protocol
@@ -37,6 +41,10 @@ conceptualContent:
       url: concepts/envelopes.md
     - text: Delegate authority
       url: guides/capabilities.md
+    - text: Portability
+      url: protocol/13-Portability.md
+    - text: Custody
+      url: protocol/14-Custody.md
   - title: Implement and extend
     links:
     - text: HTTP operations and schemas

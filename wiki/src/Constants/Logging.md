@@ -49,10 +49,26 @@ export const EVENT_DELEGATED: Str = "token.delegated"
 export const REVOKED: Str = "revoked token \{Token\} and every token delegated from it"
 /// A payload was erased.
 export const ERASED: Str = "erased the payload of \{Transfer\} at \{Sequence\}"
+/// A secret was sealed into custody; the line names it, never its value.
+export const SEALED: Str = "sealed secret \{Secret\} version \{Version\} for graph \{Graph\}"
+/// A secret in custody was destroyed.
+export const DESTROYED: Str = "destroyed secret \{Secret\} at version \{Version\}"
+/// A handoff was sealed and left the scope.
+export const EXPORTED: Str = "exported handoff \{Handoff\} with digest \{Digest\} carrying \{Entries\} entries"
+/// A handoff arrived from another fabric.
+export const IMPORTED: Str = "imported handoff \{Handoff\} with digest \{Digest\} carrying \{Entries\} entries"
 /// The notification of a revoked token.
 export const EVENT_REVOKED: Str = "token.revoked"
 /// The notification of an erased payload.
 export const EVENT_ERASED: Str = "transfer.erased"
+/// The notification of a sealed secret.
+export const EVENT_SEALED: Str = "secret.sealed"
+/// The notification of a destroyed secret.
+export const EVENT_DESTROYED: Str = "secret.destroyed"
+/// The notification of an exported handoff.
+export const EVENT_EXPORTED: Str = "handoff.exported"
+/// The notification of an imported handoff.
+export const EVENT_IMPORTED: Str = "handoff.imported"
 ```
 
 ### Linkage

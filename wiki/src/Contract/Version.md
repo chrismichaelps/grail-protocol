@@ -21,9 +21,9 @@ Protocol version, media types, and headers. Projected from the contract by [[too
 
 ```pudu
 /// The protocol version this contract describes.
-export const PROTOCOL: Str = "1.0"
+export const PROTOCOL: Str = "1.1"
 /// The version of the contract document.
-export const CONTRACT: Str = "1.0.0"
+export const CONTRACT: Str = "1.1.0"
 /// The contract's title.
 export const TITLE: Str = "Grail Protocol"
 /// The media type of requests and answers.

@@ -39,6 +39,8 @@ export const STATE: Str = "state"
 export const PARENTS: Str = "parents"
 /// The limit that was exceeded.
 export const LIMIT: Str = "limit"
+/// How many custody strikes the presenting token has; at the contract's limit it is revoked.
+export const STRIKES: Str = "strikes"
 /// The versions a fabric supports.
 export const SUPPORTED: Str = "supported"
 /// Seconds to wait before retrying.
@@ -48,8 +50,8 @@ export const RETRY_AFTER: Str = "retryAfter"
 ### Linkage
 
 - **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/App/Pipeline]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Web/Caller]]
+- **Consumed by:** [[src/App/Pipeline]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Custody]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Web/Caller]]
 
 ## Referenced by
 
-[[src/App/Pipeline]] · [[src/Constants/_MOC]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Web/Caller]]
+[[src/Constants/_MOC]] · [[src/App/Pipeline]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Custody]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Web/Caller]]

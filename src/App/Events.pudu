@@ -2,7 +2,9 @@
 module App.Events
 
 import Constants.Logging as Names
+import Domain.Custody as Custody
 import Domain.Graph as Graph
+import Domain.Handoff as Handoff
 import Domain.Problem as Problem
 import Domain.Request as Request
 import Domain.Transfer as Transfer
@@ -18,12 +20,16 @@ export type Kinds = {
   changed: Notification.Kind[Graph.Graph, Problem.Problem],
   delegated: Notification.Kind[Request.Granted, Problem.Problem],
   revoked: Notification.Kind[Str, Problem.Problem],
-  erased: Notification.Kind[Request.Erased, Problem.Problem]
+  erased: Notification.Kind[Request.Erased, Problem.Problem],
+  exported: Notification.Kind[Handoff.Stored, Problem.Problem],
+  imported: Notification.Kind[Handoff.Receipt, Problem.Problem],
+  sealed: Notification.Kind[Custody.Held, Problem.Problem],
+  destroyed: Notification.Kind[Custody.Held, Problem.Problem]
 }
 
 /// Every notification kind.
 export fn kinds() -> Kinds {
-  Kinds{accepted: Notification.kind(Names.EVENT_ACCEPTED), changed: Notification.kind(Names.EVENT_CHANGED), delegated: Notification.kind(Names.EVENT_DELEGATED), revoked: Notification.kind(Names.EVENT_REVOKED), erased: Notification.kind(Names.EVENT_ERASED)}
+  Kinds{accepted: Notification.kind(Names.EVENT_ACCEPTED), changed: Notification.kind(Names.EVENT_CHANGED), delegated: Notification.kind(Names.EVENT_DELEGATED), revoked: Notification.kind(Names.EVENT_REVOKED), erased: Notification.kind(Names.EVENT_ERASED), exported: Notification.kind(Names.EVENT_EXPORTED), imported: Notification.kind(Names.EVENT_IMPORTED), sealed: Notification.kind(Names.EVENT_SEALED), destroyed: Notification.kind(Names.EVENT_DESTROYED)}
 }
 
 /// The listeners: each notification is written to the server log.
@@ -48,6 +54,22 @@ export fn registrations(events: &Kinds, server: &Logger.Logger) -> Array[Registr
       }),
     Registration.notificationHandler(&events.erased, Names.RECORDER, |erased: Request.Erased, _context: Context.Context| {
         log.information(Names.ERASED, [Value.text(erased.id), Value.int(erased.sequence)])
+        Ok(())
+      }),
+    Registration.notificationHandler(&events.exported, Names.RECORDER, |stored: Handoff.Stored, _context: Context.Context| {
+        log.information(Names.EXPORTED, [Value.text(stored.id), Value.text(stored.digest), Value.int(stored.entries)])
+        Ok(())
+      }),
+    Registration.notificationHandler(&events.imported, Names.RECORDER, |receipt: Handoff.Receipt, _context: Context.Context| {
+        log.information(Names.IMPORTED, [Value.text(receipt.handoff), Value.text(receipt.digest), Value.int(receipt.entries)])
+        Ok(())
+      }),
+    Registration.notificationHandler(&events.sealed, Names.RECORDER, |held: Custody.Held, _context: Context.Context| {
+        log.information(Names.SEALED, [Value.text(held.name), Value.int(held.version), Value.text(held.graph)])
+        Ok(())
+      }),
+    Registration.notificationHandler(&events.destroyed, Names.RECORDER, |held: Custody.Held, _context: Context.Context| {
+        log.information(Names.DESTROYED, [Value.text(held.name), Value.int(held.version)])
         Ok(())
       })
   ]
