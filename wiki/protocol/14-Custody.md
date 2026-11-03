@@ -80,6 +80,8 @@ Custody removes the common ways a key escapes. Four risks cannot be removed by a
 
 ## 14.8 Threats
 
+An executor's destination policy MUST cover redirects and proxies as well as the initial URL. The reference example refuses every redirect and ignores environment proxy configuration for credential-bearing requests. Its tests exercise separate local service and collector authorities without using provider credentials.
+
 | Threat | Control |
 | --- | --- |
 | A model repeats a key it was shown | Models are never shown keys; only tool and service participants can be an audience. |

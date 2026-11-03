@@ -1,6 +1,7 @@
 # Changelog
 
 - 2026-11-02 · [[src/Engine/Authority]] · non-owner delegation cannot introduce the reserved owner principal; signed-chain and custody-delivery attacks reproduce and prevent escalation · risk HIGH
+- 2026-11-02 · the secrets executor refuses credential-bearing redirects and ignores implicit proxies; local HTTP regression tests cover direct calls, five redirect statuses, and unpinned paths · risk HIGH
 
 - 2026-11-02 · [[protocol/14-Custody]] · custody: secrets used by name, revealed only in deliveries to their audience, refused anywhere else; sealed, write-only storage; handoffs list what they need · risk HIGH · [[decisions/ADR-0010-custody]]
 
