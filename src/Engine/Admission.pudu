@@ -65,6 +65,7 @@ export fn admit(state: &Scope.State, envelope: &Envelope.Envelope, body: &Json.J
   let graph = Option.okOr(state.graphs.get(envelope.graph), Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) ?
 
   if !Graph.hasParticipant(&graph, envelope.source) { return Err(Problem.of(Codes.NOT_FOUND, Details.UNKNOWN_SOURCE)) }
+  if Graph.isChannel(&graph, envelope.source) { return Err(Problem.of(Codes.FORBIDDEN, Details.CHANNEL_SOURCE)) }
   if Option.holds(&envelope.deadline, |deadline: Int| deadline <= now) { return Err(Problem.of(Codes.EXPIRED, Details.EXPIRED)) }
   if Option.holds(&envelope.clock, |reading: Envelope.Clock| reading.wall > now + Limits.CLOCK_SKEW_MILLIS) { return Err(Problem.of(Codes.CLOCK_SKEW, Details.CLOCK_SKEW)) }
 
@@ -128,15 +129,21 @@ fn answering(state: &Scope.State, envelope: &Envelope.Envelope, behavior: &Kinds
     case _ => ""
   }
 
-  if Kinds.answers(behavior) && !asked.recipients.contains(*sender) { return Err(Problem.of(Codes.FORBIDDEN, Details.NOT_RECIPIENT)) }
+  if Kinds.answers(behavior) && !asked.recipients.contains(*sender) { return Err(Problem.of(Codes.FORBIDDEN, if sharedThroughChannel(state, asked.taskId) { Details.TAKEN } else { Details.NOT_RECIPIENT })) }
   if behavior.actor == Kinds.Source && asked.source != *sender { return Err(Problem.of(Codes.FORBIDDEN, Details.NOT_SOURCE)) }
 
   let next = Machine.advance(stateAt(&asked, now), event) ?
   let recipients = if Kinds.answers(behavior) { [asked.source] } else { asked.recipients }
+  let holders = if Kinds.answers(behavior) && sharedThroughChannel(state, asked.taskId) { [*sender] } else { asked.recipients }
 
   if Kinds.answers(behavior) && Routing.named(&envelope.target) != Some(asked.source.participant) { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) }
 
-  Ok(Plan{recipients: recipients, routes: [], lifecycle: Some(Lifecycle.Lifecycle{..asked, state: next}), closes: None})
+  Ok(Plan{recipients: recipients, routes: [], lifecycle: Some(Lifecycle.Lifecycle{..asked, state: next, recipients: holders}), closes: None})
+}
+
+/// Whether a task was posted to a channel, where the first subscriber to move it takes it.
+fn sharedThroughChannel(state: &Scope.State, taskId: Str) -> Bool {
+  Option.holds(&state.records.get(taskId), |record: Ledger.Record| Option.holds(&Routing.named(&record.envelope.target), |target: Str| Option.holds(&state.graphs.get(record.envelope.graph), |graph: Graph.Graph| Graph.isChannel(&graph, target))))
 }
 
 fn routed(state: &Scope.State, graph: &Graph.Graph, envelope: &Envelope.Envelope, behavior: &Kinds.Behavior, sender: &Envelope.Address) -> Result[Plan, Problem.Problem] {
@@ -146,7 +153,9 @@ fn routed(state: &Scope.State, graph: &Graph.Graph, envelope: &Envelope.Envelope
 
   if participants.isEmpty() { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_ROUTE)) }
 
-  let routes = Routing.routes(graph, &participants, &state.graphs) ?
+  let routes = Routing.routes(graph, &participants, &state.graphs, envelope.source, envelope.kind) ?
+
+  if routes.isEmpty() && behavior.effect == Kinds.Opens { return Err(Problem.of(Codes.NO_ROUTE, Details.NO_SUBSCRIBERS)) }
 
   if behavior.effect == Kinds.Opens {
     let producers = Causality.producers(state, &envelope.parents)

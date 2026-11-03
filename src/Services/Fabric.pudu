@@ -136,8 +136,19 @@ export fn traceTransfer(runtime: &Runtime.Runtime, call: &Request.Call[Str]) -> 
 
 /// Reads deliveries for the participant the token acts for, acknowledging everything up to the cursor; with a wait, looks again until one arrives or the wait runs out. Secret references are revealed here and only here, for recipients in the secret's audience.
 export fn pullDeliveries(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem] {
-  let until = Runtime.now() + Math.min(Math.max(call.input.wait, 0), Limits.WAIT_MAX)
-  let page = pullOnce(runtime, call) ?
+  let asked = *call
+  awaited(runtime, call.input.wait, || pullOnce(runtime, &asked))
+}
+
+/// Reads what was posted to a channel for the owner or one of the channel's subscribers, acknowledging nothing; with a wait, looks again until a post arrives or the wait runs out. Anyone else is told the channel does not exist.
+export fn readChannel(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem] {
+  let asked = *call
+  awaited(runtime, call.input.wait, || channelOnce(runtime, &asked))
+}
+
+fn awaited(runtime: &Runtime.Runtime, wait: Int, look: fn() -> Result[Transfer.Page, Problem.Problem]) -> Result[Transfer.Page, Problem.Problem] {
+  let until = Runtime.now() + Math.min(Math.max(wait, 0), Limits.WAIT_MAX)
+  let page = look() ?
 
   if !page.records.isEmpty() || Runtime.now() >= until || !Runtime.claimWait(runtime) { return Ok(page) }
 
@@ -145,11 +156,23 @@ export fn pullDeliveries(runtime: &Runtime.Runtime, call: &Request.Call[Request.
 
   while Result.holds(&waited, |found: Transfer.Page| found.records.isEmpty()) && Runtime.now() < until {
     let _paused = Concurrent.sleep(Capacity.POLL_MILLIS)
-    waited = pullOnce(runtime, call)
+    waited = look()
   }
 
   Runtime.releaseWait(runtime)
   waited
+}
+
+fn channelOnce(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem] {
+  let state = Store.read(&runtime.store, call.scopeId) ?
+  let authority = authorized(&state, call, runtime.secret, Runtime.now()) ?
+  let _allowed = Authority.require(&authority, Vocabulary.ABILITY_TRANSFER_RECEIVE, Some(call.input.graph)) ?
+  let graph = Option.okOr(state.graphs.get(call.input.graph), notFound()) ?
+  let listening = authority.audience == Security.OWNER || Graph.linked(&graph, call.input.participant, authority.audience)
+
+  if !Graph.isChannel(&graph, call.input.participant) || !listening { return Err(notFound()) }
+
+  Ok(Delivery.channel(&state, &graph, call.input.participant, &authority, call.input.after, Delivery.pageSize(call.input.limit)))
 }
 
 fn pullOnce(runtime: &Runtime.Runtime, call: &Request.Call[Request.Pulling]) -> Result[Transfer.Page, Problem.Problem] {

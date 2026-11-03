@@ -33,7 +33,7 @@ export fn stateAt(lifecycle: &Lifecycle.Lifecycle, now: Int) -> Str
 
 - **Requires:** [[src/Constants/Details]] · [[src/Constants/Extras]] · [[src/Constants/Fabric]] · [[src/Constants/Ledger]] · [[src/Constants/Security]] · [[src/Contract/Limits]] · [[src/Contract/Members]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Capability]] · [[src/Domain/Envelope]] · [[src/Domain/Graph]] · [[src/Domain/Ledger]] · [[src/Domain/Lifecycle]] · [[src/Domain/Problem]] · [[src/Domain/Scope]] · [[src/Engine/Authority]] · [[src/Engine/Causality]] · [[src/Engine/Gating]] · [[src/Engine/Kinds]] · [[src/Engine/Ledger]] · [[src/Engine/Lifecycle]] · [[src/Engine/Routing]] · [[src/Utils/JsonRead]] · [[src/Utils/Pointer]]
 - **Standard library:** `Std.Json`, `Std.List`, `Std.Map`, `Std.Option`
-- **Consumed by:** [[src/Engine/Journal]] · [[src/Services/Bridge]] · [[src/Services/Fabric]] · [[test/Engine/AdmissionTest]] · [[test/Support/Fixtures]]
+- **Consumed by:** [[src/Engine/Journal]] · [[src/Services/Bridge]] · [[src/Services/Fabric]]
 
 <!-- authored -->
 ## Algorithm

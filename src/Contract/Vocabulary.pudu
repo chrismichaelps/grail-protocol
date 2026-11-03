@@ -153,6 +153,9 @@ export const PARTICIPANT_SERVICE: Str = "service"
 /// `graph`.
 export const PARTICIPANT_GRAPH: Str = "graph"
 
+/// `channel`.
+export const PARTICIPANT_CHANNEL: Str = "channel"
+
 /// Every value of the set.
 export const PARTICIPANT_KINDS: Array[Str] = [
   "agent",
@@ -160,7 +163,8 @@ export const PARTICIPANT_KINDS: Array[Str] = [
   "memory",
   "human",
   "service",
-  "graph"
+  "graph",
+  "channel"
 ]
 
 /// `flow`.

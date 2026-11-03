@@ -50,6 +50,9 @@ export const ERASE_TRANSFER: Str = "eraseTransfer"
 /// `GET /v1/scopes/{scope}/graphs/{graph}/participants/{participant}/deliveries`.
 export const PULL_DELIVERIES: Str = "pullDeliveries"
 
+/// `GET /v1/scopes/{scope}/graphs/{graph}/channels/{channel}`.
+export const READ_CHANNEL: Str = "readChannel"
+
 /// `GET /v1/scopes/{scope}/ledger`.
 export const READ_LEDGER: Str = "readLedger"
 
@@ -99,6 +102,7 @@ export const ALL: Array[Operation] = [
   Operation{id: "traceTransfer", method: "GET", path: "/v1/scopes/\{scope\}/transfers/\{transfer\}/trace", pattern: "/v1/scopes/:scope/transfers/:transfer/trace", ability: "ledger.read", status: 200, secured: true, bodied: false, pathParameters: ["scope", "transfer"], queryParameters: []},
   Operation{id: "eraseTransfer", method: "POST", path: "/v1/scopes/\{scope\}/transfers/\{transfer\}/erasure", pattern: "/v1/scopes/:scope/transfers/:transfer/erasure", ability: "ledger.erase", status: 200, secured: true, bodied: false, pathParameters: ["scope", "transfer"], queryParameters: []},
   Operation{id: "pullDeliveries", method: "GET", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/participants/\{participant\}/deliveries", pattern: "/v1/scopes/:scope/graphs/:graph/participants/:participant/deliveries", ability: "transfer.receive", status: 200, secured: true, bodied: false, pathParameters: ["scope", "graph", "participant"], queryParameters: ["after", "limit", "wait"]},
+  Operation{id: "readChannel", method: "GET", path: "/v1/scopes/\{scope\}/graphs/\{graph\}/channels/\{channel\}", pattern: "/v1/scopes/:scope/graphs/:graph/channels/:channel", ability: "transfer.receive", status: 200, secured: true, bodied: false, pathParameters: ["scope", "graph", "channel"], queryParameters: ["after", "limit", "wait"]},
   Operation{id: "readLedger", method: "GET", path: "/v1/scopes/\{scope\}/ledger", pattern: "/v1/scopes/:scope/ledger", ability: "ledger.read", status: 200, secured: true, bodied: false, pathParameters: ["scope"], queryParameters: ["after", "limit"]},
   Operation{id: "delegateToken", method: "POST", path: "/v1/scopes/\{scope\}/tokens", pattern: "/v1/scopes/:scope/tokens", ability: "token.delegate", status: 201, secured: true, bodied: true, pathParameters: ["scope"], queryParameters: []},
   Operation{id: "inspectToken", method: "GET", path: "/v1/scopes/\{scope\}/tokens/self", pattern: "/v1/scopes/:scope/tokens/self", ability: "none", status: 200, secured: true, bodied: false, pathParameters: ["scope"], queryParameters: []},

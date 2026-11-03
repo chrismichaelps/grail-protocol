@@ -25,10 +25,12 @@ A participant is declared inside a graph:
 | Field | Type | Rules |
 | --- | --- | --- |
 | `id` | identifier | Unique in the graph. |
-| `kind` | `agent` · `tool` · `memory` · `human` · `service` · `graph` | Informational except for `graph` (see 6.5). |
+| `kind` | `agent` · `tool` · `memory` · `human` · `service` · `graph` · `channel` | Informational except for `graph` (see 6.5) and `channel` (see 15). |
 | `roles` | array of names | Used by role targeting. At most 32 entries. |
 | `abilities` | array of names | What the participant advertises it can do. Used by ability targeting. At most 64 entries. |
 | `graph` | identifier | REQUIRED when `kind` is `graph`: the graph this participant stands for. Forbidden otherwise. |
+
+A `channel` declares no `roles`, `abilities`, or `graph`; it is addressed by its id alone ([[protocol/15-Channels]]).
 
 Names are 1 to 64 characters of `a–z 0–9 . _ -`.
 

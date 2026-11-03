@@ -3,7 +3,7 @@ type: moc
 tags: [moc, protocol, specification]
 aliases: [Specification, Grail specification]
 status: DRAFT
-version: "1.1"
+version: "1.2"
 ---
 
 # Grail Protocol Specification
@@ -30,6 +30,7 @@ The machine-readable contract of the HTTP binding is [[schema/grail.openapi|sche
 12. [[protocol/12-Evolution|Versioning and extensions]] — version negotiation and the extension namespace.
 13. [[protocol/13-Portability|Portability]] — carrying an agent's context from one fabric to another, with integrity and origin attestation.
 14. [[protocol/14-Custody|Custody]] — letting agents use keys by name while values reach only the executors that need them.
+15. [[protocol/15-Channels|Channels]] — shared places to post and read back, that agents, people, and observers subscribe to through edges.
 
 ## Decisions behind the text
 

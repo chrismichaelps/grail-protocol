@@ -21,7 +21,7 @@ One handler per contract operation, chosen once by operation id.
 ```pudu
 export type Handler = fn(Assembly.App, Route.Request, Int) -> Http.Response
 /// The ids of every operation with a handler.
-export fn bound() -> Array[Str] { Map.keys(&HANDLERS) }
+export fn bound() -> Array[Str]
 /// The answer of an operation's handler, or `None` when the operation has none.
 export fn respond(id: Str, app: Assembly.App, request: Route.Request, status: Int) -> Option[Http.Response]
 ```

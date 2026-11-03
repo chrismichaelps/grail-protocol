@@ -7,6 +7,7 @@ import Std.Map as Map
 import Constants.Details as Details
 import Constants.Extras as Extras
 import Contract.Limits as Limits
+import Contract.Members as Members
 import Contract.Problems as Codes
 import Contract.Vocabulary as Vocabulary
 import Domain.Graph as Graph
@@ -14,6 +15,7 @@ import Domain.Mutation as Mutation
 import Domain.Problem as Problem
 import Engine.Topology as Topology
 import Utils.JsonRead as JsonRead
+import Utils.Pointer as Pointer
 
 /** @Engine.Mutations.Apply — one step's effect on a graph */
 export type Apply = fn(Graph.Graph) -> Result[Graph.Graph, Problem.Problem]
@@ -68,6 +70,8 @@ export fn check(graph: &Graph.Graph, others: &Map[Str, Graph.Graph]) -> Result[(
     if !known.contains(edge.from) || !known.contains(edge.to) { return Err(Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND)) }
   }
 
+  if !List.all(&graph.edges, |edge: Graph.Edge| channelEdgeHolds(graph, &edge)) { return Err(Problem.invalid(&[Problem.violation(Pointer.of(&[Members.GRAPH_DRAFT_EDGES]), Details.CHANNEL_EDGE)])) }
+
   let dependencies = Graph.edgesOf(graph, Vocabulary.RELATION_DEPENDENCY).map(|edge: Graph.Edge| (edge.from, edge.to))
 
   if let Some(cycle) = Topology.cycleOf(&dependencies) { return Err(cyclic(&cycle)) }
@@ -84,6 +88,15 @@ export fn check(graph: &Graph.Graph, others: &Map[Str, Graph.Graph]) -> Result[(
   if Topology.depthOf(&containment) > Limits.CONTAINMENT_DEPTH { return Err(exceeded(Limits.CONTAINMENT_DEPTH)) }
 
   Ok(())
+}
+
+/// Whether an edge respects what a channel is: no channel subscribes to another, and no dependency waits on a channel, which never produces a result.
+export fn channelEdgeHolds(graph: &Graph.Graph, edge: &Graph.Edge) -> Bool {
+  let fromChannel = Graph.isChannel(graph, edge.from)
+
+  if edge.relation == Vocabulary.RELATION_DEPENDENCY { return !fromChannel }
+
+  !(fromChannel && Graph.isChannel(graph, edge.to))
 }
 
 fn withoutParticipant(graph: &Graph.Graph, id: Str) -> Graph.Graph {

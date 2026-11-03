@@ -1,0 +1,136 @@
+/** @Test.Security.Channel.Suite — through the HTTP binding, a channel's history is closed to non-members, held values stay in custody, and observers can watch but never act */
+module Security.ChannelTest
+
+import Std.Http as Http
+import Std.Http.Server.Reply as Reply
+import Std.Http.Server.Route as Route
+import Std.Json as Json
+import Std.List as List
+import Std.Map as Map
+import Std.Option as Option
+import Std.Test as Test
+import App.Assembly as Assembly
+import Contract.Problems as Codes
+import Contract.Vocabulary as Vocabulary
+import Support.Fabric as Fabric
+import Support.Runner as Runner
+import Utils.JsonRead as JsonRead
+import Web.Router as Router
+
+/// The key the builder may use through the executor and nobody else may read.
+const KEY: Str = "ghp_channel0123456789abcdefGHIJ"
+
+/// A builder posts in #ops and #deploys; the executor hears both; a watcher hears everything in #ops and only observations in #deploys; an outsider is in the graph but in neither channel.
+const GRAPH: Str = "\{\"participants\":[\{\"id\":\"builder\",\"kind\":\"agent\"\},\{\"id\":\"executor\",\"kind\":\"tool\"\},\{\"id\":\"watcher\",\"kind\":\"service\"\},\{\"id\":\"outsider\",\"kind\":\"agent\"\},\{\"id\":\"ops\",\"kind\":\"channel\"\},\{\"id\":\"deploys\",\"kind\":\"channel\"\}],\"edges\":[\{\"id\":\"b-d\",\"from\":\"builder\",\"to\":\"deploys\",\"relation\":\"flow\"\},\{\"id\":\"d-x\",\"from\":\"deploys\",\"to\":\"executor\",\"relation\":\"flow\"\},\{\"id\":\"d-w\",\"from\":\"deploys\",\"to\":\"watcher\",\"relation\":\"flow\",\"kinds\":[\"observation\"]\},\{\"id\":\"b-ops\",\"from\":\"builder\",\"to\":\"ops\",\"relation\":\"flow\"\},\{\"id\":\"ops-b\",\"from\":\"ops\",\"to\":\"builder\",\"relation\":\"flow\"\},\{\"id\":\"ops-x\",\"from\":\"ops\",\"to\":\"executor\",\"relation\":\"flow\"\},\{\"id\":\"ops-w\",\"from\":\"ops\",\"to\":\"watcher\",\"relation\":\"flow\"\}]\}"
+
+/// Another graph of the same scope with a channel the watcher's token was never bound to.
+const OTHER: Str = "\{\"participants\":[\{\"id\":\"watcher\",\"kind\":\"service\"\},\{\"id\":\"lead\",\"kind\":\"human\"\},\{\"id\":\"elsewhere\",\"kind\":\"channel\"\}],\"edges\":[\{\"id\":\"l-e\",\"from\":\"lead\",\"to\":\"elsewhere\",\"relation\":\"flow\"\},\{\"id\":\"e-w\",\"from\":\"elsewhere\",\"to\":\"watcher\",\"relation\":\"flow\"\},\{\"id\":\"e-l\",\"from\":\"elsewhere\",\"to\":\"lead\",\"relation\":\"flow\"\}]\}"
+
+fn post(id: Str, source: Str, kind: Str, payload: Json.Json) -> Str { postTo("ops", id, source, kind, payload) }
+
+fn postTo(channel: Str, id: Str, source: Str, kind: Str, payload: Json.Json) -> Str {
+  Json.encode(&Json.object(&[
+        ("grail", Json.Text("1.2")),
+        ("id", Json.Text(id)),
+        ("scope", Json.Text("demo")),
+        ("graph", Json.Text("g")),
+        ("source", Json.Text(source)),
+        ("target", Json.object(&[("participant", Json.Text(channel))])),
+        ("kind", Json.Text(kind)),
+        ("payload", payload)
+      ]))
+}
+
+fn delegate(router: &Route.Router, root: Str, audience: Str, graph: Str, abilities: &Array[Str]) -> Str {
+  Fabric.delegated(router, root, audience + "-" + graph, audience, abilities, graph, Assembly.now() + 600000)
+}
+
+fn ids(answer: &Fabric.Answer) -> Array[Str] {
+  Option.present(&Option.unwrapOr(JsonRead.list(&answer.body, "deliveries"), []).map(|item: Json.Json| Option.andThen(Json.field(&item, "envelope"), |envelope: Json.Json| JsonRead.text(&envelope, "id"))))
+}
+
+fn holds(answer: &Fabric.Answer) -> Bool { Json.encode(&answer.body).contains(KEY) }
+
+fn preflight(origin: Str) -> Http.Response {
+  let message = Http.Request{method: Http.Options, target: "/v1/health", headers: [("Origin", origin), ("Access-Control-Request-Method", "GET")], body: "", binaryBody: None}
+  let request = Route.Request{message: message, path: "/v1/health", params: Map.empty(), query: Map.empty(), peer: "test"}
+  Router.preflighted(&["https://docs.example.test"])(request, |_r: Route.Request| Reply.empty(405))
+}
+
+fn main() -> Int {
+  let router = match Fabric.start() {
+    case Ok(found) => found
+    case Err(reason) => { return Runner.finish(&Test.suite("Channel security", &[Test.that("the fabric starts: " + reason, false)])) }
+  }
+  let root = Fabric.owner("demo")
+  let base = "/v1/scopes/demo"
+  let created = Fabric.sent(&router, Http.Put, base + "/graphs/g", root, GRAPH)
+  let other = Fabric.sent(&router, Http.Put, base + "/graphs/h", root, OTHER)
+  let working = [Vocabulary.ABILITY_TRANSFER_SEND, Vocabulary.ABILITY_TRANSFER_RECEIVE]
+  let builder = delegate(&router, root, "builder", "g", &working)
+  let executor = delegate(&router, root, "executor", "g", &working)
+  let watcher = delegate(&router, root, "watcher", "g", &[Vocabulary.ABILITY_TRANSFER_RECEIVE])
+  let outsider = delegate(&router, root, "outsider", "g", &working)
+  let unbound = Fabric.delegated(&router, root, "loose", "builder", &[Vocabulary.ABILITY_TRANSFER_SEND], "g", Assembly.now() + 600000)
+  let deposited = Fabric.sent(&router, Http.Put, base + "/secrets/deploy", root, "\{\"value\":\"" + KEY + "\",\"graph\":\"g\",\"audience\":[\"executor\"],\"senders\":[\"builder\"],\"kinds\":[\"tool.call\"]\}")
+  let note = Fabric.sent(&router, Http.Post, base + "/transfers", builder, post("note", "builder", "observation", Json.object(&[("text", Json.Text("deploying"))])))
+  let reference = Json.object(&[("auth", Json.object(&[("$secret", Json.Text("deploy"))]))])
+  let overheard = Fabric.sent(&router, Http.Post, base + "/transfers", builder, post("overheard", "builder", "tool.call", reference))
+  let call = Fabric.sent(&router, Http.Post, base + "/transfers", builder, postTo("deploys", "deploy", "builder", "tool.call", reference))
+  let leaked = Fabric.sent(&router, Http.Post, base + "/transfers", builder, post("leak", "builder", "observation", Json.object(&[("text", Json.Text("the key is " + KEY))])))
+  let channel = base + "/graphs/g/channels/ops"
+  let watched = Fabric.sent(&router, Http.Get, channel + "?after=0", watcher, "")
+  let deploys = base + "/graphs/g/channels/deploys"
+  let ownerRead = Fabric.sent(&router, Http.Get, deploys, root, "")
+  let watcherDeploys = Fabric.sent(&router, Http.Get, deploys, watcher, "")
+  let executorPull = Fabric.sent(&router, Http.Get, base + "/graphs/g/participants/executor/deliveries", executor, "")
+  let executorRead = Fabric.sent(&router, Http.Get, deploys, executor, "")
+  let outsiderRead = Fabric.sent(&router, Http.Get, channel, outsider, "")
+  let notChannel = Fabric.sent(&router, Http.Get, base + "/graphs/g/channels/builder", root, "")
+  let missing = Fabric.sent(&router, Http.Get, base + "/graphs/g/channels/nowhere", watcher, "")
+  let otherGraph = Fabric.sent(&router, Http.Get, base + "/graphs/h/channels/elsewhere", watcher, "")
+  let otherScope = Fabric.sent(&router, Http.Get, "/v1/scopes/else/graphs/g/channels/ops", watcher, "")
+  let sendOnly = Fabric.sent(&router, Http.Get, channel, unbound, "")
+  let watcherPost = Fabric.sent(&router, Http.Post, base + "/transfers", watcher, post("shout", "watcher", "observation", Json.Null))
+  let outsiderPost = Fabric.sent(&router, Http.Post, base + "/transfers", outsider, post("intrude", "outsider", "observation", Json.Null))
+  let posing = Fabric.sent(&router, Http.Post, base + "/transfers", root, Json.encode(&Json.object(&[("grail", Json.Text("1.2")), ("id", Json.Text("posing")), ("scope", Json.Text("demo")), ("graph", Json.Text("g")), ("source", Json.Text("ops")), ("target", Json.object(&[("participant", Json.Text("builder"))])), ("kind", Json.Text("observation"))])))
+  let again = Fabric.sent(&router, Http.Get, channel + "?after=0", watcher, "")
+  let waited = Fabric.sent(&router, Http.Get, channel + "?after=" + Option.fold(JsonRead.whole(&watched.body, "cursor"), |cursor: Int| show(cursor), "0") + "&wait=300", watcher, "")
+  let withRoles = Fabric.sent(&router, Http.Put, base + "/graphs/bad", root, "\{\"participants\":[\{\"id\":\"c\",\"kind\":\"channel\",\"roles\":[\"entry\"]\}],\"edges\":[]\}")
+  let listed = preflight("https://docs.example.test")
+  let unlisted = preflight("https://elsewhere.example.test")
+  let discovered = Fabric.sent(&router, Http.Get, "/.well-known/grail", "", "")
+  let checks = Test.suite("Channel security", &[
+      Test.equals("the graph with a channel is created", &created.status, &201),
+      Test.equals("a second graph with its own channel is created", &other.status, &201),
+      Test.equals("the key is given to custody", &deposited.status, &201),
+      Test.equals("a post is accepted", &note.status, &202),
+      Test.equals("a reference posted where a subscriber outside the secret's audience would hear it is refused", &Fabric.code(&overheard), &Codes.FORBIDDEN),
+      Test.equals("a tool call naming the key in a channel only its audience hears is accepted", &call.status, &202),
+      Test.equals("a post holding the key's value is refused", &Fabric.code(&leaked), &Codes.SECRET_EXPOSED),
+      Test.equals("a subscriber reads the channel in order", &ids(&watched), &["note"]),
+      Test.equals("the owner reads every post of a channel", &ids(&ownerRead), &["deploy"]),
+      Test.not("and the channel's history holds no secret value, even for the owner", holds(&ownerRead)),
+      Test.equals("a subscriber hearing only observations does not read the tool call", &ids(&watcherDeploys), &[]),
+      Test.not("nor for the secret's own audience reading the channel", holds(&executorRead)),
+      Test.that("only the audience's delivery reveals it", holds(&executorPull)),
+      Test.equals("a member of the graph outside the channel is told it does not exist", &Fabric.code(&outsiderRead), &Codes.NOT_FOUND),
+      Test.equals("a participant that is not a channel cannot be read as one", &Fabric.code(&notChannel), &Codes.NOT_FOUND),
+      Test.equals("an unknown channel looks the same as a closed one", &Fabric.code(&missing), &Codes.NOT_FOUND),
+      Test.equals("a token bound to one graph cannot read another graph's channel", &Fabric.code(&otherGraph), &Codes.FORBIDDEN),
+      Test.equals("a token of one scope learns nothing of another", &Fabric.code(&otherScope), &Codes.UNAUTHORIZED),
+      Test.equals("reading needs transfer.receive", &Fabric.code(&sendOnly), &Codes.FORBIDDEN),
+      Test.equals("an observer holding only transfer.receive cannot post", &Fabric.code(&watcherPost), &Codes.FORBIDDEN),
+      Test.equals("a participant without an edge into the channel cannot post", &Fabric.code(&outsiderPost), &Codes.NO_ROUTE),
+      Test.equals("not even the owner can make a channel speak", &Fabric.code(&posing), &Codes.FORBIDDEN),
+      Test.equals("reading again returns the same posts: nothing was acknowledged", &ids(&again), &["note"]),
+      Test.equals("a waiting read with nothing new answers an empty page", &ids(&waited), &[]),
+      Test.equals("a channel with roles is refused", &Fabric.code(&withRoles), &Codes.INVALID),
+      Test.equals("a preflight from a listed origin is answered", &listed.status.code, &204),
+      Test.that("and lets the page reach a fabric on the visitor's machine", List.any(&listed.headers, |header: (Str, Str)| header[0] == "Access-Control-Allow-Private-Network")),
+      Test.equals("a preflight from any other origin is refused like any other method", &unlisted.status.code, &405),
+      Test.that("discovery offers protocol 1.2", Option.holds(&JsonRead.texts(&discovered.body, "grail"), |versions: Array[Str]| versions.contains("1.2")))
+    ])
+
+  Runner.finish(&checks)
+}

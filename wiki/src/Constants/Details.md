@@ -139,7 +139,6 @@ export const SECRET_EXPOSED: Str = "the envelope holds the value of a secret in 
 export const SECRET_UNKNOWN: Str = "the graph holds no secret by that name"
 /// A recipient of a reference is not in the secret's audience.
 export const SECRET_AUDIENCE: Str = "every recipient of a secret reference must be in the secret's audience"
-
 /// A token's issuer chain lacks the authority to reveal a secret.
 export const SECRET_DELEGATION: Str = "every non-owner issuer must be an executor in the secret's audience"
 /// The sender may not reference the secret.
@@ -158,12 +157,21 @@ export const SECRETS_FULL: Str = "the scope holds as many secrets as it may"
 export const SECRET_UNSEALABLE: Str = "the value could not be sealed"
 /// The path exists, but not for this method.
 export const METHOD_NOT_ALLOWED: Str = "this path does not answer that method"
+/// A channel nobody but the sender listens to.
+export const NO_SUBSCRIBERS: Str = "nobody but the sender hears this kind in this channel, so nobody could answer it"
+/// A channel named as the sender.
+export const CHANNEL_SOURCE: Str = "a channel carries envelopes; it never sends them"
+/// A channel declaring roles, abilities, or a graph.
+export const CHANNEL_PARTICIPANT: Str = "a channel is addressed by its id alone and declares no roles, abilities, or graph"
+/// An edge a channel cannot hold.
+export const CHANNEL_EDGE: Str = "channels do not subscribe to channels, and nothing depends on a channel"
+/// A channel task another subscriber already took.
+export const TAKEN: Str = "another subscriber already took this task, or it never reached you"
 ```
 
 ### Linkage
 
-- **Requires:** nothing inside the fabric
-- **Consumed by:** [[src/Api/Bridge]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Custody]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[src/Web/Caller]] · [[src/Web/Router]]
+- **Consumed by:** [[src/Api/Bridge]] · [[src/Domain/Problem]] · [[src/Engine/Admission]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Codec/Envelope]] · [[src/Engine/Codec/Graph]] · [[src/Engine/Codec/Handoff]] · [[src/Engine/Codec/Shapes]] · [[src/Engine/Custody]] · [[src/Engine/Erasure]] · [[src/Engine/Handoff]] · [[src/Engine/Lifecycle]] · [[src/Engine/Mutations]] · [[src/Engine/Routing]] · [[src/Services/Custody]] · [[src/Services/Fabric]] · [[src/Services/Handoffs]] · [[src/Services/Runtime]] · [[src/Services/Store]] · [[src/Validation/Delegation]] · [[src/Validation/Envelope]] · [[src/Validation/Graph]] · [[src/Web/Caller]] · [[src/Web/Router]]
 
 ## Referenced by
 

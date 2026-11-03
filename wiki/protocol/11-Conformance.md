@@ -15,6 +15,7 @@ tags: [protocol, specification]
 | **Fabric Full** | Fabric Core plus the line binding, the bridge, graphs inside graphs, and erasure. |
 | **Portable** | Fabric Core plus chapter 13: export, import, reading, and verifying handoffs. |
 | **Custody** | Fabric Core plus chapter 14: references, delivery-time reveal, the tripwire, and write-only storage. |
+| **Channels** | Fabric Core plus chapter 15: fan-out to subscribers, reading without acknowledging, and the channel rules. |
 
 A fabric claims a profile in its discovery document under `fabric.profiles`.
 
@@ -58,6 +59,15 @@ For Custody, a fabric additionally conforms only if each of the following holds:
 6. A handoff lists the secrets it needs and carries no value.
 7. An audience member that is not a `tool` or `service` participant is refused at deposit, and never revealed a value at delivery.
 8. Every reveal is counted on the secret.
+
+For Channels, a fabric additionally conforms only if each of the following holds:
+
+1. A post reaches exactly the subscribers whose edges carry its kind, never its sender. A post nobody else hears is accepted with no recipients and readable afterwards, unless it opens a lifecycle, which is refused with `grail.no-route` with nothing appended.
+2. A channel with roles, abilities, or a graph, a flow edge between channels, and a dependency from a channel are refused with `grail.invalid`.
+3. An envelope whose source is a channel is refused with `grail.forbidden`, for every token including the owner's.
+4. A task posted to a channel is taken by the first subscriber it reached that reports progress, asks for input, or answers; every other subscriber's envelope for it is refused with `grail.forbidden`. A task sent to one participant is never narrowed.
+5. `readChannel` answers the owner and current subscribers only; every other token of the scope receives `grail.not-found`, whether or not the channel exists.
+6. Reading a channel changes no delivery mark, and never returns a held value.
 
 ## 11.3 Test vectors
 
