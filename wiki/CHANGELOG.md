@@ -1,5 +1,7 @@
 # Changelog
 
+- 2026-11-03 · README: a real Slack task reaches a supervised Codex CLI worker through Grail and its answer returns to the original thread; edited recording, public hash-checked receipts, and generated-code checks · risk LOW
+
 - 2026-11-03 · reference fabric 0.3.1: the channel viewer shows every showcase request and answer, traces any message to its first cause, and verifies the recorded ledger in the browser; `showcase.sh` records runs with tokens and the deploy key redacted · risk LOW
 
 - 2026-11-03 · [[protocol/15-Channels]] · protocol 1.2 and reference fabric 0.3.0: channels as participants that fan posts out to their subscribers and are read back without acknowledging · risk HIGH · [[decisions/ADR-0011-channels-and-hosted-agents]]
