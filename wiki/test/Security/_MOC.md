@@ -12,6 +12,7 @@ One page per file, each with its interface and the modules it depends on.
 - [[test/Security/ErasureTest]] — graph restrictions constrain payload erasure without changing refused records
 - [[test/Security/DelegationTest]] — a participant cannot mint owner authority to steal custody deliveries or revoke the root
 - [[test/Security/CustodyDelegationTest]] — revealing tokens retain their issuers' custody limits and current rotation policy
+- [[test/Security/CustodyMetadataTest]] — graph, handoff, and public secret metadata cannot expose held values
 - [[test/Security/HandoffTest]] — an agent moves between two fabrics, and forged, altered, replayed, or expired handoffs fail
 
 ## Referenced by

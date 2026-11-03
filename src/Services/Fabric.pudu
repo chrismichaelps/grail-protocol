@@ -2,6 +2,7 @@
 module Services.Fabric
 
 import Std.Concurrent as Concurrent
+import Std.Json as Json
 import Std.Math as Math
 import Std.Option as Option
 import Std.Result as Result
@@ -9,6 +10,7 @@ import Constants.Details as Details
 import Constants.Security as Security
 import Constants.Server as Capacity
 import Contract.Limits as Limits
+import Contract.Members as Members
 import Contract.Problems as Codes
 import Contract.Vocabulary as Vocabulary
 import Domain.Capability as Capability
@@ -23,6 +25,7 @@ import Domain.Scope as Scope
 import Domain.Transfer as Transfer
 import Engine.Admission as Admission
 import Engine.Authority as Authority
+import Engine.Codec.Graph as GraphCodec
 import Engine.Custody as Custody
 import Engine.Delivery as Delivery
 import Engine.Erasure as Erasure
@@ -36,13 +39,20 @@ export fn createGraph(runtime: &Runtime.Runtime, call: &Request.Call[Request.Cre
   let now = Runtime.now()
   let secret = runtime.secret
   let asked = *call
-  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+  let outcome = Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
       let authority = authorized(&state, &asked, secret, now) ?
       let _allowed = Authority.require(&authority, Vocabulary.ABILITY_GRAPH_WRITE, Some(asked.input.graph)) ?
+      let creation = Mutation.Mutation{expectedRevision: 0, steps: asked.input.draft.participants.map(|member: Graph.Participant| Mutation.AddParticipant(member)).concat(asked.input.draft.edges.map(|edge: Graph.Edge| Mutation.AddEdge(edge)))}
+
+      if exposesChange(&state, asked.input.graph, &creation, &authority, secret) {
+        let leak = Custody.caught(&state, &authority)
+        return Ok((Err(leak[0]), leak[1]))
+      }
+
       let graph = Mutations.create(asked.input.graph, asked.scopeId, &asked.input.draft, &state.graphs) ?
-      let creation = Mutation.Mutation{expectedRevision: 0, steps: graph.participants.map(|member: Graph.Participant| Mutation.AddParticipant(member)).concat(graph.edges.map(|edge: Graph.Edge| Mutation.AddEdge(edge)))}
-      Ok((graph, Journal.recorded(&state, &graph, &creation, authority.audience, now)))
-    })
+      Ok((Ok(graph), Journal.recorded(&state, &graph, &creation, authority.audience, now)))
+    }) ?
+  outcome
 }
 
 /// Reads a graph.
@@ -58,13 +68,20 @@ export fn mutateGraph(runtime: &Runtime.Runtime, call: &Request.Call[Request.Cha
   let now = Runtime.now()
   let secret = runtime.secret
   let asked = *call
-  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+  let outcome = Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
       let authority = authorized(&state, &asked, secret, now) ?
       let _allowed = Authority.require(&authority, Vocabulary.ABILITY_GRAPH_WRITE, Some(asked.input.graph)) ?
+
+      if exposesChange(&state, asked.input.graph, &asked.input.mutation, &authority, secret) {
+        let leak = Custody.caught(&state, &authority)
+        return Ok((Err(leak[0]), leak[1]))
+      }
+
       let current = Option.okOr(state.graphs.get(asked.input.graph), notFound()) ?
       let changed = Mutations.apply(&current, &asked.input.mutation, &state.graphs) ?
-      Ok((changed, Journal.recorded(&state, &changed, &asked.input.mutation, authority.audience, now)))
-    })
+      Ok((Ok(changed), Journal.recorded(&state, &changed, &asked.input.mutation, authority.audience, now)))
+    }) ?
+  outcome
 }
 
 /// Admits an envelope, or answers the original receipt of a repeated delivery key. Custody refuses an envelope that holds a secret's value, strikes the token that sent it, and counts each reference it makes.
@@ -226,3 +243,8 @@ fn receiptOf(state: &Scope.State, record: &Ledger.Record, duplicate: Bool) -> Tr
 }
 
 fn notFound() -> Problem.Problem { Problem.of(Codes.NOT_FOUND, Details.NOT_FOUND) }
+
+fn exposesChange(state: &Scope.State, graph: Str, mutation: &Mutation.Mutation, authority: &Capability.Authority, secret: Str) -> Bool {
+  let submitted = Json.object(&[(Members.ENVELOPE_GRAPH, Json.Text(graph)), (Members.ENVELOPE_SOURCE, Json.Text(authority.audience)), (Members.ENVELOPE_PAYLOAD, GraphCodec.mutationJson(mutation))])
+  Custody.exposes(state, &submitted, secret)
+}

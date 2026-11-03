@@ -31,7 +31,7 @@ export fn exportHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Handoff.A
   let secret = runtime.secret
   let fabric = runtime.settings.fabricName
   let asked = *call
-  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+  let outcome = Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
       let authority = Fabric.authorized(&state, &asked, secret, now) ?
       let _allowed = Authority.require(&authority, Vocabulary.ABILITY_HANDOFF_EXPORT, Some(asked.input.graph)) ?
       let graph = Option.okOr(state.graphs.get(asked.input.graph), notFound()) ?
@@ -41,12 +41,19 @@ export fn exportHandoff(runtime: &Runtime.Runtime, call: &Request.Call[Handoff.A
 
       let origin = Handoff.Origin{fabric: fabric, scopeId: state.id, graph: graph.id, participant: member.id}
       let bundle = Portability.assemble(&state, &origin, &member, &asked.input, &authority, now, secret) ?
+
+      if Custody.exposes(&state, &bundle, secret) {
+        let leak = Custody.caught(&state, &authority)
+        return Ok((Err(leak[0]), leak[1]))
+      }
+
       let entries = Portability.intact(&bundle) ?
       let entry = Journal.Entry{id: asked.input.id, graph: graph.id, actor: member.id, kind: Vocabulary.KIND_HANDOFF_EXPORT, parents: asked.input.transfers, payload: Portability.summary(&bundle, Portable.EXPORTED, entries), recipients: []}
       let written = Journal.written(&state, &entry, now)
       let stored = storedOf(&written[0], Portable.EXPORTED, entries, bundle)
-      Ok((stored, Scope.State{..written[1], handoffs: written[1].handoffs.insert(stored.id, stored)}))
-    })
+      Ok((Ok(stored), Scope.State{..written[1], handoffs: written[1].handoffs.insert(stored.id, stored)}))
+    }) ?
+  outcome
 }
 
 /// Admits a handoff from another fabric once its integrity holds, and delivers its arrival to the participant it is for. The same handoff imported again answers the original receipt.

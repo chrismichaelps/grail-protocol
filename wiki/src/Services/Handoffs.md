@@ -12,6 +12,8 @@ tags: [module, services]
 
 ## Purpose
 
+Export checks the entire assembled handoff against custody before returning or journaling it. This includes caller-controlled handoff identifiers and metadata. Refusal persists tripwire strikes without writing a handoff or ledger entry.
+
 Exporting, importing, reading, and verifying portable handoffs.
 
 ## Interface
