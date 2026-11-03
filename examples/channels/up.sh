@@ -6,7 +6,7 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
-work="$root/build/channels"
+work="${GRAIL_CHANNELS_DIR:-$root/build/channels}"
 grail="${GRAIL_BIN:-$root/build/grail}"
 port="${GRAIL_PORT:-7420}"
 scope="studio"
