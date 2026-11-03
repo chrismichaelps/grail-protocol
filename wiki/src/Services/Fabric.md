@@ -16,6 +16,8 @@ Every operation of the protocol over one scope at a time.
 
 Payload erasure requires `ledger.erase` and checks the stored envelope's graph against the token's graph restriction before changing state. An `owner` audience does not bypass a graph restriction. Refusal preserves the payload, erasure mark, digest, and ledger link.
 
+Custody revelation receives the verified caller authority. A batch refused by custody commits neither delivery acknowledgment marks nor reveal counters; a delegated executor identity alone is insufficient when its issuer lacked custody authority.
+
 ## Interface
 
 ### Signatures

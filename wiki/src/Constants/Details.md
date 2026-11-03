@@ -139,6 +139,9 @@ export const SECRET_EXPOSED: Str = "the envelope holds the value of a secret in 
 export const SECRET_UNKNOWN: Str = "the graph holds no secret by that name"
 /// A recipient of a reference is not in the secret's audience.
 export const SECRET_AUDIENCE: Str = "every recipient of a secret reference must be in the secret's audience"
+
+/// A token's issuer chain lacks the authority to reveal a secret.
+export const SECRET_DELEGATION: Str = "every non-owner issuer must be an executor in the secret's audience"
 /// The sender may not reference the secret.
 export const SECRET_SENDER: Str = "this participant may not reference the secret"
 /// The kind may not carry the secret.

@@ -11,6 +11,8 @@ tags: [test, engine, custody]
 
 Pins the edges of [[src/Engine/Custody]] at a fixed time: a sealed value opens only in its own scope, a secret is expired at its expiry and usable just before, the audience receives the value while others and the same participant in another graph receive the reference, an object with more than the marker is not a reference, references in lists are found once each, and screening refuses a body that holds a value.
 
+Reveal regressions also cover empty issuer chains, foreign graph records, and stricter sender/kind policies after rotation.
+
 ## Interface
 
 The module exposes no names; it is an entry point run directly.

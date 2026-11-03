@@ -9,6 +9,7 @@ import Std.Result as Result
 import Std.Test as Test
 import Contract.Problems as Codes
 import Contract.Vocabulary as Vocabulary
+import Domain.Capability as Capability
 import Domain.Custody as Custody
 import Domain.Envelope as Envelope
 import Domain.Graph as Graph
@@ -55,7 +56,7 @@ fn record(recipients: &Array[Envelope.Address]) -> Ledger.Record {
 fn address(graph: Str, participant: Str) -> Envelope.Address { Envelope.Address{graph: graph, participant: participant} }
 
 fn shown(state: &Scope.State, recipient: &Envelope.Address, now: Int) -> Json.Json {
-  let revealed = Guard.revealed(state, &record(&[*recipient]), recipient, Fixtures.SECRET, now)
+  let revealed = Result.unwrapOr(Guard.revealed(state, &record(&[*recipient]), recipient, &Fixtures.owner(), Fixtures.SECRET, now), record(&[*recipient]))
   Option.unwrapOr(Option.andThen(revealed.envelope.payload, |payload: Json.Json| Json.field(&payload, "auth")), Json.Null)
 }
 
@@ -63,7 +64,23 @@ fn main() -> Int {
   let open = held(None)
   let expiring = held(Some(Fixtures.NOW))
   let writer = address(Fixtures.GRAPH, "writer")
+  let original = record(&[writer])
+  let owner = Fixtures.owner()
+  let noChain = Capability.Authority{..owner, chain: []}
+  let deniedKind = Scope.State{..open, secrets: Map.mapValues(&open.secrets, |secret: Custody.Held| Custody.Held{..secret, kinds: [Vocabulary.KIND_TASK]})}
+  let deniedSender = Scope.State{..open, secrets: Map.mapValues(&open.secrets, |secret: Custody.Held| Custody.Held{..secret, senders: ["reviewer"]})}
+  let foreignRecord = Ledger.Record{..original, envelope: Envelope.Envelope{..original.envelope, graph: "elsewhere"}}
+  let outsider = Capability.Authority{..owner, audience: "writer", chain: owner.chain.concat([Fixtures.claims("parent", "reviewer", &[Vocabulary.ABILITY_TRANSFER_RECEIVE]), Fixtures.claims("child", "writer", &[Vocabulary.ABILITY_TRANSFER_RECEIVE])])}
+  let outsiderGraphs = Map.mapValues(&open.graphs, |graph: Graph.Graph| Graph.Graph{..graph, participants: graph.participants.map(|member: Graph.Participant| if member.id == "reviewer" { Graph.Participant{..member, kind: Vocabulary.PARTICIPANT_TOOL} } else { member })})
+  let outsideAudience = Scope.State{..open, graphs: outsiderGraphs}
+  let demotedIssuer = Scope.State{..open, secrets: Map.mapValues(&open.secrets, |secret: Custody.Held| Custody.Held{..secret, audience: ["writer", "reviewer"]})}
   let checks = Test.suite("Engine custody", &[
+      Test.equals("an executor issuer outside the audience cannot reveal", &Fixtures.code(&Guard.revealed(&outsideAudience, &original, &writer, &outsider, Fixtures.SECRET, Fixtures.NOW)), &Codes.FORBIDDEN),
+      Test.equals("an issuer in the audience that stopped executing cannot reveal", &Fixtures.code(&Guard.revealed(&demotedIssuer, &original, &writer, &outsider, Fixtures.SECRET, Fixtures.NOW)), &Codes.FORBIDDEN),
+      Test.equals("an empty issuer chain cannot reveal a value", &Fixtures.code(&Guard.revealed(&open, &original, &writer, &noChain, Fixtures.SECRET, Fixtures.NOW)), &Codes.FORBIDDEN),
+      Test.equals("the current kind policy is checked again at reveal", &Fixtures.code(&Guard.revealed(&deniedKind, &original, &writer, &owner, Fixtures.SECRET, Fixtures.NOW)), &Codes.FORBIDDEN),
+      Test.equals("the current sender policy is checked again at reveal", &Fixtures.code(&Guard.revealed(&deniedSender, &original, &writer, &owner, Fixtures.SECRET, Fixtures.NOW)), &Codes.FORBIDDEN),
+      Test.equals("a record from another graph cannot reveal a value", &Fixtures.code(&Guard.revealed(&open, &foreignRecord, &writer, &owner, Fixtures.SECRET, Fixtures.NOW)), &Codes.FORBIDDEN),
       Test.equals("a sealed value opens under the same key", &Option.andThen(open.secrets.get("key"), |found: Custody.Held| Guard.valueOf(&found, Fixtures.SECRET, Fixtures.SCOPE)), &Some(VALUE)),
       Test.equals("a sealed value does not open in another scope", &Option.andThen(open.secrets.get("key"), |found: Custody.Held| Guard.valueOf(&found, Fixtures.SECRET, "elsewhere")), &None),
       Test.equals("a reference to the audience is admitted", &Fixtures.code(&Guard.guarded(&open, &record(&[writer]), Fixtures.NOW)), &""),
