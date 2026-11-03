@@ -13,6 +13,8 @@ tags: [test]
 
 Tokens verify only in their scope, expire, and only ever narrow when delegated.
 
+Reserved-principal regressions cover issuance and verification: a non-owner parent cannot introduce the `owner` audience, including in an otherwise valid signed chain. Owner-to-owner narrowing remains permitted.
+
 ## Interface
 
 ### Signatures
