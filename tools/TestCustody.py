@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
+    if not __debug__:
+        raise RuntimeError("Run custody checks without Python optimization so assertions remain enabled")
     with tempfile.TemporaryDirectory(prefix="grail-custody-") as directory:
         work = Path(directory)
         binary = work / "grail"

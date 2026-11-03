@@ -16,7 +16,7 @@ A Grail fabric sees every envelope and decides what every delivery contains, so 
 
 ## Decision
 
-Add chapter 14. A secret is deposited once, sealed, and never readable again. Participants reference it as `{"$secret": name}`. Admission refuses any envelope, bridged message, or imported handoff holding a held value, and checks each reference against the secret's graph, expiry, uses, senders, kinds, and audience, counting a use. Delivery is the only place a reference becomes a value, and only for audience members. Handoffs list the names they need and never carry values. `listSecrets` tells agents what exists and what it is for.
+Add chapter 14. A secret is deposited once, sealed, and never readable again. Participants reference it as `{"$secret": name}`. Admission refuses any envelope, bridged message, or imported handoff holding a held value, and checks each reference against the secret's graph, expiry, uses, senders, kinds, and audience, counting a use. Delivery is the only place a reference becomes a value, and only when the verified issuer chain and current audience policy authorize it. Handoffs list the names they need and never carry values. `listSecrets` tells agents what exists and what it is for.
 
 Considered and rejected:
 
@@ -28,7 +28,7 @@ Considered and rejected:
 
 ### Bounding what remains
 
-The first version left four residual risks: the executor holds the value, leaks in forms the tripwire did not know, probing by guesses, and an in-memory store. Each is now bounded inside the protocol rather than left to practice:
+The first version left four residual risks: the executor holds the value, leaks in forms the tripwire did not know, probing by guesses, and an in-memory store. The controls limit these risks; they do not remove them:
 
 - Audiences may hold only `tool` and `service` participants, checked at deposit and at every reveal, and every reveal is counted.
 - The tripwire covers fragments, every base64 alignment, percent-encoding, both hex cases, and reversal.
@@ -37,7 +37,7 @@ The first version left four residual risks: the executor holds the value, leaks 
 
 ## Consequences
 
-A model can use a key it has never seen, and a leaked key cannot travel through Grail undetected in its common forms. The executor still holds the value, so audiences must stay small and trusted. The tripwire is a narrowing control, not a proof. Pieces shorter than its fragment bound, ciphers, and paraphrase are out of its reach, and the chapter says so. Only executors hold values, though, and every attempt that is caught costs a strike. Probing ends after three attempts. Fragment matching means a deposited value should be the secret part only; a whole connection string would match shared text. Each admission opens every held value of the scope, which is bounded by `secrets`.
+A model can use a key it has never seen, and a leaked key cannot travel through Grail undetected in its common forms. The executor still holds the value, so audiences must stay small and trusted. The tripwire is a narrowing control, not a proof. Pieces shorter than its fragment bound, ciphers, and paraphrase are out of its reach, and the chapter says so. Only executors hold values, though, and every attempt that is caught costs a strike. Only detected disclosures count as strikes; negative guesses do not, and separate tokens have separate counters. This does not impose a three-guess limit. Fragment matching means a deposited value should be the secret part only; a whole connection string would match shared text. Each admission opens every held value of the scope, which is bounded by `secrets`.
 
 ## Validation
 
