@@ -16,6 +16,7 @@ import Domain.Problem as Problem
 import Domain.Request as Request
 import Domain.Scope as Scope
 import Engine.Authority as Authority
+import Engine.Codec.Custody as CustodyCodec
 import Engine.Custody as Guard
 import Services.Fabric as Fabric
 import Services.Runtime as Runtime
@@ -27,7 +28,7 @@ export fn putSecret(runtime: &Runtime.Runtime, call: &Request.Call[Custody.Depos
   let now = Runtime.now()
   let secret = runtime.secret
   let asked = *call
-  Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
+  let outcome = Store.change(&runtime.store, call.scopeId, |state: Scope.State| {
       let authority = Fabric.authorized(&state, &asked, secret, now) ?
       let _allowed = Authority.require(&authority, Vocabulary.ABILITY_SECRET_MANAGE, Some(asked.input.graph)) ?
       let graph = Option.okOr(state.graphs.get(asked.input.graph), notFound()) ?
@@ -38,8 +39,17 @@ export fn putSecret(runtime: &Runtime.Runtime, call: &Request.Call[Custody.Depos
       if Option.holds(&state.secrets.get(asked.input.name), |held: Custody.Held| held.graph != asked.input.graph) { return Err(Problem.of(Codes.DUPLICATE, Details.DUPLICATE_MEMBER)) }
 
       let held = Guard.sealed(&state, &Custody.Sealing{deposit: asked.input, nonce: nonce, now: now}, secret) ?
-      Ok((held, Scope.State{..state, secrets: state.secrets.insert(held.name, held)}))
-    })
+      let next = Scope.State{..state, secrets: state.secrets.insert(held.name, held)}
+      let metadata = CustodyCodec.view(&held)
+
+      if Guard.exposes(&state, &metadata, secret) || Guard.exposes(&next, &metadata, secret) {
+        let leak = Guard.caught(&state, &authority)
+        return Ok((Err(leak[0]), leak[1]))
+      }
+
+      Ok((Ok(held), next))
+    }) ?
+  outcome
 }
 
 /// Destroys a held secret; references to it stop resolving at once.

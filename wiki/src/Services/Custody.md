@@ -12,6 +12,8 @@ tags: [module, services]
 
 ## Purpose
 
+Public metadata is checked against both the previously held values and the incoming sealed value before a deposit or rotation is committed. The guard covers descriptions, names, and policies, so neither a response nor a listing can echo the write-only value.
+
 Giving secrets to custody, listing what is held, and destroying it.
 
 ## Interface
@@ -31,7 +33,7 @@ export fn listSecrets(runtime: &Runtime.Runtime, call: &Request.Call[()]) -> Res
 
 ### Linkage
 
-- **Requires:** [[src/Constants/Details]] · [[src/Contract/Limits]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Custody]] · [[src/Domain/Graph]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Scope]] · [[src/Engine/Authority]] · [[src/Engine/Custody]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]]
+- **Requires:** [[src/Constants/Details]] · [[src/Contract/Limits]] · [[src/Contract/Problems]] · [[src/Contract/Vocabulary]] · [[src/Domain/Custody]] · [[src/Domain/Graph]] · [[src/Domain/Problem]] · [[src/Domain/Request]] · [[src/Domain/Scope]] · [[src/Engine/Authority]] · [[src/Engine/Codec/Custody]] · [[src/Engine/Custody]] · [[src/Services/Fabric]] · [[src/Services/Runtime]] · [[src/Services/Store]]
 - **Standard library:** `Std.Crypto`, `Std.List`, `Std.Map`, `Std.Option`, `Std.Result`
 - **Consumed by:** [[src/App/Handlers]]
 
